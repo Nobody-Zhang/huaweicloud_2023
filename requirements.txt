@@ -1,4 +1,8 @@
+<<<<<<< HEAD
+# huaweicloud requirements
+=======
 # YOLOv5 requirements
+>>>>>>> origin/dev
 # Usage: pip install -r requirements.txt
 
 # Base ------------------------------------------------------------------------
