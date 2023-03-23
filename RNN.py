@@ -1,90 +1,71 @@
 import torch
 import torch.nn as nn
-class LSTM(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, num_layers=1):
-        super(LSTM, self).__init__()
+import numpy as np
 
+# Define RNN model
+class RNN(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size):
+        super(RNN, self).__init__()
         self.hidden_size = hidden_size
-        self.num_layers = num_layers
+        self.i2h = nn.Linear(input_size + hidden_size, hidden_size)
+        self.i2o = nn.Linear(input_size + hidden_size, output_size)
+        self.softmax = nn.LogSoftmax(dim=1)
 
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers=num_layers, batch_first=True)
-        self.fc = nn.Linear(hidden_size, output_size)
-
-
-    def forward(self, x, hidden):
-        output, hidden = self.lstm(x, hidden)
-        output = self.fc(output[:, -1, :])
+    def forward(self, input_tensor, hidden_tensor):
+        combined = torch.cat((input_tensor, hidden_tensor), 1)
+        hidden = self.i2h(combined)
+        output = self.i2o(combined)
+        output = self.softmax(output)
         return output, hidden
 
+    def init_hidden(self):
+        return torch.zeros(1, self.hidden_size)
 
-    def initHidden(self, batch_size):
-        h = torch.zeros(self.num_layers, batch_size, self.hidden_size)
-        c = torch.zeros(self.num_layers, batch_size, self.hidden_size)
+# Define custom data
+input_data = np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0], [1, 1, 0], [1, 1, 1], [0, 1, 1], [0, 0, 0]])
+output_data = np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0], [1, 0, 0], [0, 0, 1], [1, 0, 0], [0, 0, 0]])
 
-        if torch.cuda.is_available():
-            h = h.cuda()
-        c = c.cuda()
-        return (h, c)
+# Define hyperparameters
+input_size = 3
+hidden_size = 4
+output_size = 3
+learning_rate = 0.1
+epochs = 1000
 
-input_size = 4
-hidden_size = 32
-output_size = 4
-num_layers = 2
-lr = 0.01
-num_epochs = 1000
+# Initialize RNN model
+rnn = RNN(input_size, hidden_size, output_size)
 
-# 训练数据集（假设仅包含 0 1 2 3 这四个字符）
-data = [("013", "1"),
-        ("320", "0"),
-        ("02", "2"),
-        ("33", "3"),
-        ("103", "2"),
-        ("0120", "0"),
-        ("13", "1"),
+# Define loss function and optimizer
+criterion = nn.NLLLoss()
+optimizer = torch.optim.SGD(rnn.parameters(), lr=learning_rate)
 
-        ("321", "0"),
-        ("2", "2"),
-        ("03", "3"),
-]
+# Train RNN model
+for epoch in range(epochs):
+    loss = 0
+    hidden = rnn.init_hidden()
 
-# 将字符转化为数字表示
-char_to_index = {"0": 0, "1": 1, "2": 2, "3": 3}
+    for input_tensor, output_tensor in zip(input_data, output_data):
+        input_tensor = torch.Tensor(input_tensor).view(1, -1)
+        output_tensor = torch.LongTensor(np.argmax(output_tensor))
 
-# 创建模型
-lstm = LSTM(input_size, hidden_size, output_size, num_layers)
-criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(lstm.parameters(), lr=lr)
+        # Forward pass
+        output, hidden = rnn(input_tensor, hidden)
+        loss += criterion(output, output_tensor)
 
-# 进行训练
-for epoch in range(num_epochs):
-    total_loss = 0
-    for i in range(len(data)):
-        inputs = torch.zeros(len(data[i][0]), 1, input_size)
-        for j in range(len(data[i][0])):
-            inputs[j, 0, char_to_index[data[i][0][j]]] = 1
-        targets = torch.LongTensor([char_to_index[data[i][1]]])
-
-        hidden = lstm.initHidden(1)
-        outputs, hidden = lstm(inputs, hidden)
-
-        loss = criterion(outputs, targets)
-        total_loss += loss.item()
-
+        # Backward pass
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-    if (epoch + 1) % 100 == 0:
-        print("Epoch [{}/{}], Loss: {:.4f}".format(epoch+1, num_epochs, total_loss))
+    # Print loss every 100 epochs
+    if epoch % 100 == 0:
+        print(f"Epoch {epoch}, Loss: {loss.item()}")
+# Test RNN model
+test_input = np.array([[0, 1, 1], [1, 1, 0], [0, 0, 1]])
+hidden = rnn.init_hidden()
 
-# 进行预测
-test_data = ["0023", "321", "3312", "03", "01320"]
-with torch.no_grad():
-    for s in test_data:
-        inputs = torch.zeros(len(s), 1, input_size)
-        for i in range(len(s)):
-            inputs[i, 0, char_to_index[s[i]]] = 1
-        hidden = lstm.initHidden(1)
-        outputs, _ = lstm(inputs, hidden)
-        _, predicted = torch.max(outputs.data, 1)
-        print(s, "=>", predicted.item())
+for input_tensor in test_input:
+    input_tensor = torch.Tensor(input_tensor).view(1, -1)
+    output, hidden = rnn(input_tensor, hidden)
+    print(f"Input: {input_tensor}, Output: {output}")
+print("Training complete!")
