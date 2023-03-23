@@ -1,0 +1,7 @@
+/runs/
+/train-data/
+/.idea/
+/__pycache__/
+/yolov5s.pt
+/mmod_human_face_detector.dat
+/shape_predictor_68_face_landmarks.dat
