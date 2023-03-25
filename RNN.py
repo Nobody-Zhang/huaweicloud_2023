@@ -7,6 +7,8 @@ import torch.nn as nn
 # 文件路径: ./RNN_Train_in
 # 读取所有文件
 
+
+# -------------加载数据----------------
 all_data = "01234"
 n_data = len(all_data)
 
@@ -23,6 +25,8 @@ for FileName in data_paths:
     lines = open(FileName).read().strip().split('\n')
     category_lines[category] = lines
 n_categories = len(all_categories)
+
+
 # print(n_categories)
 # print(category_lines['0'][:5])
 
@@ -31,11 +35,13 @@ n_categories = len(all_categories)
 def letterToIndex(letter):
     return all_data.find(letter)
 
+
 # Just for demonstration, turn a letter into a <1 x n_letters> Tensor
 def letterToTensor(letter):
     tensor = torch.zeros(1, n_data)
     tensor[0][letterToIndex(letter)] = 1
     return tensor
+
 
 # Turn a line into a <line_length x 1 x n_letters>,
 # or an array of one-hot letter vectors
@@ -44,6 +50,7 @@ def lineToTensor(line):
     for li, letter in enumerate(line):
         tensor[li][0][letterToIndex(letter)] = 1
     return tensor
+
 
 class RNN(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
@@ -54,9 +61,11 @@ class RNN(nn.Module):
         self.i2h = nn.Linear(input_size + hidden_size, hidden_size)
         self.i2o = nn.Linear(input_size + hidden_size, output_size)
         self.softmax = nn.LogSoftmax(dim=1)
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     def forward(self, input, hidden):
+        input = input.to(self.device)
+        hidden = hidden.to(self.device)
         combined = torch.cat((input, hidden), 1)
         combined = combined.to(self.device)
         hidden = self.i2h(combined)
@@ -67,11 +76,12 @@ class RNN(nn.Module):
     def initHidden(self):
         return torch.zeros(1, self.hidden_size)
 
+
 n_hidden = 128
 rnn = RNN(n_data, n_hidden, n_categories)
-
-input = letterToTensor('1')
-hidden = torch.zeros(1, n_hidden)
+rnn = rnn.to(rnn.device)
+input = letterToTensor('1').to(rnn.device)
+hidden = torch.zeros(1, n_hidden).to(rnn.device)
 
 output, next_hidden = rnn(input, hidden)
 
@@ -82,17 +92,21 @@ output, next_hidden = rnn(input[0], hidden)
 
 print(output)
 
+
 def categoryFromOutput(output):
     top_n, top_i = output.topk(1)
     category_i = top_i[0].item()
     return all_categories[category_i], category_i
 
+
 print(categoryFromOutput(output))
 
 import random
 
+
 def randomChoice(l):
     return l[random.randint(0, len(l) - 1)]
+
 
 def randomTrainingExample():
     category = randomChoice(all_categories)
@@ -101,13 +115,15 @@ def randomTrainingExample():
     line_tensor = lineToTensor(line)
     return category, line, category_tensor, line_tensor
 
-for i in range(10):
-    category, line, category_tensor, line_tensor = randomTrainingExample()
-    print('category =', category, '/ line =', line)
+
+# for i in range(10):
+#     category, line, category_tensor, line_tensor = randomTrainingExample()
+#     print('category =', category, '/ line =', line)
 
 criterion = nn.NLLLoss()
 
-learning_rate = 0.005 # If you set this too high, it might explode. If too low, it might not learn
+learning_rate = 0.005  # If you set this too high, it might explode. If too low, it might not learn
+
 
 def train(category_tensor, line_tensor, device):
     hidden = rnn.initHidden()
@@ -124,6 +140,7 @@ def train(category_tensor, line_tensor, device):
         p.data.add_(p.grad.data, alpha=-learning_rate)
     return output, loss.item()
 
+
 import time
 import math
 
@@ -131,11 +148,10 @@ n_iters = 100000
 print_every = 5000
 plot_every = 1000
 
-
-
 # Keep track of losses for plotting
 current_loss = 0
 all_losses = []
+
 
 def timeSince(since):
     now = time.time()
@@ -144,10 +160,14 @@ def timeSince(since):
     s -= m * 60
     return '%dm %ds' % (m, s)
 
+
 start = time.time()
 
 device = torch.device("cuda:0")
+cnt = 0
 for iter in range(1, n_iters + 1):
+    print(cnt)
+    cnt += 1
     category, line, category_tensor, line_tensor = randomTrainingExample()
     output, loss = train(category_tensor, line_tensor, device)
     current_loss += loss
@@ -156,7 +176,8 @@ for iter in range(1, n_iters + 1):
     if iter % print_every == 0:
         guess, guess_i = categoryFromOutput(output)
         correct = '✓' if guess == category else '✗ (%s)' % category
-        print('%d %d%% (%s) %.4f %s / %s %s' % (iter, iter / n_iters * 100, timeSince(start), loss, line, guess, correct))
+        print(
+            '%d %d%% (%s) %.4f %s / %s %s' % (iter, iter / n_iters * 100, timeSince(start), loss, line, guess, correct))
 
     # Add current loss avg to list of losses
     if iter % plot_every == 0:
@@ -168,4 +189,3 @@ import matplotlib.ticker as ticker
 
 plt.figure()
 plt.plot(all_losses)
-
