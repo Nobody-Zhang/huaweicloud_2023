@@ -3,6 +3,7 @@ import glob
 import os
 import torch
 import torch.nn as nn
+import random
 
 # 文件路径: ./RNN_Train_in
 # 读取所有文件
@@ -17,9 +18,12 @@ all_categories = []
 
 data_folder = './RNN_Train_in'
 
+# A list of all file paths in the training data folder.
 data_paths = [os.path.join(data_folder, f) for f in os.listdir(data_folder)]
-# print(train_paths)
+
 for FileName in data_paths:
+    # reads each file in the training data folder, extracts its category name
+    # stores its lines of text in the category_lines dictionary.
     category = os.path.splitext(os.path.basename(FileName))[0]
     all_categories.append(category)
     lines = open(FileName).read().strip().split('\n')
@@ -27,17 +31,14 @@ for FileName in data_paths:
 n_categories = len(all_categories)
 
 
-# print(n_categories)
-# print(category_lines['0'][:5])
-
-# print(all_categories)
-# print(category_lines)
 def letterToIndex(letter):
+    """Maps a character to its index in the all_data string"""
     return all_data.find(letter)
 
 
 # Just for demonstration, turn a letter into a <1 x n_letters> Tensor
 def letterToTensor(letter):
+    """Converts a single character to a one-hot encoded tensor"""
     tensor = torch.zeros(1, n_data)
     tensor[0][letterToIndex(letter)] = 1
     return tensor
@@ -46,6 +47,7 @@ def letterToTensor(letter):
 # Turn a line into a <line_length x 1 x n_letters>,
 # or an array of one-hot letter vectors
 def lineToTensor(line):
+    """converts a line of text to a tensor of one-hot encoded characters, with dimensions (line_length x 1 x n_data)"""
     tensor = torch.zeros(len(line), 1, n_data)
     for li, letter in enumerate(line):
         tensor[li][0][letterToIndex(letter)] = 1
@@ -54,26 +56,35 @@ def lineToTensor(line):
 
 class RNN(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
+        """Initializes a new instance of the RNN class with the specified input size, hidden size, and output size"""
         super(RNN, self).__init__()
 
         self.hidden_size = hidden_size
 
+        # takes the concatenation of the input and hidden layers as input, and produces the hidden state as output.
         self.i2h = nn.Linear(input_size + hidden_size, hidden_size)
+        # takes the concatenation of the input and hidden layers as input, and produces the output state as output.
         self.i2o = nn.Linear(input_size + hidden_size, output_size)
+        # transform the output state into a probability distribution over the output classes.
         self.softmax = nn.LogSoftmax(dim=1)
+        # Determines the device to use (CPU or GPU) based on whether a GPU is available.
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-    def forward(self, input, hidden):
-        input = input.to(self.device)
-        hidden = hidden.to(self.device)
-        combined = torch.cat((input, hidden), 1)
+    def forward(self, input_data, hidden_state):
+        """Defines the forward pass through the neural network. Returning Output and new Hidden state.
+        Including: 1. Combining (Input + 1st Linear Hidden Layer) -> 2. Hiding (1st Combined + 2nd Linear Hidden Layer)
+        -> 3. Output (2nd Combined + 3rd Linear Output Layer) + 4. Output Dealing (Output + SoftMax)"""
+        input_data = input_data.to(self.device)
+        hidden_state = hidden_state.to(self.device)
+        combined = torch.cat((input_data, hidden_state), 1)
         combined = combined.to(self.device)
-        hidden = self.i2h(combined)
-        output = self.i2o(combined)
-        output = self.softmax(output)
-        return output, hidden
+        hidden_state = self.i2h(combined)
+        output_state = self.i2o(combined)
+        output_state = self.softmax(output_state)
+        return output_state, hidden_state  # output state and the new hidden state.
 
     def initHidden(self):
+        """Initializes the hidden state to all zeros"""
         return torch.zeros(1, self.hidden_size)
 
 
@@ -101,7 +112,6 @@ def categoryFromOutput(output):
 
 print(categoryFromOutput(output))
 
-import random
 
 
 def randomChoice(l):
