@@ -2,121 +2,81 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
-import numpy as np
-import random
 
-
-class StringDataset(Dataset):
-    def __init__(self, num_samples, max_len):
-        self.num_samples = num_samples
-        self.max_len = max_len
-        self.samples = []
-        self.labels = []
-        for i in range(num_samples):
-            # 随机生成字符串
-            sample = ''.join([str(random.randint(0, 4)) for _ in range(random.randint(1, max_len))])
-            self.samples.append(sample)
-            # 将字符串转换为One-Hot编码
-            label = [0] * 5
-            for s in sample:
-                label[int(s)] = 1
-            self.labels.append(label)
-
-    def __len__(self):
-        return self.num_samples
-
-    def __getitem__(self, idx):
-        return self.samples[idx], self.labels[idx]
-
-
-class StringTransformer(nn.Module):
+class StringClassifier(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
-        super(StringTransformer, self).__init__()
+        super(StringClassifier, self).__init__()
         self.hidden_size = hidden_size
-        self.embedding = nn.Embedding(input_size, hidden_size)
-        self.transformer = nn.Transformer(d_model=hidden_size, nhead=2, num_encoder_layers=2, num_decoder_layers=2)
+        self.rnn = nn.Transformer(input_size, hidden_size, num_layers=1, batch_first=True)
         self.fc = nn.Linear(hidden_size, output_size)
 
     def forward(self, x):
-        # x: (seq_len, batch_size)
-        x = self.embedding(x)
-        # x: (seq_len, batch_size, hidden_size)
-        x = x.permute(1, 0, 2)
-        # x: (batch_size, seq_len, hidden_size)
-        x = self.transformer(x, x)
-        # x: (batch_size, seq_len, hidden_size)
-        x = x.permute(1, 0, 2)
-        # x: (seq_len, batch_size, hidden_size)
-        x = self.fc(x)
-        # x: (seq_len, batch_size, output_size)
-        return x
+        out = self.rnn(x)
+        out = self.fc(out[:, -1, :])
+        return out
 
+class StringDataset(Dataset):
+    def __init__(self, data, labels):
+        self.data = data
+        self.labels = labels
 
-class Trainer:
-    def __init__(self, model, train_loader, val_loader, test_loader, lr=0.001, epochs=10):
-        self.model = model
-        self.train_loader = train_loader
-        self.val_loader = val_loader
-        self.test_loader = test_loader
-        self.lr = lr
-        self.epochs = epochs
-        self.optimizer = optim.Adam(model.parameters(), lr=lr)
-        self.criterion = nn.BCEWithLogitsLoss()
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.model.to(self.device)
+    def __len__(self):
+        return len(self.data)
 
-    def train(self):
-        for epoch in range(self.epochs):
-            self.model.train()
-            train_loss = 0.0
-            for i, (inputs, targets) in enumerate(self.train_loader):
+    def __getitem__(self, idx):
+        return self.data[idx], self.labels[idx]
 
-                inputs = inputs.to(self.device)
-                targets = targets.to(self.device)
-                self.optimizer.zero_grad()
-                outputs = self.model(inputs)
-                loss = self.criterion(outputs, targets)
-                loss.backward()
-                self.optimizer.step()
-                train_loss += loss.item()
-            train_loss /= len(self.train_loader)
-            print(f'Epoch {epoch + 1}/{self.epochs}, Train Loss: {train_loss:.4f}')
+def train(model, dataloader, criterion, optimizer, num_epochs):
+    for epoch in range(num_epochs):
+        for i, (inputs, labels) in enumerate(dataloader):
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+            if (i+1) % 10 == 0:
+                print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}'.format(epoch+1, num_epochs, i+1, len(dataloader), loss.item()))
 
-    def evaluate(self, loader):
-        self.model.eval()
-        loss = 0.0
-        with torch.no_grad():
-            for inputs, targets in loader:
-                inputs = inputs.to(self.device)
-                targets = targets.to(self.device)
-                outputs = self.model(inputs)
-                loss += self.criterion(outputs, targets).item()
-        loss /= len(loader)
-        return loss
-
-    def test(self):
-        test_loss = self.evaluate(self.test_loader)
-        print(f'Test Loss: {test_loss:.4f}')
-
-
-# 创建数据集
-train_dataset = StringDataset(num_samples=10000, max_len=10)
-val_dataset = StringDataset(num_samples=1000, max_len=10)
-test_dataset = StringDataset(num_samples=1000, max_len=10)
-
-# 创建数据加载器
-train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)
-test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
-
-# 创建模型
-model = StringTransformer(input_size=5, hidden_size=32, output_size=5)
-
-# 创建训练器
-trainer = Trainer(model, train_loader, val_loader, test_loader, lr=0.001, epochs=10)
-
-# 训练模型
-trainer.train()
-
-# 测试模型
-trainer.test()
+# Example usage
+input_size = 10
+hidden_size = 20
+output_size = 2
+data = ['hello', 'world', 'goodbye', 'cruel', 'world']
+labels = [0, 1, 0, 1, 1]
+char_to_idx = {char: i+1 for i, char in enumerate(set(''.join(data)))}
+data = [[char_to_idx[char] for char in string] for string in data]
+data = nn.utils.rnn.pad_sequence([torch.tensor(string) for string in data], batch_first=True)
+dataset = StringDataset(data, torch.tensor(labels))
+dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
+model = StringClassifier(input_size, hidden_size, output_size)
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+train(model, dataloader, criterion, optimizer, num_epochs=10)
+# Test the model
+test_data = ['hello', 'world', 'goodbye', 'cruel', 'world']
+test_labels = [0, 1, 0, 1, 1]
+test_data = [[char_to_idx[char] for char in string] for string in test_data]
+test_data = nn.utils.rnn.pad_sequence([torch.tensor(string) for string in test_data], batch_first=True)
+test_dataset = StringDataset(test_data, torch.tensor(test_labels))
+test_dataloader = DataLoader(test_dataset, batch_size=2, shuffle=True)
+with torch.no_grad():
+    correct = 0
+    total = 0
+    for inputs, labels in test_dataloader:
+        outputs = model(inputs)
+        _, predicted = torch.max(outputs.data, 1)
+        total += labels.size(0)
+        correct += (predicted == labels).sum().item()
+    print('Accuracy of the model on the test data: {} %'.format(100 * correct / total))
+# Continue training the model for 5 more epochs
+train(model, dataloader, criterion, optimizer, num_epochs=5)
+# Test the model again
+with torch.no_grad():
+    correct = 0
+    total = 0
+    for inputs, labels in test_dataloader:
+        outputs = model(inputs)
+        _, predicted = torch.max(outputs.data, 1)
+        total += labels.size(0)
+        correct += (predicted == labels).sum().item()
+    print('Accuracy of the model on the test data after additional training: {} %'.format(100 * correct / total))
