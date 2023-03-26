@@ -1,3 +1,5 @@
+import os
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -77,6 +79,21 @@ class StringDataset(Dataset):
         super(StringDataset, self).__init__()
         self.num_samples = num_samples
         self.max_seq_len = max_seq_len
+        self.data_dir = "RNN_Generated_Training"
+
+        # Load the data from files
+        self.sequences = []
+        self.labels = []
+        for label in range(5):
+            filepath = os.path.join(self.data_dir, f"{label}.in")
+            with open(filepath, "r") as f:
+                for line in f:
+                    seq = [int(c) for c in line.strip()]
+                    seq_len = len(seq)
+                    if seq_len > self.max_seq_len:
+                        seq = seq[:self.max_seq_len]
+                    self.sequences.append(seq)
+                    self.labels.append(label)
 
     def __len__(self):
         """Returns the number of samples in the dataset."""
@@ -84,10 +101,15 @@ class StringDataset(Dataset):
 
     def __getitem__(self, index):
         """Returns the input sequence and label corresponding to the given index."""
+        """
         seq_len = random.randint(1, self.max_seq_len)
         seq = torch.randint(low=0, high=5, size=(seq_len,))
         label = seq[0]
         return seq, label
+        """
+        seq = self.sequences[index % len(self.sequences)]
+        label = self.labels[index % len(self.labels)]
+        return torch.tensor(seq), torch.tensor(label)
 
 
 def collate_fn(batch):
@@ -98,6 +120,26 @@ def collate_fn(batch):
     return inputs, torch.tensor(labels)
 
 
+"""
+# This is copied just for testing
+def getDataset():
+    category_lines = {}
+    all_categories = []
+
+    data_folder = './RNN_Train_in'
+
+    # A list of all file paths in the training data folder.
+    data_paths = [os.path.join(data_folder, f) for f in os.listdir(data_folder)]
+
+    for FileName in data_paths:
+        # reads each file in the training data folder, extracts its category name
+        # stores its lines of text in the category_lines dictionary.
+        category = os.path.splitext(os.path.basename(FileName))[0]
+        all_categories.append(category)
+        lines = open(FileName).read().strip().split('\n')
+        category_lines[category] = lines
+
+"""
 if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
