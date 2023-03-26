@@ -1,15 +1,17 @@
 from io import open
-import glob
 import os
 import torch
 import torch.nn as nn
 import random
+import time
+import math
+import matplotlib.pyplot as plt
 
-# 文件路径: ./RNN_Train_in
-# 读取所有文件
+# file path: ./RNN_Train_in
+# read all files
 
 
-# -------------加载数据----------------
+# -------------load data----------------
 all_data = "01234"
 n_data = len(all_data)
 
@@ -91,6 +93,8 @@ class RNN(nn.Module):
 n_hidden = 128
 rnn = RNN(n_data, n_hidden, n_categories)
 rnn = rnn.to(rnn.device)
+"""
+# testing single letter
 input = letterToTensor('1').to(rnn.device)
 hidden = torch.zeros(1, n_hidden).to(rnn.device)
 
@@ -103,22 +107,26 @@ output, next_hidden = rnn(input[0], hidden)
 
 print(output)
 
+"""
 
-def categoryFromOutput(output):
-    top_n, top_i = output.topk(1)
+
+def categoryFromOutput(output_state):
+    """Predict category label and index based on the output_state"""
+    top_n, top_i = output_state.topk(1)
     category_i = top_i[0].item()
     return all_categories[category_i], category_i
 
-
+"""
 print(categoryFromOutput(output))
-
-
+"""
 
 def randomChoice(l):
+    """choose a random variable from input l"""
     return l[random.randint(0, len(l) - 1)]
 
 
 def randomTrainingExample():
+    """randomly select training entities"""
     category = randomChoice(all_categories)
     line = randomChoice(category_lines[category])
     category_tensor = torch.tensor([all_categories.index(category)], dtype=torch.long)
@@ -126,16 +134,13 @@ def randomTrainingExample():
     return category, line, category_tensor, line_tensor
 
 
-# for i in range(10):
-#     category, line, category_tensor, line_tensor = randomTrainingExample()
-#     print('category =', category, '/ line =', line)
-
 criterion = nn.NLLLoss()
 
 learning_rate = 0.005  # If you set this too high, it might explode. If too low, it might not learn
 
 
 def train(category_tensor, line_tensor, device):
+    """Model Training"""
     hidden = rnn.initHidden()
     hidden = hidden.to(device)
     category_tensor = category_tensor.to(device)
@@ -151,12 +156,17 @@ def train(category_tensor, line_tensor, device):
     return output, loss.item()
 
 
-import time
-import math
-
-n_iters = 100000
-print_every = 5000
+n_iters = 100000  # training iterations
+print_every = 5000  # gap between each print
 plot_every = 1000
+
+"""
+n_iters = 1000  # training iterations
+print_every = 50  # gap between each print
+plot_every = 5
+correctness = 0
+correctness_rate = []
+"""
 
 # Keep track of losses for plotting
 current_loss = 0
@@ -164,6 +174,7 @@ all_losses = []
 
 
 def timeSince(since):
+    """Report time usage"""
     now = time.time()
     s = now - since
     m = math.floor(s / 60)
@@ -175,27 +186,29 @@ start = time.time()
 
 device = torch.device("cuda:0")
 cnt = 0
-for iter in range(1, n_iters + 1):
-    print(cnt)
+for iteration in range(1, n_iters + 1):
     cnt += 1
     category, line, category_tensor, line_tensor = randomTrainingExample()
     output, loss = train(category_tensor, line_tensor, device)
     current_loss += loss
+    """
+    correctness += 1 if categoryFromOutput(output)[0] == category else 0
+    correctness_rate.append(correctness / iteration)
+    """
 
     # Print iter number, loss, name and guess
-    if iter % print_every == 0:
+    if iteration % print_every == 0:
         guess, guess_i = categoryFromOutput(output)
         correct = '✓' if guess == category else '✗ (%s)' % category
         print(
-            '%d %d%% (%s) %.4f %s / %s %s' % (iter, iter / n_iters * 100, timeSince(start), loss, line, guess, correct))
+            '%d %d%% (%s) %.4f %s / %s %s' % (iteration, iteration / n_iters * 100,
+                                              timeSince(start), loss, line, guess, correct))
 
     # Add current loss avg to list of losses
-    if iter % plot_every == 0:
+    if iteration % plot_every == 0:
         all_losses.append(current_loss / plot_every)
         current_loss = 0
 
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
-
 plt.figure()
 plt.plot(all_losses)
+plt.show()
