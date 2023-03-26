@@ -92,6 +92,8 @@ class RNN(nn.Module):
 
 n_hidden = 128
 rnn = RNN(n_data, n_hidden, n_categories)
+if os.path.exists("./model.pt"):
+    rnn.load_state_dict(torch.load('model.pt'))
 rnn = rnn.to(rnn.device)
 """
 # testing single letter
@@ -116,9 +118,11 @@ def categoryFromOutput(output_state):
     category_i = top_i[0].item()
     return all_categories[category_i], category_i
 
+
 """
 print(categoryFromOutput(output))
 """
+
 
 def randomChoice(l):
     """choose a random variable from input l"""
@@ -155,18 +159,17 @@ def train(category_tensor, line_tensor, device):
         p.data.add_(p.grad.data, alpha=-learning_rate)
     return output, loss.item()
 
-
+"""
 n_iters = 100000  # training iterations
 print_every = 5000  # gap between each print
 plot_every = 1000
-
 """
+
 n_iters = 1000  # training iterations
 print_every = 50  # gap between each print
 plot_every = 5
 correctness = 0
 correctness_rate = []
-"""
 
 # Keep track of losses for plotting
 current_loss = 0
@@ -184,17 +187,15 @@ def timeSince(since):
 
 start = time.time()
 
-device = torch.device("cuda:0")
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 cnt = 0
 for iteration in range(1, n_iters + 1):
     cnt += 1
     category, line, category_tensor, line_tensor = randomTrainingExample()
     output, loss = train(category_tensor, line_tensor, device)
     current_loss += loss
-    """
     correctness += 1 if categoryFromOutput(output)[0] == category else 0
     correctness_rate.append(correctness / iteration)
-    """
 
     # Print iter number, loss, name and guess
     if iteration % print_every == 0:
@@ -210,5 +211,8 @@ for iteration in range(1, n_iters + 1):
         current_loss = 0
 
 plt.figure()
-plt.plot(all_losses)
+# plt.plot(all_losses)
+plt.plot(correctness_rate)
 plt.show()
+
+torch.save({'model_state_dict': rnn.state_dict(), 'loss': loss}, 'rnn_model.pth')
