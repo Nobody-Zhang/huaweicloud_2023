@@ -152,6 +152,8 @@ if __name__ == '__main__':
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
 
     model = TransformerClassifier(num_classes).to(device)
+    if os.path.exists("./model.pt"):
+        model.load_state_dict(torch.load('model.pt'))
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
@@ -178,6 +180,7 @@ if __name__ == '__main__':
     test_dataset = StringDataset(num_samples=1000, max_seq_len=100)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
 
+    torch.save({'model_state_dict': model.state_dict(), 'loss': loss}, 'rnn_model.pth')
     model.eval()
 
     with torch.no_grad():
