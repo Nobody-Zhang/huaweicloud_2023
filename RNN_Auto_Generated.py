@@ -93,9 +93,6 @@ class StringDataset(Dataset):
                         seq = seq[:self.max_seq_len]
                     self.sequences.append(seq)
                     self.labels.append(label)
-        if len(self.labels) > num_samples:
-            self.sequences = self.sequences[:num_samples]
-            self.labels = self.labels[:num_samples]
 
     def __len__(self):
         """Returns the number of samples in the dataset."""
@@ -109,8 +106,9 @@ class StringDataset(Dataset):
         label = seq[0]
         return seq, label
         """
-        seq = self.sequences[index % len(self.sequences)]
-        label = self.labels[index % len(self.labels)]
+        index = random.randint(0, len(self.labels) - 1)
+        seq = self.sequences[index]
+        label = self.labels[index]
         return torch.tensor(seq), torch.tensor(label)
 
 
