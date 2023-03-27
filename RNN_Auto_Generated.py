@@ -1,11 +1,10 @@
 import os
-
+import random
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import math
 from torch.utils.data import DataLoader, Dataset
-import random
 from tqdm import tqdm
 
 
@@ -73,19 +72,19 @@ class PositionalEncoding(nn.Module):
 class StringDataset(Dataset):
     """A PyTorch Dataset that generates random strings of variable length and corresponding labels."""
 
-    def __init__(self, num_samples=10000, max_seq_len=100):
+    def __init__(self, folder="RNN_Generated_Training", num_samples=10000, max_seq_len=100):
         """Initializes a new instance of the StringDataset class with the specified number of samples and maximum
         sequence length."""
         super(StringDataset, self).__init__()
         self.num_samples = num_samples
         self.max_seq_len = max_seq_len
-        self.data_dir = "RNN_Generated_Training"
+        self.train_data_dir = folder
 
         # Load the data from files
         self.sequences = []
         self.labels = []
         for label in range(5):
-            filepath = os.path.join(self.data_dir, f"{label}.in")
+            filepath = os.path.join(self.train_data_dir, f"{label}.in")
             with open(filepath, "r") as f:
                 for line in f:
                     seq = [int(c) for c in line.strip()]
@@ -94,6 +93,9 @@ class StringDataset(Dataset):
                         seq = seq[:self.max_seq_len]
                     self.sequences.append(seq)
                     self.labels.append(label)
+        if len(self.labels) > num_samples:
+            self.sequences = self.sequences[:num_samples]
+            self.labels = self.labels[:num_samples]
 
     def __len__(self):
         """Returns the number of samples in the dataset."""
@@ -152,8 +154,8 @@ if __name__ == '__main__':
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
 
     model = TransformerClassifier(num_classes).to(device)
-    if os.path.exists("./model.pt"):
-        model.load_state_dict(torch.load('model.pt'))
+    if os.path.exists("./rnn_model.pth"):
+        model.load_state_dict(torch.load('rnn_model.pth'))
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
@@ -177,10 +179,10 @@ if __name__ == '__main__':
         print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {running_loss / len(train_loader):.4f}")
 
     # Test the model
-    test_dataset = StringDataset(num_samples=1000, max_seq_len=100)
+    test_dataset = StringDataset(folder="RNN_Train_in", num_samples=1000, max_seq_len=1000)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
 
-    torch.save({'model_state_dict': model.state_dict(), 'loss': loss}, 'rnn_model.pth')
+    torch.save(model.state_dict(),'rnn_model.pth')
     model.eval()
 
     with torch.no_grad():
@@ -195,4 +197,4 @@ if __name__ == '__main__':
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
-        print(f"Accuracy on test set: {100 * correct / total:.2f}%")
+        print(f"Accuracy on test set: {100 * correct / total:.2f}% ({correct} out of {total})")
