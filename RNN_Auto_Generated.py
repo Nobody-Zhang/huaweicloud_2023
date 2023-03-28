@@ -72,7 +72,7 @@ class PositionalEncoding(nn.Module):
 class StringDataset(Dataset):
     """A PyTorch Dataset that generates random strings of variable length and corresponding labels."""
 
-    def __init__(self, folder="RNN_Generated_Training", num_samples=10000, max_seq_len=100):
+    def __init__(self, folder="RNN_Generated_Training", num_samples=10000, max_seq_len=400):
         """Initializes a new instance of the StringDataset class with the specified number of samples and maximum
         sequence length."""
         super(StringDataset, self).__init__()
@@ -144,11 +144,11 @@ if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     num_classes = 5
-    batch_size = 64
+    batch_size = 16  # reduce if the max_seq_len below is high
     num_epochs = 10  # to be changed
     learning_rate = 1e-3
 
-    train_dataset = StringDataset(num_samples=10000, max_seq_len=100)
+    train_dataset = StringDataset(num_samples=10000, max_seq_len=400)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
 
     model = TransformerClassifier(num_classes).to(device)
