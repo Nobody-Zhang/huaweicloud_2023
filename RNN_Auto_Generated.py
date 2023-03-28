@@ -1,9 +1,10 @@
+import os
+import random
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import math
 from torch.utils.data import DataLoader, Dataset
-import random
 from tqdm import tqdm
 
 
@@ -71,12 +72,27 @@ class PositionalEncoding(nn.Module):
 class StringDataset(Dataset):
     """A PyTorch Dataset that generates random strings of variable length and corresponding labels."""
 
-    def __init__(self, num_samples=10000, max_seq_len=100):
+    def __init__(self, folder="RNN_Generated_Training", num_samples=10000, max_seq_len=400):
         """Initializes a new instance of the StringDataset class with the specified number of samples and maximum
         sequence length."""
         super(StringDataset, self).__init__()
         self.num_samples = num_samples
         self.max_seq_len = max_seq_len
+        self.train_data_dir = folder
+
+        # Load the data from files
+        self.sequences = []
+        self.labels = []
+        for label in range(5):
+            filepath = os.path.join(self.train_data_dir, f"{label}.in")
+            with open(filepath, "r") as f:
+                for line in f:
+                    seq = [int(c) for c in line.strip()]
+                    seq_len = len(seq)
+                    if seq_len > self.max_seq_len:
+                        seq = seq[:self.max_seq_len]
+                    self.sequences.append(seq)
+                    self.labels.append(label)
 
     def __len__(self):
         """Returns the number of samples in the dataset."""
@@ -84,10 +100,16 @@ class StringDataset(Dataset):
 
     def __getitem__(self, index):
         """Returns the input sequence and label corresponding to the given index."""
+        """
         seq_len = random.randint(1, self.max_seq_len)
         seq = torch.randint(low=0, high=5, size=(seq_len,))
         label = seq[0]
         return seq, label
+        """
+        index = random.randint(0, len(self.labels) - 1)
+        seq = self.sequences[index]
+        label = self.labels[index]
+        return torch.tensor(seq), torch.tensor(label)
 
 
 def collate_fn(batch):
@@ -98,18 +120,40 @@ def collate_fn(batch):
     return inputs, torch.tensor(labels)
 
 
+"""
+# This is copied just for testing
+def getDataset():
+    category_lines = {}
+    all_categories = []
+
+    data_folder = './RNN_Train_in'
+
+    # A list of all file paths in the training data folder.
+    data_paths = [os.path.join(data_folder, f) for f in os.listdir(data_folder)]
+
+    for FileName in data_paths:
+        # reads each file in the training data folder, extracts its category name
+        # stores its lines of text in the category_lines dictionary.
+        category = os.path.splitext(os.path.basename(FileName))[0]
+        all_categories.append(category)
+        lines = open(FileName).read().strip().split('\n')
+        category_lines[category] = lines
+
+"""
 if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     num_classes = 5
-    batch_size = 64
+    batch_size = 16  # reduce if the max_seq_len below is high
     num_epochs = 10  # to be changed
     learning_rate = 1e-3
 
-    train_dataset = StringDataset(num_samples=10000, max_seq_len=100)
+    train_dataset = StringDataset(num_samples=10000, max_seq_len=400)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
 
     model = TransformerClassifier(num_classes).to(device)
+    if os.path.exists("./rnn_model.pth"):
+        model.load_state_dict(torch.load('rnn_model.pth'))
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
@@ -133,9 +177,10 @@ if __name__ == '__main__':
         print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {running_loss / len(train_loader):.4f}")
 
     # Test the model
-    test_dataset = StringDataset(num_samples=1000, max_seq_len=100)
+    test_dataset = StringDataset(folder="RNN_Train_in", num_samples=1000, max_seq_len=1000)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
 
+    torch.save(model.state_dict(),'rnn_model.pth')
     model.eval()
 
     with torch.no_grad():
@@ -150,4 +195,4 @@ if __name__ == '__main__':
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
-        print(f"Accuracy on test set: {100 * correct / total:.2f}%")
+        print(f"Accuracy on test set: {100 * correct / total:.2f}% ({correct} out of {total})")
