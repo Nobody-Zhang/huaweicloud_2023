@@ -1,3 +1,5 @@
+import numpy as np
+
 from RNN_Auto_Generated import StringDataset, DataLoader, TransformerClassifier
 import torch
 import torch.nn as nn
@@ -19,7 +21,7 @@ def test():
     model.load_state_dict(torch.load('rnn_model.pth'))
 
     # Test the model
-    test_dataset = StringDataset(folder="RNN_Train_in", num_samples=100, max_seq_len=1000)
+    test_dataset = StringDataset(folder="RNN_Train_in", num_samples=100, max_seq_len=400)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
     model.eval()
 
@@ -34,7 +36,7 @@ def test():
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
-            print(inputs, labels, predicted)
+            print("".join([str(x.item()) for x in inputs[0]]), labels[0], predicted[0])
 
         print(f"Accuracy on test set: {100 * correct / total:.2f}% ({correct} out of {total})")
 
