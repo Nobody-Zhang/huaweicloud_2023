@@ -107,8 +107,8 @@ lr = 0.001
 num_epochs = 10
 
 
-train_dataset = TextDataset('Rnn_Train_in/')
-val_dataset = TextDataset('Rnn_Train_in/')
+train_dataset = TextDataset('RNN_Generated_Training/')
+val_dataset = TextDataset('RNN_Generated_Training/')
 train_loader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 val_loader = data.DataLoader(val_dataset, batch_size=batch_size)
 

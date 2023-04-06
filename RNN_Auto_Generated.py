@@ -177,7 +177,7 @@ if __name__ == '__main__':
         print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {running_loss / len(train_loader):.4f}")
 
     # Test the model
-    test_dataset = StringDataset(folder="RNN_Train_in", num_samples=1000, max_seq_len=1000)
+    test_dataset = StringDataset(folder="RNN_Generated_Training", num_samples=1000, max_seq_len=1000)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
 
     torch.save(model.state_dict(),'rnn_model.pth')
