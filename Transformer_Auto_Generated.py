@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data as data
-import numpy as np
+from matplotlib.pylab import plt
 
 
 # 定义Transformer模型
@@ -102,13 +102,28 @@ def validate(model, val_loader, criterion, device):
     return val_loss, val_acc
 
 
+# Initialise dictionaries to store the training and validation losses
+train_loss_list = []
+
+
 # 定义训练过程
 def train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs=10):
     for epoch in range(num_epochs):
         train_loss, train_acc = train(model, train_loader, optimizer, criterion, device)
+        train_loss_list.append(train_loss)
         val_loss, val_acc = validate(model, val_loader, criterion, device)
-        print('训练中...Epoch [{}/{}], Train Loss: {:.4f}, Train Acc: {:.4f}, Val Loss: {:.4f}, Val Acc: {:.4f}'.format(
-            epoch + 1, num_epochs, train_loss, train_acc, val_loss, val_acc))
+        print(
+            'Training...Epoch [{}/{}], Train Loss: {:.4f}, Train Acc: {:.4f}, Val Loss: {:.4f}, Val Acc: {:.4f}'.format(
+                epoch + 1, num_epochs, train_loss, train_acc, val_loss, val_acc))
+
+
+def plot_training_loss(training_loss=train_loss_list):
+    epochs = range(len(training_loss))
+    plt.plot(epochs, training_loss, label='Training Loss')
+    plt.title('Training Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.show()
 
 
 print('Training Finished.')
@@ -121,7 +136,7 @@ num_heads = 4
 dropout = 0.1
 batch_size = 32
 lr = 0.001
-num_epochs = 1000
+num_epochs = 10000
 
 train_dataset = TextDataset('RNN_Generated_Training/')
 val_dataset = TextDataset('RNN_Generated_Training/')
@@ -136,3 +151,5 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model.to(device)
 
 train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs)
+torch.save(model.state_dict(), 'transformer_ag_model.pth')
+plot_training_loss()
