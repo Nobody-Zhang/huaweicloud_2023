@@ -34,6 +34,7 @@ class TextDataset(data.Dataset):
             with open(filename, 'r') as f:
                 for line in f:
                     line = line.strip()
+                    line = self.pad_sequence_str(line)
                     self.data.append((line, i))
 
     def __len__(self):
@@ -44,6 +45,21 @@ class TextDataset(data.Dataset):
         x = [int(c) for c in x]
         x = torch.tensor(x, dtype=torch.long)
         return x, y
+
+    def pad_sequence_str(self, seq, max_length=500, pad_char='0'):
+        """
+           Pads a given string sequence with a specified padding character to a maximum length.
+
+           Args:
+               seq (str): The string sequence to pad.
+               max_length (int): The maximum length to pad the sequence to (default: 500).
+               pad_char (str): The character to use for padding (default: '0').
+
+           Returns:
+               str: The padded string sequence.
+           """
+        padded_seq = seq + (pad_char * (max_length - len(seq))) if len(seq) < max_length else seq[:max_length]
+        return padded_seq
 
 
 # 定义训练函数
@@ -92,7 +108,8 @@ def train_loop(model, train_loader, val_loader, optimizer, criterion, device, nu
         train_loss, train_acc = train(model, train_loader, optimizer, criterion, device)
         val_loss, val_acc = validate(model, val_loader, criterion, device)
         print('训练中...Epoch [{}/{}], Train Loss: {:.4f}, Train Acc: {:.4f}, Val Loss: {:.4f}, Val Acc: {:.4f}'.format(
-epoch+1, num_epochs, train_loss, train_acc, val_loss, val_acc))
+            epoch + 1, num_epochs, train_loss, train_acc, val_loss, val_acc))
+
 
 print('Training Finished.')
 
@@ -104,8 +121,7 @@ num_heads = 4
 dropout = 0.1
 batch_size = 32
 lr = 0.001
-num_epochs = 10
-
+num_epochs = 1000
 
 train_dataset = TextDataset('RNN_Generated_Training/')
 val_dataset = TextDataset('RNN_Generated_Training/')
@@ -120,4 +136,3 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model.to(device)
 
 train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs)
-
