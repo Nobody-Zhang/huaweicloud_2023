@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data as data
 from matplotlib.pylab import plt
+import numpy as np
 
 
 # Transformer Classifier
@@ -131,15 +132,52 @@ class Transform:
         self.model = model
         self.train_loss_list = []
 
-    def train(self, train_loader, val_loader, optimizer, criterion, device, num_epochs=100):
+    def train(self, dataset_path, criterion=nn.CrossEntropyLoss(), device=torch.device("cpu"),
+              batch_size=32, learning_rate=0.001, num_epochs=100):
+        train_dataset = TextDataset(dataset_path)
+        val_dataset = TextDataset(dataset_path)
+        train_loader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+        val_loader = data.DataLoader(val_dataset, batch_size=batch_size)
+
+        optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
+        self.model.to(device)
+
         for epoch in range(num_epochs):
             train_loss, train_acc = self.train_iteration(train_loader, optimizer, criterion, device)
             self.train_loss_list.append(train_loss)
             val_loss, val_acc = self.validate_iteration(val_loader, criterion, device)
             print(
-                'Training...Epoch [{}/{}], Train Loss: {:.4f}, Train Acc: {:.4f}, '
-                'Val Loss: {:.4f}, Val Acc: {:.4f}'.format(epoch + 1, num_epochs, train_loss,
-                                                           train_acc, val_loss, val_acc))
+                'Training...Epoch [{}/{}], Train Loss: {:.4f}, Train Acc: {:.4f}, Val Loss: {:.4f}, Val Acc: {:.4f}'.
+                format(epoch + 1, num_epochs, train_loss, train_acc, val_loss, val_acc))
+
+    def evaluate(self, evaluate_dataset_path, evaluate_model_path="", device=torch.device("cpu"), batch_size=32,
+                 confusion_matrix=False, num_classes=5):
+        eval_dataset = TextDataset(evaluate_dataset_path)
+        eval_loader = data.DataLoader(eval_dataset, batch_size=batch_size, shuffle=True)
+        eval_model = self.model
+        if os.path.exists(evaluate_model_path):
+            eval_model.load_state_dict(torch.load(evaluate_model_path))
+        matrix = np.zeros([num_classes, num_classes])
+        with torch.no_grad():
+            correct = 0
+            total = 0
+            for inputs, labels in eval_loader:
+                inputs = inputs.to(device)
+                labels = labels.to(device)
+
+                outputs = eval_model(inputs)
+                _, predicted = torch.max(outputs.data, 1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
+
+                if confusion_matrix:
+                    for i in range(labels.size(0)):
+                        matrix[labels[i].item(), predicted[i].item()] += 1 if (
+                                labels[i].item() < num_classes and predicted[i].item() < num_classes) else 0
+
+            print(f"Accuracy on test set: {100 * correct / total:.2f}% ({correct} out of {total})")
+            if confusion_matrix:
+                return matrix / total
 
     def train_iteration(self, train_loader, optimizer, criterion, device):
         self.model.train()
@@ -197,11 +235,11 @@ class Transform:
             plt.show()
 
     def save_model(self, model_path="./transformer_ag_model.pth"):
-        torch.save(model.state_dict(), model_path)
+        torch.save(self.model.state_dict(), model_path)
 
     def load_model(self, model_path="./transformer_ag_model.pth"):
         if os.path.exists(model_path):
-            model.load_state_dict(torch.load(model_path))
+            self.model.load_state_dict(torch.load(model_path))
 
 
 if __name__ == "__main__":
@@ -215,20 +253,23 @@ if __name__ == "__main__":
     lr = 0.001
     num_epochs = 10
 
+    """
     train_dataset = TextDataset('RNN_Generated_Training/')
     val_dataset = TextDataset('RNN_Generated_Training/')
     train_loader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = data.DataLoader(val_dataset, batch_size=batch_size)
-
+    """
     model = TransformerClassifier(vocab_size, hidden_size, num_classes, num_layers, num_heads, dropout)
+    """
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
-
+    """
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
 
     transformer = Transform(model)
-    transformer.train(train_loader, val_loader, optimizer, criterion, device, num_epochs)
+    transformer.train(dataset_path='RNN_Generated_Training/', num_epochs=10)
     # transformer.save_model()
-    transformer.save_training_loss("test_training_loss_file.txt")
-    transformer.plot_training_loss("test_training_loss_file.txt")
+    # transformer.save_training_loss("test_training_loss_file.txt")
+    # transformer.plot_training_loss("test_training_loss_file.txt")
+    transformer.evaluate('RNN_Generated_Training/', confusion_matrix=True)
