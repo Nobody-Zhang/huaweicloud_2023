@@ -1,11 +1,7 @@
-import sys
 import torch
 import torch.utils.data as data
 
-# setting path
-sys.path.append('../Transformer_Auto_Generated.py')
-
-from Transformer_Auto_Generated import TextDataset, TransformerClassifier
+from My_Transformer import TextDataset, TransformerClassifier
 
 
 def evaluate(model, eval_loader, optimizer, criterion, device):
