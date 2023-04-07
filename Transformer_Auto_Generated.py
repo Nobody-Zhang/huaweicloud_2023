@@ -126,30 +126,31 @@ def plot_training_loss(training_loss=train_loss_list):
     plt.show()
 
 
-print('Training Finished.')
+if __name__ == "__main__":
+    print('Training Finished.')
 
-vocab_size = 5
-hidden_size = 32
-num_classes = 5
-num_layers = 2
-num_heads = 4
-dropout = 0.1
-batch_size = 32
-lr = 0.001
-num_epochs = 10000
+    vocab_size = 5
+    hidden_size = 32
+    num_classes = 5
+    num_layers = 2
+    num_heads = 4
+    dropout = 0.1
+    batch_size = 32
+    lr = 0.001
+    num_epochs = 10000
 
-train_dataset = TextDataset('RNN_Generated_Training/')
-val_dataset = TextDataset('RNN_Generated_Training/')
-train_loader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-val_loader = data.DataLoader(val_dataset, batch_size=batch_size)
+    train_dataset = TextDataset('RNN_Generated_Training/')
+    val_dataset = TextDataset('RNN_Generated_Training/')
+    train_loader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = data.DataLoader(val_dataset, batch_size=batch_size)
 
-model = TransformerClassifier(vocab_size, hidden_size, num_classes, num_layers, num_heads, dropout)
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=lr)
+    model = TransformerClassifier(vocab_size, hidden_size, num_classes, num_layers, num_heads, dropout)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=lr)
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model.to(device)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model.to(device)
 
-train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs)
-torch.save(model.state_dict(), 'transformer_ag_model.pth')
-plot_training_loss()
+    train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs)
+    torch.save(model.state_dict(), 'transformer_ag_model.pth')
+    plot_training_loss()
