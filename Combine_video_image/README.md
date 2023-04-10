@@ -1,43 +1,22 @@
-## SVM
-### 训练
+## Combination of video-classification and image-classification
+### Quick Start
+* Use nanodet + mobilenetV2 + cpu: 
+    ```python
+    python combine.py --video_model nanodet --image_model mobilenet --mouth_model ./mobilenet/MobileNetV2_yawnclass.pth --eye_model ./mobilenet/MobileNetV2_eyeclass.pth --device cpu
+    ```
 
-Waiting to be updated...
+* Defualt run: nanodet + SVM + cpu:(目前有点bug)
+    ```python
+    python combine.py
+    ```
 
--------------------
+* Parameter explanation:
+    -  --video_model : choose nanodet(defualt) or yolo；For example：--video_model nanodet
+    -  --image_model : choose SVM(defualt) or MobilenetV2;For example: --image_model svm
+    -  --mouth_model : the path of mouth model of image-classification
+    -  --eye_model : the path of eyes model of image-classification
+    -  --devive : choose cpu(defualt) or gpu
 
-### SVM使用
-
-```python
-import svmdetect #在当前目录下
-
-# 创建一个 ImageClassifier 实例
-classifier = svmdetect.ImageClassifier()# 从文件中加载模型，如果没有模型文件则训练模型，括号里面是模型文件名路径
-
-# 加载图像并提取特征
-image_path = "./123.png"
-images = classifier.load_images([image_path])
-features = classifier.extract_features(images)
-
-# 对特征进行分类并计算预测结果中负样本数量
-y_pred, time_cost = classifier.classify(features)
-cnt, ratio = classifier.count_negatives(y_pred)
-
-# 输出结果
-print("time cost:", time_cost)
-print("pred:", y_pred)
-print("negative count:", cnt)
-print("negative ratio:", ratio)
-
-```
--------------------
-
-### 输出
-
--------------------
-
-```
-time cost: 0.0019681453704833984
-pred: [1]
-negative count: 0
-negative ratio: 0.0
-```
+### Need to do:
+* Add Yolo : add code in class Combination , add model directory for yolo
+* Testing the cost of multi-thread and serial
