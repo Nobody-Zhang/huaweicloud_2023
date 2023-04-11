@@ -18,5 +18,6 @@
     -  --devive : choose cpu(defualt) or gpu
 
 ### Need to do:
+* (Most important) Translate to Multi-processing
 * Add Yolo : add code in class Combination , add model directory for yolo
 * Testing the cost of multi-thread and serial
