@@ -64,6 +64,7 @@ class SVM_Eye_Thread(threading.Thread):
                if not eye_queue.empty():
                     image = eye_queue.get()
                     image = self.img_transform(image)
+                    image = [image]
                     features = self.classifier.extract_features(image)
                     y_pred, time_cost = self.classifier.classify(features)
                     eye_status.append(y_pred)
@@ -91,6 +92,7 @@ class SVM_Mouth_Thread(threading.Thread):
                if not yawn_queue.empty():
                     image = yawn_queue.get()
                     image = self.img_transform(image)
+                    image = [image]
                     features = self.classifier.extract_features(image)
                     y_pred, time_cost = self.classifier.classify(features)
                     yawn_status.append(y_pred)
@@ -206,8 +208,8 @@ class Combination:
           
           # 选择image classification model,并创建两个线程类
           if image_model_name == "svm":
-               self.image_mouth = SVM_Eye_Thread(mouth_model)
-               self.image_eye = SVM_Mouth_Thread(eye_model)
+               self.image_mouth = SVM_Mouth_Thread(mouth_model)
+               self.image_eye = SVM_Eye_Thread(eye_model)
           elif image_model_name == "mobilenet":
                self.image_mouth = MobileNet_Yawn_Thread(mouth_model)
                self.image_eye = MobileNet_Eye_Thread(eye_model)
@@ -309,7 +311,8 @@ def example():
      Combine_model.image_eye.kill = 1
      Combine_model.image_mouth.kill = 1
      # 开始对两个判断进行比较
-     Mobilenet_Determin()
+     SVM_Determin()
+     #      Mobilenet_Determin()
 
 if __name__ == '__main__':
      example()
