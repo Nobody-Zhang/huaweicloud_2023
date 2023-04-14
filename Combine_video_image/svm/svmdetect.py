@@ -24,7 +24,7 @@ class ImageClassifier:
             feature = hog(image, orientations=9, pixels_per_cell=(8, 8),
                           cells_per_block=(3, 3), visualize=False, transform_sqrt=True)
             features.append(feature)
-        return self.scaler.fit_transform(features)
+        return features
 
     def classify(self, features):
         features = [i / 255 for i in features]
