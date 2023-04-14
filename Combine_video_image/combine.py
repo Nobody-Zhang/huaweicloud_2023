@@ -57,18 +57,18 @@ class SVM_Eye_Process(Process):
           print("Eye Thread start!\n")
           while not self.stop_event.is_set():
                if not self.queue.empty():
-                    # t1 = time.time()
+                    t1 = time.time()
                     image = self.queue.get()
                     image = self.img_transform(image)
                     image = [image]
                     features = self.classifier.extract_features(image)
                     y_pred, time_cost = self.classifier.classify(features)
                     self.status_list.append(y_pred[0])
-                    # t2 = time.time()
-                    # print("Eye_svm时间:")
-                    # print((t2-t1))
-                    # print("Eye_svm推理结果:")
-                    # print(y_pred[0])
+                    t2 = time.time()
+                    print("Eye_svm时间:")
+                    print((t2-t1))
+                    print("Eye_svm推理结果:")
+                    print(y_pred[0])
 
 # SVM 线程类
 class SVM_Mouth_Process(Process):
@@ -88,18 +88,18 @@ class SVM_Mouth_Process(Process):
           print("Mouth Thread start!\n")
           while not self.stop_event.is_set():
                if not self.queue.empty():
-                    # t1 = time.time()
+                    t1 = time.time()
                     image = self.queue.get()
                     image = self.img_transform(image)
                     image = [image]
                     features = self.classifier.extract_features(image)
                     y_pred, time_cost = self.classifier.classify(features)
                     self.status_list.append(y_pred[0])
-                    # t2 = time.time()
-                    # print("Mouth_svm时间:")
-                    # print((t2-t1))
-                    # print("Mouth_svm推理结果:")
-                    # print(y_pred[0])
+                    t2 = time.time()
+                    print("Mouth_svm时间:")
+                    print((t2-t1))
+                    print("Mouth_svm推理结果:")
+                    print(y_pred[0])
 
 # Mobilenet 线程类
 class MobileNet_Yawn_Process(Process):
@@ -146,10 +146,10 @@ class MobileNet_Yawn_Process(Process):
                          predict_cla = torch.argmax(predict).numpy()
 
                     mobile_t2 = time.time()
-                    self.status_list.append(predict_cla)
+                    self.status_list.append(int(predict_cla))
                     print("mobile_yawn time:")
                     print(mobile_t2 - mobile_t1)
-                    print(predict_cla)
+                    print(int(predict_cla))
 
           
 class MobileNet_Eye_Process(Process):
@@ -195,10 +195,10 @@ class MobileNet_Eye_Process(Process):
                          predict_cla = torch.argmax(predict).numpy()
 
                     mobile_t2 = time.time()
-                    self.status_list.append(predict_cla)
+                    self.status_list.append(int(predict_cla))
                     print("mobile_eye time:")
                     print(mobile_t2 - mobile_t1)
-                    print(predict_cla)
+                    print(int(predict_cla))
 
 # 组合Nanodet/Yolo + SVM/MobileNetV2
 class Combination:
@@ -357,7 +357,7 @@ if __name__ == '__main__':
      print(all_end - all_start)
 
      # 状态判断
-     # Mobilenet_Determin(eye_status_list,yawn_status_list,output)
-     SVM_Determin(eye_status_list,yawn_status_list,output)
+     Mobilenet_Determin(eye_status_list,yawn_status_list,output)
+     # SVM_Determin(eye_status_list,yawn_status_list,output)
      print(eye_status_list)
      print(yawn_status_list)
