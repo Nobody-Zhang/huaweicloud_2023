@@ -88,7 +88,7 @@ class TextDataset(data.Dataset):
             with open(filename, 'r') as f:
                 for line in f:
                     line = line.strip()
-                    line = self.pad_sequence_str(line)
+                    line = self.pad_sequence_str(line, max_length=50)
                     self.data.append((line, i))
 
     def __len__(self):
@@ -251,25 +251,28 @@ if __name__ == "__main__":
     dropout = 0.1
     batch_size = 32
     lr = 0.001
-    num_epochs = 10
+    num_epochs = 300
 
     """
-    train_dataset = TextDataset('RNN_Generated_Training/')
-    val_dataset = TextDataset('RNN_Generated_Training/')
+    train_dataset = TextDataset('Ten_times/')
+    val_dataset = TextDataset('Ten_times/')
     train_loader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = data.DataLoader(val_dataset, batch_size=batch_size)
     """
+
     model = TransformerClassifier(vocab_size, hidden_size, num_classes, num_layers, num_heads, dropout)
+
     """
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
     """
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
 
     transformer = Transform(model)
-    transformer.train(dataset_path='RNN_Generated_Training/', num_epochs=10)
+    transformer.train(dataset_path='Ten_times/', num_epochs=num_epochs)
     # transformer.save_model()
-    # transformer.save_training_loss("test_training_loss_file.txt")
-    # transformer.plot_training_loss("test_training_loss_file.txt")
-    transformer.evaluate('RNN_Generated_Training/', confusion_matrix=True)
+    transformer.save_training_loss("test_training_loss_file.txt")
+    transformer.plot_training_loss("test_training_loss_file.txt")
+    # transformer.evaluate('RNN_Generated_Training/', confusion_matrix=True)
