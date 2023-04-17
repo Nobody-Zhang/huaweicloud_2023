@@ -251,7 +251,7 @@ if __name__ == "__main__":
     dropout = 0.1
     batch_size = 32
     lr = 0.001
-    num_epochs = 300
+    num_epochs = 3000
 
     """
     train_dataset = TextDataset('Ten_times/')
