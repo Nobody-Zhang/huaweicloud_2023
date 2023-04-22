@@ -11,10 +11,11 @@ from openvino.runtime import Core
 sys.path.append("../utils")
 
 # generate grid
-def generate_grid_center_priors(input_height: int, input_width: int, strides: tuple, center_priors: list) -> None:
+def generate_grid_center_priors(input_height: int, input_width: int, strides: tuple) -> list:
     """
     generate
     """
+    center_priors = []
     for i in range(len(strides)):
         stride = strides[i]
         feat_w = math.ceil(input_width / stride)
@@ -22,6 +23,7 @@ def generate_grid_center_priors(input_height: int, input_width: int, strides: tu
         for y in range(feat_h):
             for x in range(feat_w):
                 center_priors.append(CenterPrior(x, y, stride))
+    return center_priors
                 
 # softmax function for decode
 def activation_functionn_softmax(src: list, dst: list, length: int):        
@@ -111,6 +113,7 @@ class NanoDet:
         self.num_class = num_class
         self.reg_max = 7
         self.strides = (8, 16, 32, 64)
+        self.center_priors = generate_grid_center_priors(self.input_size[0], self.input_size[1], self.strides)
         
     # Init Network and Weights 
     def model_init(self, model_path: str) -> Tuple:
@@ -162,14 +165,10 @@ class NanoDet:
         img = self.preprocess(img)
         # Run Inference and process the result
         pred = self.compiled_model([img])[self.output_keys]
-        # print(pred.shape)
         pred = np.squeeze(pred, 0)
         pred = pred.flatten()
-        # generate center priors in format of (x, y, stride)
-        center_priors = []
-        generate_grid_center_priors(self.input_size[0], self.input_size[1], self.strides, center_priors)
         # decode outputs
-        results = self.decode_infer(pred, center_priors, score_threshold)
+        results = self.decode_infer(pred, self.center_priors, score_threshold)
         # NMS
         dets = []
         for i in range(len(results)):
@@ -194,7 +193,6 @@ class NanoDet:
         num_points = len(center_priors)
         num_channels = self.num_class + (self.reg_max + 1) * 4
         results = [[] for i in range(self.num_class)]
-        
         for idx in range(num_points):
             ct_x = center_priors[idx].x
             ct_y = center_priors[idx].y
@@ -212,6 +210,7 @@ class NanoDet:
                 results[cur_label].append(self.disPred2Bbox(bbox_pred, cur_label, score, ct_x, ct_y, stride))
     
         return results
+        
     
     # disPred2Bbox function, generate pred imformation to BoxInfo
     def disPred2Bbox(self, dfl_det: list, label: int, score: float, x: int, y: int, stride: int) -> BoxInfo:
@@ -233,7 +232,7 @@ class NanoDet:
         for i in range(4):
             dis = 0.
             dis_after_sm = [0. for k in range(self.reg_max + 1)]
-            activation_functionn_softmax(dfl_det[i+(self.reg_max + 1):], dis_after_sm, self.reg_max + 1)
+            activation_functionn_softmax(dfl_det[i*(self.reg_max + 1):], dis_after_sm, self.reg_max + 1)
             for j in range(self.reg_max + 1):
                 dis += j * dis_after_sm[j]
             dis *= stride
