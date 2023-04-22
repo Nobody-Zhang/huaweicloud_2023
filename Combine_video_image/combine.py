@@ -13,10 +13,10 @@ import numpy as np
 
 
 # import video classfication
-from Nanodet.nanodet.util import Logger, cfg1, cfg2, load_config
-from Nanodet.demo.nanodet_twostages import Predictor
+# from Nanodet.nanodet.util import Logger, cfg1, cfg2, load_config
+# from Nanodet.demo.nanodet_twostages import Predictor
 from mobilenet.model_v2_gray import MobileNetV2
-# from NanodetOpenvino.Nanodet import NanoDet
+from NanodetOpenvino.Nanodet import NanoDet
 from MT_helpers.My_Transformer import *
 # import SVM-image classfication
 import svm.svmdetect as svmdetect
@@ -220,37 +220,37 @@ class Combination:
 
           # 选择image classification model,并创建两个线程类
           if image_model_name == "svm":
-               self.image_eye = SVM_Eye_Process(eye_status_list,eye_queue,eyestop_event,eye_model)
-               self.image_mouth = SVM_Mouth_Process(yawn_status_list,yawn_queue,yawnstop_event,mouth_model)
+              self.image_eye = SVM_Eye_Process(eye_status_list,eye_queue,eyestop_event,eye_model)
+              self.image_mouth = SVM_Mouth_Process(yawn_status_list,yawn_queue,yawnstop_event,mouth_model)
           elif image_model_name == "mobilenet":
-               self.image_mouth = MobileNet_Yawn_Process(yawn_status_list,yawn_queue,yawnstop_event,mouth_model)
-               self.image_eye = MobileNet_Eye_Process(eye_status_list,eye_queue,eyestop_event,eye_model)
+              self.image_mouth = MobileNet_Yawn_Process(yawn_status_list,yawn_queue,yawnstop_event,mouth_model)
+              self.image_eye = MobileNet_Eye_Process(eye_status_list,eye_queue,eyestop_event,eye_model)
 
-     # def Nanodet_init(self,nanodet_model1 = "./NanodetOpenvino/convert_for_two_stage/seg_face/seg_face.xml",
-     #           nanodet_model2 = "./NanodetOpenvino/convert_for_two_stage/face_eyes/mouth_eyes.xml",
-     #           num_class1 = 4, num_class2 = 2):
-     #
-     #      # get 2 model
-     #      nanodet_face = NanoDet(nanodet_model1 , num_class1)
-     #      nanodet_eye_mouth = NanoDet(nanodet_model2 , num_class2)
-     #
-     #      return [nanodet_face,nanodet_eye_mouth]
+     def Nanodet_init(self,nanodet_model1 = "./NanodetOpenvino/convert_for_two_stage/seg_face/seg_face.xml",
+               nanodet_model2 = "./NanodetOpenvino/convert_for_two_stage/face_eyes/mouth_eyes.xml",
+               num_class1 = 4, num_class2 = 2):
 
-     def Nanodet_init(self, nanodet_cfg1="./Nanodet/demo/nanodet-plus-m_416-yolo.yml",
-                      nanodet_model1="./Nanodet/demo/model_last.ckpt",
-                      nanodet_cfg2="./Nanodet/demo/face_eyes.yml", nanodet_model2="./Nanodet/demo/face_eyes.ckpt"):
-
-          local_rank = 0
-          torch.backends.cudnn.enabled = True
-          torch.backends.cudnn.benchmark = True
-          load_config(cfg1, nanodet_cfg1)
-          load_config(cfg2, nanodet_cfg2)
-          logger = Logger(local_rank, use_tensorboard=False)
           # get 2 model
-          nanodet_face = Predictor(cfg1, nanodet_model1, logger, self.device)
-          nanodet_eye_mouth = Predictor(cfg2, nanodet_model2, logger, self.device)
+          nanodet_face = NanoDet(nanodet_model1 , num_class1)
+          nanodet_eye_mouth = NanoDet(nanodet_model2 , num_class2)
 
-          return [nanodet_face, nanodet_eye_mouth]
+          return [nanodet_face,nanodet_eye_mouth]
+
+     # def Nanodet_init(self, nanodet_cfg1="./Nanodet/demo/nanodet-plus-m_416-yolo.yml",
+     #                  nanodet_model1="./Nanodet/demo/model_last.ckpt",
+     #                  nanodet_cfg2="./Nanodet/demo/face_eyes.yml", nanodet_model2="./Nanodet/demo/face_eyes.ckpt"):
+     #
+     #      local_rank = 0
+     #      torch.backends.cudnn.enabled = True
+     #      torch.backends.cudnn.benchmark = True
+     #      load_config(cfg1, nanodet_cfg1)
+     #      load_config(cfg2, nanodet_cfg2)
+     #      logger = Logger(local_rank, use_tensorboard=False)
+     #      # get 2 model
+     #      nanodet_face = Predictor(cfg1, nanodet_model1, logger, self.device)
+     #      nanodet_eye_mouth = Predictor(cfg2, nanodet_model2, logger, self.device)
+     #
+     #      return [nanodet_face, nanodet_eye_mouth]
 
      def Yolo_init(self):
           """need to do Yolo classification"""
@@ -355,29 +355,32 @@ if __name__ == '__main__':
 
      all_start = time.time()
      cnt = 0
+
      while True:
           ret_val, frame = cap.read()
           if not ret_val:
                break
 
           nanodet_t1 = time.time()
-          # 抽帧：取每组的第一帧
+          # # 抽帧：取每组的第一帧
           cnt += 1
           if cnt % FRAME_GROUP != 1:
                continue
 
           # 识别人脸
-          meta_face, res_face = Combine_model.video_model[0].inference(frame)
-          face_img = Combine_model.video_model[0].finding_face(res_face,meta_face,0.5)
+          face_boxs = Combine_model.video_model[0].detect(frame,0.8, 0.8)
+          face_img = face_boxs[0]
 
           # 判断能否裁出人脸
           if face_img is None:
-               continue
+              continue
 
           # 获得眼部和嘴部图片
-          meta, res = Combine_model.video_model[1].inference(face_img)
-          mouth_img = Combine_model.video_model[1].finding_mouth(res,meta,0.5)
-          eye_img = Combine_model.video_model[1].finding_eyes(res,meta,0.5)
+          # mouth_eye_boxs = Combine_model.video_model[1].detect(frame,0.6, 0.8)
+          # wait to process
+          eye_img = frame
+          mouth_img = frame
+
           nanodet_t2 = time.time()
           print("nanodet时间")
           print(nanodet_t2 - nanodet_t1)
@@ -391,7 +394,7 @@ if __name__ == '__main__':
      yawn_process.join()
      print("End")
      all_end = time.time()
-     print(all_end - all_start)
+     print((all_end - all_start)/cnt)
 
      # 状态判断
      # Mobilenet_Determin(eye_status_list,yawn_status_list,output)
