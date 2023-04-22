@@ -5,7 +5,7 @@
     python combine.py --video_model nanodet --image_model mobilenet --mouth_model ./mobilenet/MobileNetV2_yawnclass.pth --eye_model ./mobilenet/MobileNetV2_eyeclass.pth --device cpu
     ```
 
-* Defualt run: nanodet + SVM + cpu:(目前有点bug)
+* Defualt run: nanodet + SVM + cpu:
     ```python
     python combine.py
     ```
@@ -18,6 +18,4 @@
     -  --devive : choose cpu(defualt) or gpu
 
 ### Need to do:
-* (Most important) Translate to Multi-processing
 * Add Yolo : add code in class Combination , add model directory for yolo
-* Testing the cost of multi-thread and serial
