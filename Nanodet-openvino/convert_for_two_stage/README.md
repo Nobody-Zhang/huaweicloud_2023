@@ -70,7 +70,11 @@ model_adapter = OpenvinoAdapter(create_core(), model_path, device="CPU")
 
 # create model API wrapper for SSD architecture
 # preload=True loads the model on CPU inside the adapter
-nanodet_model = NanoDetPlus(model_adapter, preload=True)
+# nanodet_model = NanoDetPlus(model_adapter, preload=True)
+# Update: *** openvino文档写的跟***一样
+nanodet_model = NanoDetPlus(model_adapter, configuration={'num_classes':4}, preload=True)
+# configuration={'num_classes':4} 这个字典来自定义一些传入的参数，比如num_classes，可以看源码（
+
 
 total_time = 0
 frame = 0
