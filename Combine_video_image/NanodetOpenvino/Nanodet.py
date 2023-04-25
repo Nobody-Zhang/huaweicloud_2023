@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import cv2
 
 # import model wrapper class
 from openvino.model_zoo.model_api.models import NanoDetPlus
@@ -30,7 +31,7 @@ def xyxy2xywh(xmin: int, ymin: int, xmax: int, ymax: int, wide: int, height: int
 class NanoDet():
 
     # Nanodet class
-    def __init__(self, model_path: str, num_class: int):
+    def __init__(self, model_path: str, num_class: int,threshold):
         """
         init Nanodet model
         
@@ -39,7 +40,7 @@ class NanoDet():
         :return: None
         """
         model_adapter = OpenvinoAdapter(create_core(), model_path, device="CPU")
-        self.model = nanodet_model = NanoDetPlus(model_adapter, configuration={'num_classes': num_class}, preload=True)
+        self.model = nanodet_model = NanoDetPlus(model_adapter, configuration={'num_classes': num_class,'iou_threshold':threshold}, preload=True)
 
     # detetcion inference
     def detect(self, img: np.ndarray) -> list:
@@ -101,7 +102,7 @@ class NanoDet():
             return (-1, None)
 
     # find eyes and mouth in the face
-    def find_eye_mouth(self, img: np.ndarray) -> tuple:
+    def find_eye_mouth(self, img: np.ndarray, ) -> tuple:
         """
         finde eyes and mouth in face_img\n
         if any of the returns is None, nothing is detected
@@ -110,9 +111,12 @@ class NanoDet():
         :returns: a tuple of eye1, eye2, and mouth, format np.ndarray
         """
         bboxes = self.model(img)[0]
+        cv2.imshow('img1', img)
+        cv2.waitKey(1)
         eyes = None
         mouth = None
         for box in bboxes:
+            cv2.imshow('img2',img[box.ymin: box.ymax, box.xmin, box.xmax])
             xyxy = (box.xmin, box.ymin, box.xmax, box.ymax)
             cls = box.id
             if cls == 1:
