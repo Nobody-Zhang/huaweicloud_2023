@@ -76,7 +76,7 @@ class TextDataset(data.Dataset):
     and each line in the file is a text sequence to classify.
     """
 
-    def __init__(self, data_dir):
+    def __init__(self, data_dir, max_seq_length=50):
         """
         Initializes the dataset with the data in the given directory.
         Args:
@@ -88,7 +88,7 @@ class TextDataset(data.Dataset):
             with open(filename, 'r') as f:
                 for line in f:
                     line = line.strip()
-                    line = self.pad_sequence_str(line, max_length=50)
+                    line = self.pad_sequence_str(line, max_length=max_seq_length)
                     self.data.append((line, i))
 
     def __len__(self):
@@ -111,7 +111,7 @@ class TextDataset(data.Dataset):
         x = torch.tensor(x, dtype=torch.long)
         return x, y
 
-    def pad_sequence_str(self, seq, max_length=500, pad_char='0'):
+    def pad_sequence_str(self, seq, max_length=50, pad_char='0'):
         """
         Pads a given string sequence with a specified padding character to a maximum length.
 
@@ -133,9 +133,9 @@ class Transform:
         self.train_loss_list = []
 
     def train(self, dataset_path, criterion=nn.CrossEntropyLoss(), device=torch.device("cpu"),
-              batch_size=32, learning_rate=0.001, num_epochs=100):
-        train_dataset = TextDataset(dataset_path)
-        val_dataset = TextDataset(dataset_path)
+              batch_size=32, learning_rate=0.001, num_epochs=100, max_seq_length=500):
+        train_dataset = TextDataset(dataset_path, max_seq_length)
+        val_dataset = TextDataset(dataset_path, max_seq_length)
         train_loader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
         val_loader = data.DataLoader(val_dataset, batch_size=batch_size)
 
@@ -251,7 +251,8 @@ if __name__ == "__main__":
     dropout = 0.1
     batch_size = 32
     lr = 0.001
-    num_epochs = 3000
+    seq_length = 500
+    num_epochs = 100
 
     """
     train_dataset = TextDataset('Ten_times/')
@@ -271,8 +272,8 @@ if __name__ == "__main__":
     model.to(device)
 
     transformer = Transform(model)
-    transformer.train(dataset_path='Ten_times/', num_epochs=num_epochs)
-    # transformer.save_model()
-    transformer.save_training_loss("test_training_loss_file.txt")
-    transformer.plot_training_loss("test_training_loss_file.txt")
+    transformer.train(dataset_path='transformer_data_orig/', num_epochs=num_epochs, max_seq_length=seq_length)
+    transformer.save_model(model_path="Saved_Model/transformer_orig_length_model.pth")
+    transformer.save_training_loss("orig_training_loss_file.txt")
+    transformer.plot_training_loss("orig_training_loss_file.txt")
     # transformer.evaluate('RNN_Generated_Training/', confusion_matrix=True)
