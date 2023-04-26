@@ -13,10 +13,11 @@ import numpy as np
 
 
 # import video classfication
-from Nanodet.nanodet.util import Logger, cfg1, cfg2, load_config
-from Nanodet.demo.nanodet_twostages import Predictor
+# from Nanodet.nanodet.util import Logger, cfg1, cfg2, load_config
+# from Nanodet.demo.nanodet_twostages import Predictor
 from mobilenet.model_v2_gray import MobileNetV2
-
+from NanodetOpenvino.Nanodet import NanoDet
+from MT_helpers.My_Transformer import *
 # import SVM-image classfication
 import svm.svmdetect as svmdetect
 
@@ -33,6 +34,7 @@ def parse_args():
      parser.add_argument("--image_model", default="svm",help="image classfication model name")
      parser.add_argument("--mouth_model", default="./svm/svm_model_mouth.pkl",help="yawn classfication model name")
      parser.add_argument("--eye_model", default="./svm/svm_model_eyes.pkl",help="eye classfication model name")
+     parser.add_argument("--trans_model", default="./MT_helpers/transformer_ag_model.pth", help="transformer model")
      parser.add_argument("--path", default="./day_man_001_10_1.mp4", help="path to video")
      parser.add_argument("--device", default="cpu", help="device for model use")
 
@@ -57,18 +59,18 @@ class SVM_Eye_Process(Process):
           print("Eye Thread start!\n")
           while not self.stop_event.is_set():
                if not self.queue.empty():
-                    # t1 = time.time()
+                    t1 = time.time()
                     image = self.queue.get()
                     image = self.img_transform(image)
                     image = [image]
                     features = self.classifier.extract_features(image)
                     y_pred, time_cost = self.classifier.classify(features)
                     self.status_list.append(y_pred[0])
-                    # t2 = time.time()
-                    # print("Eye_svm时间:")
-                    # print((t2-t1))
-                    # print("Eye_svm推理结果:")
-                    # print(y_pred[0])
+                    t2 = time.time()
+                    print("Eye_svm时间:")
+                    print((t2-t1))
+                    print("Eye_svm推理结果:")
+                    print(y_pred[0])
 
 # SVM 线程类
 class SVM_Mouth_Process(Process):
@@ -88,18 +90,18 @@ class SVM_Mouth_Process(Process):
           print("Mouth Thread start!\n")
           while not self.stop_event.is_set():
                if not self.queue.empty():
-                    # t1 = time.time()
+                    t1 = time.time()
                     image = self.queue.get()
                     image = self.img_transform(image)
                     image = [image]
                     features = self.classifier.extract_features(image)
                     y_pred, time_cost = self.classifier.classify(features)
                     self.status_list.append(y_pred[0])
-                    # t2 = time.time()
-                    # print("Mouth_svm时间:")
-                    # print((t2-t1))
-                    # print("Mouth_svm推理结果:")
-                    # print(y_pred[0])
+                    t2 = time.time()
+                    print("Mouth_svm时间:")
+                    print((t2-t1))
+                    print("Mouth_svm推理结果:")
+                    print(y_pred[0])
 
 # Mobilenet 线程类
 class MobileNet_Yawn_Process(Process):
@@ -146,10 +148,10 @@ class MobileNet_Yawn_Process(Process):
                          predict_cla = torch.argmax(predict).numpy()
 
                     mobile_t2 = time.time()
-                    self.status_list.append(predict_cla)
+                    self.status_list.append(int(predict_cla))
                     print("mobile_yawn time:")
                     print(mobile_t2 - mobile_t1)
-                    print(predict_cla)
+                    print(int(predict_cla))
 
           
 class MobileNet_Eye_Process(Process):
@@ -195,56 +197,67 @@ class MobileNet_Eye_Process(Process):
                          predict_cla = torch.argmax(predict).numpy()
 
                     mobile_t2 = time.time()
-                    self.status_list.append(predict_cla)
+                    self.status_list.append(int(predict_cla))
                     print("mobile_eye time:")
                     print(mobile_t2 - mobile_t1)
-                    print(predict_cla)
+                    print(int(predict_cla))
 
 # 组合Nanodet/Yolo + SVM/MobileNetV2
 class Combination:
-     # def __init__(self,video_model_name = "nanodet",image_model_name = "svm"
-     #              ,mouth_model = "./svm/svm_model_mouth.pkl",eye_model = "./svm/svm_model.pkl",device = "cpu"):
+
      def __init__(self,eye_status_list,yawn_status_list,eye_queue,yawn_queue,eyestop_event,yawnstop_event,
-                  video_model_name = "nanodet",image_model_name = "mobilenet"
-                  ,mouth_model = "./mobilenet/MobileNetV2_mouthclass.pth",eye_model = "./mobilenet/MobileNetV2_eyeclass.pth"
-                  ,device = torch.device("cpu")):
+                  video_model_name = "nanodet",image_model_name = "mobilenet",
+                  mouth_model = "./mobilenet/MobileNetV2_mouthclass.pth",
+                  eye_model = "./mobilenet/MobileNetV2_eyeclass.pth",
+                  device = torch.device("cpu")):
 
           # 选择video classification model
-          self.device = torch.device(device);
+          self.device = torch.device(device)
           if video_model_name == "nanodet":
                self.video_model = self.Nanodet_init()
           elif video_model_name == "yolo":
                self.video_model = self.Yolo_init()
           
-          # 选择image classification model,并创建两个线程类
+          # 选择image classification model,并创建两个线程类（对CPU影响太大，故舍弃
+          
           if image_model_name == "svm":
-               self.image_eye = SVM_Eye_Process(eye_status_list,eye_queue,eyestop_event,eye_model)
-               self.image_mouth = SVM_Mouth_Process(yawn_status_list,yawn_queue,yawnstop_event,mouth_model)
+              self.image_eye = SVM_Eye_Process(eye_status_list,eye_queue,eyestop_event,eye_model)
+              self.image_mouth = SVM_Mouth_Process(yawn_status_list,yawn_queue,yawnstop_event,mouth_model)
           elif image_model_name == "mobilenet":
-               self.image_mouth = MobileNet_Yawn_Process(yawn_status_list,yawn_queue,yawnstop_event,mouth_model)
-               self.image_eye = MobileNet_Eye_Process(eye_status_list,eye_queue,eyestop_event,eye_model)
+              self.image_mouth = MobileNet_Yawn_Process(yawn_status_list,yawn_queue,yawnstop_event,mouth_model)
+              self.image_eye = MobileNet_Eye_Process(eye_status_list,eye_queue,eyestop_event,eye_model)
+          
+     def Nanodet_init(self,nanodet_model1 = "./NanodetOpenvino/convert_for_two_stage/seg_face/seg_face.xml",
+               nanodet_model2 = "./NanodetOpenvino/convert_for_two_stage/face_eyes/nanodet.xml",
+               num_class1 = 4, num_class2 = 2,threshold1 = 0.8,threshold2 = 0.6):
 
-     def Nanodet_init(self,nanodet_cfg1 = "./Nanodet/demo/nanodet-plus-m_416-yolo.yml",
-          nanodet_model1 = "./Nanodet/demo/model_last.ckpt",
-          nanodet_cfg2 = "./Nanodet/demo/face_eyes.yml",nanodet_model2 = "./Nanodet/demo/face_eyes.ckpt"):
-          
-          local_rank = 0
-          torch.backends.cudnn.enabled = True
-          torch.backends.cudnn.benchmark = True
-          load_config(cfg1, nanodet_cfg1)
-          load_config(cfg2, nanodet_cfg2)
-          logger = Logger(local_rank, use_tensorboard=False)
           # get 2 model
-          nanodet_face = Predictor(cfg1, nanodet_model1, logger, self.device)
-          nanodet_eye_mouth = Predictor(cfg2, nanodet_model2, logger, self.device)
-          
+          nanodet_face = NanoDet(nanodet_model1 , num_class1, threshold1)
+          nanodet_eye_mouth = NanoDet(nanodet_model2 , num_class2, threshold2)
+
           return [nanodet_face,nanodet_eye_mouth]
-          
+
+     # def Nanodet_init(self, nanodet_cfg1="./Nanodet/demo/nanodet-plus-m_416-yolo.yml",
+     #                  nanodet_model1="./Nanodet/demo/model_last.ckpt",
+     #                  nanodet_cfg2="./Nanodet/demo/face_eyes.yml", nanodet_model2="./Nanodet/demo/face_eyes.ckpt"):
+     #
+     #      local_rank = 0
+     #      torch.backends.cudnn.enabled = True
+     #      torch.backends.cudnn.benchmark = True
+     #      load_config(cfg1, nanodet_cfg1)
+     #      load_config(cfg2, nanodet_cfg2)
+     #      logger = Logger(local_rank, use_tensorboard=False)
+     #      # get 2 model
+     #      nanodet_face = Predictor(cfg1, nanodet_model1, logger, self.device)
+     #      nanodet_eye_mouth = Predictor(cfg2, nanodet_model2, logger, self.device)
+     #
+     #      return [nanodet_face, nanodet_eye_mouth]
+
      def Yolo_init(self):
           """need to do Yolo classification"""
 
 # 根据output的状态决定该图片是哪一种状态           
-def SVM_Determin(eye_status,yawn_status,output):
+def SVM_Determin(eye_status,yawn_status,output,transform_path, tot_status : list):
      for i in range(len(eye_status)):
           # 首先判断是否打哈欠了
           if yawn_status[i] == -1:
@@ -254,7 +267,16 @@ def SVM_Determin(eye_status,yawn_status,output):
                output.append(EYE_CLOSE)
           else:
                output.append(NORMAL)
-     print(output)
+     j = 0
+     for i in range(len(tot_status)):
+          if tot_status[i] == -1:
+               tot_status[i] = output[j]
+               j = j + 1
+     print(tot_status)
+     # result = Transform_result(transform_path,output)
+     result = Transform_result(transform_path, tot_status)
+     print(result[0])
+
 
 # 根据output的状态决定该图片是哪一种状态           
 def Mobilenet_Determin(eye_status,yawn_status,output):
@@ -269,11 +291,33 @@ def Mobilenet_Determin(eye_status,yawn_status,output):
                output.append(NORMAL)
      print(output)
 
+def Transform_result(model_path,status_list):
+     vocab_size = 5
+     hidden_size = 32
+     num_classes = 5
+     num_layers = 2
+     num_heads = 4
+     dropout = 0.1
+     model = TransformerClassifier(vocab_size, hidden_size, num_classes, num_layers, num_heads, dropout)
+     device = torch.device('cpu')
+     model.to(device)
+
+     transformer = Transform(model)
+     transformer.load_model(model_path)
+
+     status_str = ""
+     for item in status_list:
+          status_str += str(item)
+
+     predicted = transformer.evaluate_str(status_str)
+     return predicted
+
 if __name__ == '__main__':
      args = parse_args()
      video_path = args.path
      video_model_name = args.video_model
      image_model_name = args.image_model
+     transform_path = args.trans_model
      device = args.device
      if args.device == 'gpu':
           device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -318,32 +362,48 @@ if __name__ == '__main__':
 
      all_start = time.time()
      cnt = 0
+
+     # 每一帧的状态
+     tot_status = []
+
+
      while True:
           ret_val, frame = cap.read()
           if not ret_val:
                break
 
-          # nanodet_t1 = time.time()
+          nanodet_t1 = time.time()
           # 抽帧：取每组的第一帧
           cnt += 1
-          if cnt % FRAME_GROUP != 1:
-               continue
+          # if cnt % FRAME_GROUP != 1:
+          #      continue
 
           # 识别人脸
-          meta_face, res_face = Combine_model.video_model[0].inference(frame)
-          face_img = Combine_model.video_model[0].finding_face(res_face,meta_face,0.5)
-
+          face_boxs = Combine_model.video_model[0].find_face(frame)
+          face_img = face_boxs[1]
+          #cv2.imshow('face',face_img)
+          #cv2.waitKey(1000)
           # 判断能否裁出人脸
+          if face_boxs[0] == -1 or face_boxs[0] == 0:
+               tot_status.append(4)
+          elif face_boxs[0] == 1:
+               tot_status.append(3)
+          else:
+               tot_status.append(-1)
           if face_img is None:
-               continue
-                    
+              continue
           # 获得眼部和嘴部图片
-          meta, res = Combine_model.video_model[1].inference(face_img)
-          mouth_img = Combine_model.video_model[1].finding_mouth(res,meta,0.5)
-          eye_img = Combine_model.video_model[1].finding_eyes(res,meta,0.5)
-          # nanodet_t2 = time.time()
-          # print("nanodet时间")
-          # print(nanodet_t2 - nanodet_t1)
+          mouth_eye_boxs = Combine_model.video_model[1].find_eye_mouth(face_img)
+          # wait to process
+          eye_img = mouth_eye_boxs[0]
+          mouth_img = mouth_eye_boxs[2]
+          #cv2.imshow('eye',eye_img)
+          #cv2.waitKey(1000)
+          #cv2.imshow('mouth',mouth_img)
+          #cv2.waitKey(1000)
+          nanodet_t2 = time.time()
+          print("nanodet时间")
+          print(nanodet_t2 - nanodet_t1)
           eye_queue.put(eye_img)
           yawn_queue.put(mouth_img)
 
@@ -354,10 +414,16 @@ if __name__ == '__main__':
      yawn_process.join()
      print("End")
      all_end = time.time()
-     print(all_end - all_start)
+     print((all_end - all_start)/cnt)
+
+     print(tot_status)
 
      # 状态判断
      # Mobilenet_Determin(eye_status_list,yawn_status_list,output)
-     SVM_Determin(eye_status_list,yawn_status_list,output)
+     SVM_Determin(eye_status_list,yawn_status_list,output,transform_path, tot_status)
+
      print(eye_status_list)
      print(yawn_status_list)
+
+
+

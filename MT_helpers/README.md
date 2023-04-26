@@ -57,7 +57,7 @@ num_epochs = 10  # training times
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=lr)
 
-transformer.train(dataset_path=dataset_path, num_epochs=num_epochs)
+transformer.train(dataset_path=dataset_path, num_epochs=num_epochs, max_seq_length=50)
 ```
 
 ## Other
