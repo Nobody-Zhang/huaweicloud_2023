@@ -42,6 +42,7 @@ def parse_args():
 
      return parser.parse_args()
 
+"""
 
 # SVM 线程类
 class SVM_Eye_Process(Process):
@@ -73,7 +74,7 @@ class SVM_Eye_Process(Process):
                     print((t2-t1))
                     print("Eye_svm推理结果:")
                     print(y_pred[0])
-
+                    
 # SVM 线程类
 class SVM_Mouth_Process(Process):
      def __init__(self,yawn_status_list,queue,stop_event,model_path='./svm/svm_model_mouth.pkl'):
@@ -105,10 +106,10 @@ class SVM_Mouth_Process(Process):
                     print("Mouth_svm推理结果:")
                     print(y_pred[0])
 
-
+"""
 def SVM_Handle(eye_queue, yawn_queue) -> tuple :
-     eye_classifier = svmdetect.ImageClassifier('./svm/svm_model_eyes.pkl')
-     mouth_classifier = svmdetect.ImageClassifier('./svm/svm_model_mouth.pkl')
+     eye_classifier = "/home/ma-user/infer/model/1/svm/svm_model_eyes.pkl"
+     mouth_classifier = "/home/ma-user/infer/model/1/svm/svm_model_mouth.pkl"
      eye_gray = []
      yawn_gray = []
      # 先进行灰度处理、resize处理
@@ -127,7 +128,7 @@ def SVM_Handle(eye_queue, yawn_queue) -> tuple :
      t = t1 + t2
      print(t)
      return eye_pred.tolist(), yawn_pred.tolist()
-     #return Array.asList(eye_pred), yawn_pred.asList(num)
+     # return Array.asList(eye_pred), yawn_pred.asList(num)
 
 # 组合Nanodet/Yolo + SVM/MobileNetV2
 class Combination:
@@ -153,10 +154,12 @@ class Combination:
               self.image_mouth = MobileNet_Yawn_Process(yawn_status_list,yawn_queue,yawnstop_event,mouth_model)
               self.image_eye = MobileNet_Eye_Process(eye_status_list,eye_queue,eyestop_event,eye_model)
           """
-     def Nanodet_init(self,nanodet_model1 = "./NanodetOpenvino/convert_for_two_stage/seg_face/seg_face.xml",
-               nanodet_model2 = "./NanodetOpenvino/convert_for_two_stage/face_eyes/nanodet.xml",
+     def Nanodet_init(self,nanodet_model1 = "/home/ma-user/infer/model/1/NanodetOpenvino/convert_for_two_stage/seg_face/seg_face.xml",
+               nanodet_model2 = "/home/ma-user/infer/model/1/NanodetOpenvino/convert_for_two_stage/face_eyes/nanodet.xml",
                num_class1 = 4, num_class2 = 2,threshold1 = 0.8,threshold2 = 0.3):
-
+          # current_dir = os.getcwd()
+          # nanodet_model1 = os.path.join(current_dir, nanodet_model1)
+          # nanodet_model2 = os.path.join(current_dir, nanodet_model2)
           # get 2 model
           nanodet_face = NanoDet(nanodet_model1 , num_class1, threshold1)
           nanodet_eye_mouth = NanoDet(nanodet_model2 , num_class2, threshold2)
@@ -250,9 +253,10 @@ class model:
                device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
           else:
                device = torch.device("cpu")
+          # current_dir = os.getcwd()
 
-          mouth_model_path = "./svm/svm_model_mouth.pkl"
-          eye_model_path = "./svm/svm_model_eyes.pkl"
+          mouth_model_path = "/home/ma-user/infer/model/1/svm/svm_model_mouth.pkl"
+          eye_model_path = "/home/ma-user/infer/model/1/svm/svm_model_eyes.pkl"
 
 
           self.Combine_model = Combination(video_model_name , image_model_name, mouth_model_path, eye_model_path, device)
@@ -260,8 +264,10 @@ class model:
      
 
      def inference(self,video_path):
+          # current_dir = os.getcwd()
 
-          transform_path = "./MT_helpers/transformer_ag_model.pth"
+          # transform_path = os.path.join(current_dir, "MT_helpers/transformer_ag_model.pth")
+          transform_path = "/home/ma-user/infer/model/1/MT_helpers/transformer_ag_model.pth"
           cap = cv2.VideoCapture(video_path)
           all_start = time.time()
           cnt = 0
