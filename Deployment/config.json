@@ -1,7 +1,7 @@
 {
     "model_algorithm": "video_classification",
     "model_type": "PyTorch",
-    "runtime": "python3.7",
+    "runtime": "pytorch_1.8.0-cuda_10.2-py_3.7-ubuntu_18.04-x86_64",
     "apis": [
         {
             "procotol": "http",
@@ -91,6 +91,21 @@
                 },
                 {
                     "package_name": "openvino-dev",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
+                    "package_name": "scikit-learn",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
+                    "package_name": "scikit-image",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
+                    "package_name": "joblib",
                     "package_version": "",
                     "restraint": ""
                 },
