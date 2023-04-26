@@ -35,10 +35,10 @@ if __name__ == "__main__":
     batch_size = 32
     lr = 0.001
     num_epochs = 100
-    eval_dataset = TextDataset('../RNN_Train_in/')
+    eval_dataset = TextDataset('Ten_times/', max_seq_length=50)
     eval_loader = data.DataLoader(eval_dataset, batch_size=batch_size, shuffle=True)
     model = TransformerClassifier(vocab_size, hidden_size, num_classes, num_layers, num_heads, dropout)
-    model.load_state_dict(torch.load('transformer_ag_model.pth'))
+    model.load_state_dict(torch.load('Saved_Model/transformer_extracted_length_model.pth'))
     with torch.no_grad():
         correct = 0
         total = 0
