@@ -16,7 +16,7 @@ import numpy as np
 # import video classfication
 # from Nanodet.nanodet.util import Logger, cfg1, cfg2, load_config
 # from Nanodet.demo.nanodet_twostages import Predictor
-from mobilenet.model_v2_gray import MobileNetV2
+# from mobilenet.model_v2_gray import MobileNetV2
 from NanodetOpenvino.Nanodet import NanoDet
 from MT_helpers.My_Transformer import *
 # import SVM-image classfication
@@ -315,7 +315,7 @@ class model:
           category = SVM_Determin(eye_status_list,yawn_status_list,transform_path, tot_status)[0]
           result = {"result": {"category": 0, "duration": 6000}}
           result['result']['category'] = category
-          result['result']['duration'] = duration
+          result['result']['duration'] = duration * 1000
           return result
 
 
