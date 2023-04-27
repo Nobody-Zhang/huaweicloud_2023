@@ -108,8 +108,8 @@ class SVM_Mouth_Process(Process):
 
 """
 def SVM_Handle(eye_queue, yawn_queue) -> tuple :
-     eye_classifier = "/home/ma-user/infer/model/1/svm/svm_model_eyes.pkl"
-     mouth_classifier = "/home/ma-user/infer/model/1/svm/svm_model_mouth.pkl"
+     eye_classifier = svmdetect.ImageClassifier("/home/ma-user/infer/model/1/svm/svm_model_eyes.pkl")
+     mouth_classifier = svmdetect.ImageClassifier("/home/ma-user/infer/model/1/svm/svm_model_mouth.pkl")
      eye_gray = []
      yawn_gray = []
      # 先进行灰度处理、resize处理
@@ -263,12 +263,12 @@ class model:
      
      
 
-     def inference(self,video_path):
+     def inference(self, cap):
           # current_dir = os.getcwd()
 
           # transform_path = os.path.join(current_dir, "MT_helpers/transformer_ag_model.pth")
           transform_path = "/home/ma-user/infer/model/1/MT_helpers/transformer_ag_model.pth"
-          cap = cv2.VideoCapture(video_path)
+          # cap = cv2.VideoCapture(video_path)
           all_start = time.time()
           cnt = 0
 
@@ -308,8 +308,6 @@ class model:
                          tot_status.append(-1)
 
           print("End")
-          all_end = time.time()
-          duration = all_end - all_start
 
           print(f'orgin tot_status{tot_status}')
 
@@ -319,9 +317,12 @@ class model:
           print(f'yawn_status_list{yawn_status_list}')
 
           category = SVM_Determin(eye_status_list,yawn_status_list,transform_path, tot_status)[0]
+          all_end = time.time()
+          duration = all_end - all_start
           result = {"result": {"category": 0, "duration": 6000}}
           result['result']['category'] = category
-          result['result']['duration'] = duration * 1000
+          # result['result']['category'] = 1
+          result['result']['duration'] = int(np.round((duration) * 1000))
           return result
 
 
@@ -329,22 +330,39 @@ class model:
 class PTVisionService(PTServingBaseService):
 
      def __init__(self, model_name, model_path):
-        # 调用父类构造方法
-        # super(PTVisionService, self).__init__(model_name, model_path)
-        # 调用自定义函数加载模型
-        self.model_name = model_name
-        self.model_path = model_path
-        self.model = model()
+          # 调用父类构造方法
+          # super(PTVisionService, self).__init__(model_name, model_path)
+          # 调用自定义函数加载模型
+          self.capture = 'test.mp4'
+          self.model_name = model_name
+          self.model_path = model_path
+          self.model = model()
 
      def _inference(self, data):
+          cap = cv2.VideoCapture(self.capture)
+          result = self.model.inference(cap)
+          return result
 
-        result = {}
-        for k, v in data.items():
-            result[k] = self.model.inference(v)
 
-        return result   
+
      def _preprocess(self, data):
-          return data
+          # 这个函数把data写到test.mp4里面了
+          # preprocessed_data = {}
+          for k, v in data.items():
+               for file_name, file_content in v.items():
+                    try:
+                         try:
+                              with open(self.capture, 'wb') as f:
+                                   file_content_bytes = file_content.read()
+                                   f.write(file_content_bytes)
+
+                         except Exception:
+                              return {"message": "There was an error loading the file"}
+
+                         # self.capture = self.temp.name  # Pass temp.name to VideoCapture()
+                    except Exception:
+                         return {"message": "There was an error processing the file"}
+          return 'ok'
      
      def _postprocess(self, data):
           return data
