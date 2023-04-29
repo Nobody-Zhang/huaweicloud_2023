@@ -66,8 +66,8 @@ def yolo_run(weights=ROOT / 'INT8_openvino_model/best_int8.xml',  # model.pt pat
     if pt or jit:
         model.model.half() if half else model.model.float()
     bs = 1  # batch_size
+
     # Dataloader
-    
     dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt)
         
     vid_path, vid_writer = [None] * bs, [None] * bs
@@ -112,9 +112,43 @@ def yolo_run(weights=ROOT / 'INT8_openvino_model/best_int8.xml',  # model.pt pat
             if len(det):
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
-                list.append(det.numpy())
+                dets = det.numpy()
+
+            wide, height = im0.shape[1], im0.shape[0]
+            driver = (0, 0, 0, 0)
+            driver_xyxy = (0, 0, 0, 0)
+            phone = (0, 0, 0, 0)
+            sideface = (0, 0, 0, 0)
+
+            for det in dets:
+                xyxy = (det[0], det[1], det[2], det[3])
+                xywh = xyxy2xywh(*xyxy, wide, height)
+                cls = det[5]
+                if cls == 0:
+                    if .4 < xywh[0] and .2 < xywh[1] and xywh[1] > driver[1]:
+                        if xywh[0] > driver[0]:
+                            driver = xywh
+                            driver_xyxy = xyxy
+                elif cls == 1:
+                    if .4 < xywh[0] and .2 < xywh[1] and xywh[1] > phone[1]:
+                        if xywh[0] > phone[0]:
+                            phone = xywh
+                # elif cls == 1 or cls == 3:
+                #     if .4 < xywh[0] and .2 < xywh[1] and xywh[1] > sideface[1]:
+                #         if xywh[0] > sideface[0]:
+                #             sideface = xywh
+            # judge the driver status
+            if driver[0] > sideface[0] and 0 < abs(driver[0] - phone[0]) < .2:
+                list.append((1, None))
+            elif sideface[0] > driver[0]:
+                list.append((0, None))
+            elif driver_xyxy[0] != 0:
+                face_img = im0[driver_xyxy[1]:driver_xyxy[3], driver_xyxy[0]:driver_xyxy[2]]
+                list.append((2, face_img))
+            else:
+                list.append((-1, None))
                 
-                # print(result)
+
             
             
         # LOGGER.info(f'{s}Done. ({t3 - t2:.3f}s)')
