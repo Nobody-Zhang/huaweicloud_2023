@@ -111,12 +111,12 @@ class NanoDet():
         :returns: a tuple of eye1, eye2, and mouth, format np.ndarray
         """
         bboxes = self.model(img)[0]
-        cv2.imshow('img1', img)
-        cv2.waitKey(1)
+        # cv2.imshow('img1', img)
+        # cv2.waitKey(1)
         eyes = None
         mouth = None
         for box in bboxes:
-            cv2.imshow('img2',img[box.ymin: box.ymax, box.xmin, box.xmax])
+            # cv2.imshow('img2',img[box.ymin: box.ymax, box.xmin, box.xmax])
             xyxy = (box.xmin, box.ymin, box.xmax, box.ymax)
             cls = box.id
             if cls == 1:
