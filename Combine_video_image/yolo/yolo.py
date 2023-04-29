@@ -21,6 +21,25 @@ from utils.general import (LOGGER, check_file, check_img_size, check_imshow, che
 from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, time_sync
 
+# transform xyxy loacationn to xywh loacation, scale in (0, 1)
+def xyxy2xywh(xmin: int, ymin: int, xmax: int, ymax: int, wide: int, height: int) -> tuple:
+    """
+    tranform xyxy location to xywh location
+
+    :param xmin: xmin
+    :param ymin: ymin
+    :param xmax: xmax
+    :param ymax: ymax
+    :param wide: wide
+    :param height: height
+    :return: tuple(x,y,w,h)
+    """
+    x = ((xmin+xmax)//2)/wide
+    y = ((ymin+ymax)//2)/height
+    w = (xmax-xmin)/wide
+    h = (ymax-ymin)/height
+    return (x, y, w, h)
+
 @torch.no_grad()
 def yolo_run(weights=ROOT / 'INT8_openvino_model/best_int8.xml',  # model.pt path(s)
         source=ROOT / '',  # file/dir/URL/glob, 0 for webcam
@@ -120,10 +139,10 @@ def yolo_run(weights=ROOT / 'INT8_openvino_model/best_int8.xml',  # model.pt pat
             phone = (0, 0, 0, 0)
             sideface = (0, 0, 0, 0)
 
-            for det in dets:
-                xyxy = (det[0], det[1], det[2], det[3])
+            for itme in dets:
+                xyxy = (itme[0], itme[1], itme[2], itme[3])
                 xywh = xyxy2xywh(*xyxy, wide, height)
-                cls = det[5]
+                cls = itme[5]
                 if cls == 0:
                     if .4 < xywh[0] and .2 < xywh[1] and xywh[1] > driver[1]:
                         if xywh[0] > driver[0]:
@@ -143,7 +162,7 @@ def yolo_run(weights=ROOT / 'INT8_openvino_model/best_int8.xml',  # model.pt pat
             elif sideface[0] > driver[0]:
                 list.append((0, None))
             elif driver_xyxy[0] != 0:
-                face_img = im0[driver_xyxy[1]:driver_xyxy[3], driver_xyxy[0]:driver_xyxy[2]]
+                face_img = im0[int(driver_xyxy[1]):int(driver_xyxy[3]), int(driver_xyxy[0]):int(driver_xyxy[2])]
                 list.append((2, face_img))
             else:
                 list.append((-1, None))
