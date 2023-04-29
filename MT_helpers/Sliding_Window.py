@@ -136,7 +136,7 @@ if __name__ == "__main__":
 
     accuracy_curve = [0] * 60
     for tolerant_test_num in range(60):
-        detection = SlidingWindow.window_dataset_detection(dataset_path, frames=frames,
+        detection = SlidingWindow.dataset_detection(dataset_path, frames=frames,
                                                     tolerant=tolerant_test_num, priority=priority)
         tot_input = 0
         tot_accurate = 0
