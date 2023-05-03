@@ -46,24 +46,23 @@ class SlidingWindow:
         current_detection = [0] * num_classes
         # window queue for detection
         window = [int(seq) for seq in sequence[:min(max(tolerance - 1, 0), len(sequence) - 1)]]
-
-        # initialize current_detection
-        for element in window:
-            current_detection[element] += 1
+        # switch for window
+        window_switch = [False] * num_classes
 
         # slide
         for s in range(len(sequence) - tolerance):
-            # slide the window and update current_detection
-            window.append(int(sequence[s + tolerance]))
-            current_detection[int(sequence[s + tolerance])] += 1
+            window.append(int(sequence[s + len(window)]))
+            window.pop(0)
+            window_set = set(window)
+            # check for switch
+            if len(window_set) == 1:
+                window_switch[window[0]] = True
+                current_detection[window[0]] = s
 
-            for label in range(num_classes):
-
-                # store the occurrence of window
-                if label not in window:
-                    detected[label] = max(detected[label], current_detection[label])
-                    current_detection[label] = 0
-            current_detection[window.pop(0)] -= 1
+            for classes in range(num_classes):
+                if classes not in window_set and window_switch[classes]:
+                    window_switch[classes] = False
+                    detected[classes] = max(detected[classes], s - current_detection[classes] + len(window))
 
         # output the first successful detection with the highest hierarchy
         max_priority = -1
@@ -72,7 +71,6 @@ class SlidingWindow:
             if detected[detector] >= fps * detect_second and priority[detector] > max_priority:
                 max_priority = priority[detector]
                 detected_value = detector
-
         return detected_value
 
     @staticmethod
@@ -123,6 +121,7 @@ class SlidingWindow:
 
 
 if __name__ == "__main__":
+    """
     dataset_path = "transformer_data_orig"
     frames = 30
     tolerant = 20
@@ -132,11 +131,9 @@ if __name__ == "__main__":
     frames = 3
     tolerant = 0
     priority = [0, 1, 2, 1, 1]
-    """
-
     accuracy_curve = [0] * 60
     for tolerant_test_num in range(60):
-        detection = SlidingWindow.dataset_detection(dataset_path, frames=frames,
+        detection = SlidingWindow.window_dataset_detection(dataset_path, frames=frames,
                                                     tolerant=tolerant_test_num, priority=priority)
         tot_input = 0
         tot_accurate = 0
@@ -150,3 +147,7 @@ if __name__ == "__main__":
     plt.xlabel('Tolerance')
     plt.ylabel('Accuracy')
     plt.show()
+    """
+    print(SlidingWindow.switch_window("0101111111010444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444441111110011110000101000011111111111111101",
+                                      frames,tolerant,priority=priority))
+    """
