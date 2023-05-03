@@ -21,6 +21,7 @@ from NanodetOpenvino.Nanodet import NanoDet
 from MT_helpers.My_Transformer import *
 # import SVM-image classfication
 import svm.svmdetect as svmdetect
+from yolo.yolo import *
 
 # 抽帧
 FRAME_GROUP = 10
@@ -143,7 +144,7 @@ class Combination:
           if video_model_name == "nanodet":
                self.video_model = self.Nanodet_init()
           elif video_model_name == "yolo":
-               self.video_model = self.Yolo_init()
+               self.video_model = yolo_run
           
           # 选择image classification model,并创建两个线程类（对CPU影响太大，故舍弃
           """
@@ -182,8 +183,6 @@ class Combination:
      #
      #      return [nanodet_face, nanodet_eye_mouth]
 
-     def Yolo_init(self):
-          """need to do Yolo classification"""
 
 # 根据output的状态决定该图片是哪一种状态           
 def SVM_Determin(eye_status,yawn_status,transform_path, tot_status : list) -> list:
