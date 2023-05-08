@@ -157,7 +157,7 @@ class Combination:
           """
      def Nanodet_init(self,nanodet_model1 = "/home/ma-user/infer/model/1/NanodetOpenvino/convert_for_two_stage/seg_face/seg_face.xml",
                nanodet_model2 = "/home/ma-user/infer/model/1/NanodetOpenvino/convert_for_two_stage/face_eyes/nanodet.xml",
-               num_class1 = 4, num_class2 = 2,threshold1 = 0.8,threshold2 = 0.3):
+               num_class1 = 4, num_class2 = 2,threshold1 = 0.4,threshold2 = 0.3):
           # current_dir = os.getcwd()
           # nanodet_model1 = os.path.join(current_dir, nanodet_model1)
           # nanodet_model2 = os.path.join(current_dir, nanodet_model2)
