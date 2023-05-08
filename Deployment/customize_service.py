@@ -23,6 +23,7 @@ from MT_helpers.My_Transformer import *
 import svm.svmdetect as svmdetect
 from yolo.yolo import *
 
+# fps = 30
 # 抽帧
 FRAME_GROUP = 10
 # 设置三种状态的编号
@@ -43,71 +44,7 @@ def parse_args():
 
      return parser.parse_args()
 
-"""
 
-# SVM 线程类
-class SVM_Eye_Process(Process):
-     def __init__(self,eye_status_list,queue,stop_event,model_path='./svm/svm_model_eyes.pkl'):
-          self.classifier = svmdetect.ImageClassifier(model_path)
-          self.status_list = eye_status_list
-          self.queue = queue
-          self.stop_event =stop_event
-     
-     # 灰度处理、resize处理 for SVM
-     def img_transform(self,eye_img):
-          gray_eye_img = cv2.cvtColor(eye_img, cv2.COLOR_BGR2GRAY)
-          gray_eye_img = cv2.resize(gray_eye_img, (60, 36))
-          return gray_eye_img
-     
-     def inference(self):
-          print("Eye Thread start!\n")
-          while not self.stop_event.is_set():
-               if not self.queue.empty():
-                    t1 = time.time()
-                    image = self.queue.get()
-                    image = self.img_transform(image)
-                    image = [image]
-                    features = self.classifier.extract_features(image)
-                    y_pred, time_cost = self.classifier.classify(features)
-                    self.status_list.append(y_pred[0])
-                    t2 = time.time()
-                    print("Eye_svm时间:")
-                    print((t2-t1))
-                    print("Eye_svm推理结果:")
-                    print(y_pred[0])
-                    
-# SVM 线程类
-class SVM_Mouth_Process(Process):
-     def __init__(self,yawn_status_list,queue,stop_event,model_path='./svm/svm_model_mouth.pkl'):
-          self.classifier = svmdetect.ImageClassifier(model_path)
-          self.status_list = yawn_status_list
-          self.queue = queue
-          self.stop_event = stop_event
-     
-     # 灰度处理、resize处理 for SVM
-     def img_transform(self,mouth_img):
-          gray_mouth_img = cv2.cvtColor(mouth_img, cv2.COLOR_BGR2GRAY)
-          gray_mouth_img = cv2.resize(gray_mouth_img, (100, 50))
-          return gray_mouth_img
-     
-     def inference(self):
-          print("Mouth Thread start!\n")
-          while not self.stop_event.is_set():
-               if not self.queue.empty():
-                    t1 = time.time()
-                    image = self.queue.get()
-                    image = self.img_transform(image)
-                    image = [image]
-                    features = self.classifier.extract_features(image)
-                    y_pred, time_cost = self.classifier.classify(features)
-                    self.status_list.append(y_pred[0])
-                    t2 = time.time()
-                    print("Mouth_svm时间:")
-                    print((t2-t1))
-                    print("Mouth_svm推理结果:")
-                    print(y_pred[0])
-
-"""
 def SVM_Handle(eye_queue, yawn_queue) -> tuple :
      eye_classifier = svmdetect.ImageClassifier("/home/ma-user/infer/model/1/svm/svm_model_eyes.pkl")
      mouth_classifier = svmdetect.ImageClassifier("/home/ma-user/infer/model/1/svm/svm_model_mouth.pkl")
@@ -143,8 +80,8 @@ class Combination:
           self.device = torch.device(device)
           if video_model_name == "nanodet":
                self.video_model = self.Nanodet_init()
-          elif video_model_name == "yolo":
-               self.video_model = yolo_run
+          # elif video_model_name == "yolo":
+          #      self.video_model = yolo_run
           
           # 选择image classification model,并创建两个线程类（对CPU影响太大，故舍弃
           """
@@ -183,9 +120,48 @@ class Combination:
      #
      #      return [nanodet_face, nanodet_eye_mouth]
 
+# 滑动窗口后处理，默认不抽帧，如果要抽帧就把所有的fps用fps/FRAME_GROUP代替
+def Sliding_Window(tot_status,thres1 = 2,thres2 = 0.45,fps = 30):
+     window_status = {} # 所有窗口的状态
+     window_status_cnt = {} # 窗口状态计数
+     window_status_cnt [0] = 0
+     window_status_cnt [1] = 0
+     window_status_cnt [2] = 0
+     window_status_cnt [3] = 0
+     window_status_cnt [4] = 0
+     single_window_cnt = {}
+     single_window_cnt [0] = 0
+     single_window_cnt [1] = 0
+     single_window_cnt [2] = 0
+     single_window_cnt [3] = 0
+     single_window_cnt [4] = 0
+     for i in range(len(tot_status)-int(2.5*fps)):
+          if i == 0:
+               for j in range(int(2.5*fps)):
+                    single_window_cnt[tot_status[i+j]] += 1
+          else:
+               single_window_cnt[tot_status[i+int(2.5*fps)-1]] += 1
+               single_window_cnt[tot_status[i-1]] -= 1
+          single_window_cnt[0] = -1 # 排除0
+          max_cnt = max(single_window_cnt, key=lambda x: single_window_cnt[x])
+          if single_window_cnt[max_cnt] >= thres1*fps:
+               window_status[i] = max_cnt
+          else:
+               window_status[i] = 0
+     for i in range(len(window_status)):
+          window_status_cnt[window_status[i]] += 1
+     print("window_status:",window_status)
+     print("window_status_cnt:",window_status_cnt)
+     window_status_cnt[0] = -1 # 排除0
+     max_status = max(window_status_cnt, key=lambda x: window_status_cnt[x])
+     if window_status_cnt[max_status] >= thres2*fps:
+          return max_status
+     else:
+          return 0
+     
 
-# 根据output的状态决定该图片是哪一种状态           
-def SVM_Determin(eye_status,yawn_status,transform_path, tot_status : list) -> list:
+# 根据output的状态决定该图片(?视频)是哪一种状态           
+def SVM_Determin(eye_status,yawn_status,transform_path, tot_status : list,fps) -> list:
      output = []
      for i in range(len(eye_status)):
           # 首先判断是否打哈欠了
@@ -203,9 +179,10 @@ def SVM_Determin(eye_status,yawn_status,transform_path, tot_status : list) -> li
                j = j + 1
      print(tot_status)
      # result = Transform_result(transform_path,output)
-     result = Transform_result(transform_path, tot_status)
-     print(result[0])
-     return tot_status
+     # result = Transform_result(transform_path, tot_status)
+     result = Sliding_Window(tot_status,fps)
+     # print(result[0]) # (?)
+     return result
 
 
 # 根据output的状态决定该图片是哪一种状态           
@@ -264,7 +241,7 @@ class model:
 
      def inference(self, cap):
           # current_dir = os.getcwd()
-
+          fps = cap.get(cv2.CAP_PROP_FPS)
           # transform_path = os.path.join(current_dir, "MT_helpers/transformer_ag_model.pth")
           transform_path = "/home/ma-user/infer/model/1/MT_helpers/transformer_ag_model.pth"
           # cap = cv2.VideoCapture(video_path)
@@ -315,7 +292,7 @@ class model:
           print(f'eye_status_list{eye_status_list}')
           print(f'yawn_status_list{yawn_status_list}')
 
-          category = SVM_Determin(eye_status_list,yawn_status_list,transform_path, tot_status)[0]
+          category = SVM_Determin(eye_status_list,yawn_status_list,transform_path, tot_status,fps)
           all_end = time.time()
           duration = all_end - all_start
           result = {"result": {"category": 0, "duration": 6000}}
@@ -341,8 +318,6 @@ class PTVisionService(PTServingBaseService):
           cap = cv2.VideoCapture(self.capture)
           result = self.model.inference(cap)
           return result
-
-
 
      def _preprocess(self, data):
           # 这个函数把data写到test.mp4里面了
