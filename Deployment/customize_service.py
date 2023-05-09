@@ -276,11 +276,11 @@ class model:
                 tot_status.append("3")
             else:
                 mouth_eye_boxes = self.Combine_model.video_model[1].find_eye_mouth(face_img)
-                if mouth_eye_boxes[0] is None or mouth_eye_boxes[2] is None:
+                if not mouth_eye_boxes[0] or not mouth_eye_boxes[2]:
                     tot_status.append("4")
                 else:
-                    eye_img = mouth_eye_boxes[0]
-                    mouth_img = mouth_eye_boxes[2]
+                    eye_img = mouth_eye_boxes[3]
+                    mouth_img = mouth_eye_boxes[1]
                     eye_queue.append(eye_img)
                     yawn_queue.append(mouth_img)
                     tot_status.append(-1)
