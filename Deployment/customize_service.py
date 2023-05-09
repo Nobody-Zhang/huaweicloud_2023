@@ -263,8 +263,8 @@ class model:
 
             # # 抽帧：取每组的第一帧
             cnt += 1
-            if cnt % FRAME_GROUP != 1:
-                continue
+            # if cnt % FRAME_GROUP != 1:
+            #     continue
 
             # 识别人脸
             face_boxs = self.Combine_model.video_model[0].find_face(frame)
