@@ -1129,8 +1129,8 @@
 		<IR name="/head/Concat" output_port_id="2" />
 	</map>
 	<map>
-		<framework name="670" output_port_id="670" />
-		<IR name="670" output_port_id="0" />
+		<framework name="672" output_port_id="672" />
+		<IR name="672" output_port_id="0" />
 	</map>
 	<map>
 		<framework name="/head/Reshape" output_port_id="/head/Reshape_output_0" />

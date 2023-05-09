@@ -1,4 +1,5 @@
 import os
+import cv2
 import numpy as np
 import time
 
@@ -40,6 +41,7 @@ class NanoDet:
         :param num_class: number of classes
         :return: None
         """
+        self.cnt = 0
         model_adapter = OpenvinoAdapter(create_core(), model_path, device="CPU")
         self.model = nanodet_model = NanoDetPlus(model_adapter, configuration={'num_classes': num_class, 'iou_threshold': threshold}, preload=True)
 
@@ -92,7 +94,7 @@ class NanoDet:
                 if .4 < xywh[0] and .2 < xywh[1] and xywh[1] > phone[1]:
                     if xywh[0] > phone[0]:
                         phone = xywh
-            elif cls == 2 or cls == 3:
+            elif cls == 3 or cls == 2:
                 if .4 < xywh[0] and xywh[1] > sideface[1] and xyxy[3]/height > .25:
                     if xywh[0] > sideface[0]:
                         sideface = xywh
