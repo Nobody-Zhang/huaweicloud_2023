@@ -11,6 +11,8 @@ from PIL import Image
 from skimage.transform import resize
 from model_service.pytorch_model_service import PTServingBaseService
 import numpy as np
+import warnings
+warnings.filterwarnings("ignore")
 
 # import video classfication
 # from Nanodet.nanodet.util import Logger, cfg1, cfg2, load_config
@@ -124,9 +126,15 @@ class Combination:
 
 
 # 滑动窗口后处理，默认不抽帧，如果要抽帧就把所有的fps用fps/FRAME_GROUP代替
-def Sliding_Window(tot_status, thres1=2, thres2=0.45, fps=30):
+def Sliding_Window(tot_status, fps, thres1=2, thres2=0.45):
     window_status = {}  # 所有窗口的状态
     window_status_cnt = {}  # 窗口状态计数
+    print("fps:")
+    print(fps)
+    print("len(tot_status) - int(2.5 * fps): ")
+    print(len(tot_status) - int(2.5 * fps))
+    print("int(2.5 * fps): ")
+    print(int(2.5 * fps))
     window_status_cnt[0] = 0
     window_status_cnt[1] = 0
     window_status_cnt[2] = 0
@@ -164,7 +172,7 @@ def Sliding_Window(tot_status, thres1=2, thres2=0.45, fps=30):
 
 
 # 根据output的状态决定该图片(?视频)是哪一种状态           
-def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps) -> list:
+def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps):
     output = []
     for i in range(len(eye_status)):
         # 首先判断是否打哈欠了
