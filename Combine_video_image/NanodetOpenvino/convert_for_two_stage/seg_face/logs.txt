@@ -1,3 +1,0 @@
-INFO:root:finished exporting onnx 
-INFO:root:start simplifying onnx 
-INFO:root:simplify onnx successfully
