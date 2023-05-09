@@ -271,13 +271,13 @@ class model:
             face_img = face_boxs[1]
             # 判断能否裁出人脸
             if face_boxs[0] == -1 or face_boxs[0] == 0:
-                tot_status.append("4")
+                tot_status.append(4)
             elif face_boxs[0] == 1:
-                tot_status.append("3")
+                tot_status.append(3)
             else:
                 mouth_eye_boxes = self.Combine_model.video_model[1].find_eye_mouth(face_img)
                 if not mouth_eye_boxes[0] or not mouth_eye_boxes[2]:
-                    tot_status.append("4")
+                    tot_status.append(4)
                 else:
                     eye_img = mouth_eye_boxes[3]
                     mouth_img = mouth_eye_boxes[1]
