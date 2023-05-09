@@ -88,18 +88,18 @@ class NanoDet:
                     if xywh[0] > driver[0]:
                         driver = xywh
                         driver_xyxy = xyxy
-            elif cls == 2:
+            elif cls == 1:
                 if .4 < xywh[0] and .2 < xywh[1] and xywh[1] > phone[1]:
                     if xywh[0] > phone[0]:
                         phone = xywh
-            elif cls == 1 or cls == 3:
+            elif cls == 2 or cls == 3:
                 if .4 < xywh[0] and xywh[1] > sideface[1] and xyxy[3]/height > .25:
                     if xywh[0] > sideface[0]:
                         sideface = xywh
         # judge the driver status
-        if driver[0] > sideface[0] and 0 < abs(driver[0] - phone[0]) < .2 and 0 < abs(driver[1] - phone[1]) < .2:
+        if driver[0] > sideface[0] and 0 < abs(driver[0] - phone[0]) < .3 and 0 < abs(driver[1] - phone[1]) < .3:
             return 1, None
-        elif driver[0] < sideface[0] and 0 < abs(sideface[0] - phone[0]) < .2 and 0 < abs(sideface[1] - phone[1]) < .2:
+        elif driver[0] < sideface[0] and 0 < abs(sideface[0] - phone[0]) < .3 and 0 < abs(sideface[1] - phone[1]) < .3:
             return 1, None
         elif sideface[0] > driver[0]:
             return 0, None
