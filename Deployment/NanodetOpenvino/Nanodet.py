@@ -86,7 +86,7 @@ class NanoDet:
             xywh = xyxy2xywh(*xyxy, wide, height)
             cls = box.id
             if cls == 0:
-                if .4 < xywh[0] and xywh[1] > driver[1] and xyxy[3]/height > .25:
+                if .5 < xywh[0] and xywh[1] > driver[1] and xyxy[1]/height > .25:
                     if xywh[0] > driver[0]:
                         driver = xywh
                         driver_xyxy = xyxy
@@ -95,7 +95,7 @@ class NanoDet:
                     if xywh[0] > phone[0]:
                         phone = xywh
             elif cls == 3 or cls == 2:
-                if .4 < xywh[0] and xywh[1] > sideface[1] and xyxy[3]/height > .25:
+                if .5 < xywh[0] and xywh[1] > sideface[1] and xyxy[1]/height > .25:
                     if xywh[0] > sideface[0]:
                         sideface = xywh
         # judge the driver status
@@ -103,7 +103,7 @@ class NanoDet:
             return 1, None
         elif driver[0] < sideface[0] and 0 < abs(sideface[0] - phone[0]) < .3 and 0 < abs(sideface[1] - phone[1]) < .3:
             return 1, None
-        elif sideface[0] > driver[0]:
+        elif sideface[0] != 0:
             return 0, None
         elif driver_xyxy[0] != 0:
             face_img = img[driver_xyxy[1]:driver_xyxy[3], driver_xyxy[0]:driver_xyxy[2]]
@@ -126,14 +126,16 @@ class NanoDet:
         eye = None
         eye_xywh = [0, 0, 0, 0]
         mouth = None
+        mouth_xywh = [0, 0, 0, 0]
         flag1 = False
         flag2 = False
         for box in bboxes:
             xyxy = (box.xmin, box.ymin, box.xmax, box.ymax)
             xywh = xyxy2xywh(*xyxy, img.shape[1], img.shape[0])
             cls = box.id
-            if cls == 1:
+            if cls == 1 and xywh[1] > mouth_xywh[1]:
                 flag1 = True
+                mouth_xywh = xywh
                 mouth = img[xyxy[1]:xyxy[3], xyxy[0]:xyxy[2]]
             elif cls == 0 and xywh[1] > eye_xywh[1]:
                 flag2 = True
