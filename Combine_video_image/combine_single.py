@@ -297,23 +297,6 @@ def Sliding_Window(tot_status, fps, thres1=2.45, thres2=0.48):
     window_status = {}  # 所有窗口的状态
     window_status_cnt = [0, 0, 0, 0, 0]
     single_window_cnt = [0, 0, 0, 0, 0]
-    for i in range(len(tot_status) - int(3 * fps)):
-        if i == 0:
-            for j in range(int(3 * fps)):
-                single_window_cnt[int(tot_status[i + j])] += 1
-        else:
-            single_window_cnt[int(tot_status[i + int(3 * fps) - 1])] += 1
-            single_window_cnt[int(tot_status[i - 1])] -= 1
-        mxcnt = 0
-        mxth = 0
-        single_window_cnt[0] = -1
-        for j in range(5):
-            if mxcnt < single_window_cnt[j]:
-                mxcnt = single_window_cnt[j]
-                mxth = j
-        if mxcnt > 0.95 * 3 * fps:
-            return mxth
-    return 0
     """
     window_status_cnt = {}  # 窗口状态计数
     window_status_cnt[0] = 0
