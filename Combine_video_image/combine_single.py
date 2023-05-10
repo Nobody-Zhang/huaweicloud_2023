@@ -295,8 +295,6 @@ class Combination:
 # 滑动窗口后处理，默认不抽帧，如果要抽帧就把所有的fps用fps/FRAME_GROUP代替
 def Sliding_Window(tot_status, fps, thres1=2.45, thres2=0.48):
     window_status = {}  # 所有窗口的状态
-    print("fps")
-    print(fps)
     window_status_cnt = [0, 0, 0, 0, 0]
     single_window_cnt = [0, 0, 0, 0, 0]
     for i in range(len(tot_status) - int(3 * fps)):
@@ -317,8 +315,6 @@ def Sliding_Window(tot_status, fps, thres1=2.45, thres2=0.48):
             return mxth
     return 0
     """
-        single_window_cnt[0] = -1  # 排除0
-        max_cnt = 0
     window_status_cnt = {}  # 窗口状态计数
     window_status_cnt[0] = 0
     window_status_cnt[1] = 0
@@ -331,6 +327,7 @@ def Sliding_Window(tot_status, fps, thres1=2.45, thres2=0.48):
     single_window_cnt[2] = 0
     single_window_cnt[3] = 0
     single_window_cnt[4] = 0
+    """
     for i in range(len(tot_status) - int(2.5 * fps)):
         if i == 0:
             for j in range(int(2.5 * fps)):
@@ -366,7 +363,7 @@ def Sliding_Window(tot_status, fps, thres1=2.45, thres2=0.48):
         return max_status
     else:
         return 0
-    """
+
 
 
 # 根据output的状态决定该图片是哪一种状态
@@ -390,8 +387,8 @@ def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps)
     # result = Transform_result(transform_path,output)
     # result = Transform_result(transform_path, tot_status)
     # print(result[0])
-    # result = tot_status# Sliding_Window(tot_status, fps)
-    # print("result:", result)
+    result = Sliding_Window(tot_status, fps)
+    print("result:", result)
     return tot_status
 
 
@@ -431,9 +428,9 @@ def Transform_result(model_path, status_list):
     return predicted
 
 
-def generate_data(video_path):
+if __name__ == '__main__':
     args = parse_args()
-    # video_path = args.path
+    video_path = args.path
     video_model_name = args.video_model
     image_model_name = args.image_model
     transform_path = args.trans_model
@@ -491,7 +488,7 @@ def generate_data(video_path):
 
     eye_queue = []
     yawn_queue = []
-
+    flag = False
     while True:
         ret_val, frame = cap.read()
         if not ret_val:
@@ -523,6 +520,7 @@ def generate_data(video_path):
                 eye_queue.append(eye_img)
                 yawn_queue.append(mouth_img)
                 tot_status.append(-1)
+                flag = True
         # 获得眼部和嘴部图片
         # cv2.imshow('eye',eye_img)
         # cv2.waitKey(1000)
@@ -531,8 +529,8 @@ def generate_data(video_path):
         nanodet_t2 = time.time()
         print("nanodet时间")
         print(nanodet_t2 - nanodet_t1)
-        eye_queue.append(eye_img)
-        yawn_queue.append(mouth_img)
+        # eye_queue.append(eye_img)
+        # yawn_queue.append(mouth_img)
 
     # 结束线程
     # eyestop_event.set()
@@ -545,18 +543,21 @@ def generate_data(video_path):
 
     print(tot_status)
 
-    eye_status_list, yawn_status_list = SVM_Handle(eye_queue, yawn_queue)
+    eye_status_list = []
+    yawn_status_list = []
+    if(flag):
+        eye_status_list, yawn_status_list = SVM_Handle(eye_queue, yawn_queue)
 
     print(f'eye:{eye_status_list}')
     print(f'YAWN:{yawn_status_list}')
     # 状态判断
     # Mobilenet_Determin(eye_status_list,yawn_status_list,output)
-    return SVM_Determin(eye_status_list, yawn_status_list, transform_path, tot_status, fps)
+    SVM_Determin(eye_status_list, yawn_status_list, transform_path, tot_status, fps)
 
-
+"""
 if __name__ == '__main__':
-    vidio_dir = "/home/hzkd/DATA/"
-    save_dir = "/home/hzkd/Combine_video_image/Transformer_data/"
+    vidio_dir = "./test_video/"
+    save_dir = "./Transformer_data/"
     for fn in os.listdir(vidio_dir):
         fn = vidio_dir + fn
         tot_status = generate_data(fn)
@@ -564,6 +565,7 @@ if __name__ == '__main__':
         label = fn[-8]
         if right == 1:
             label = str(0)
-        fp = open(f"/home/hzkd/Combine_video_image/Transformer_data/{label}.txt", 'a')
+        fp = open(f"./Transformer_data/{label}.txt", 'a')
         fp.write(tot_status + '\n')
         fp.close()
+"""
