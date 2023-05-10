@@ -27,11 +27,11 @@ import svm.svmdetect as svmdetect
 
 # fps = 30
 # 抽帧
-FRAME_GROUP = 10
+FRAME_GROUP = 6
 # 设置三种状态的编号
-NORMAL = 0
-EYE_CLOSE = 1
-YAWN = 2
+# NORMAL = 0
+# EYE_CLOSE = 1
+# YAWN = 2
 
 
 def parse_args():
@@ -126,15 +126,12 @@ class Combination:
 
 
 # 滑动窗口后处理，默认不抽帧，如果要抽帧就把所有的fps用fps/FRAME_GROUP代替
-def Sliding_Window(tot_status, fps, thres1=2, thres2=0.45):
+def Sliding_Window(tot_status, fps, thres1=2.45, thres2=0.48):
     window_status = {}  # 所有窗口的状态
+    window_status_cnt = [0, 0, 0, 0, 0]
+    single_window_cnt = [0, 0, 0, 0, 0]
+    """
     window_status_cnt = {}  # 窗口状态计数
-    print("fps:")
-    print(fps)
-    print("len(tot_status) - int(2.5 * fps): ")
-    print(len(tot_status) - int(2.5 * fps))
-    print("int(2.5 * fps): ")
-    print(int(2.5 * fps))
     window_status_cnt[0] = 0
     window_status_cnt[1] = 0
     window_status_cnt[2] = 0
@@ -146,25 +143,38 @@ def Sliding_Window(tot_status, fps, thres1=2, thres2=0.45):
     single_window_cnt[2] = 0
     single_window_cnt[3] = 0
     single_window_cnt[4] = 0
+    """
     for i in range(len(tot_status) - int(2.5 * fps)):
         if i == 0:
             for j in range(int(2.5 * fps)):
-                single_window_cnt[tot_status[i + j]] += 1
+                print(i + j)
+                print(tot_status[i + j])
+                print(type(tot_status[i + j]))
+                single_window_cnt[int(tot_status[i + j])] += 1
         else:
-            single_window_cnt[tot_status[i + int(2.5 * fps) - 1]] += 1
-            single_window_cnt[tot_status[i - 1]] -= 1
+            single_window_cnt[int(tot_status[i + int(2.5 * fps) - 1])] += 1
+            single_window_cnt[int(tot_status[i - 1])] -= 1
         single_window_cnt[0] = -1  # 排除0
-        max_cnt = max(single_window_cnt, key=lambda x: single_window_cnt[x])
+        max_cnt = 0
+
+        # max_cnt = max(single_window_cnt, key=lambda x: single_window_cnt[x])
+        for j in range(len(single_window_cnt)):
+            if single_window_cnt[j] > single_window_cnt[max_cnt]:
+                max_cnt = j
         if single_window_cnt[max_cnt] >= thres1 * fps:
             window_status[i] = max_cnt
         else:
             window_status[i] = 0
     for i in range(len(window_status)):
-        window_status_cnt[window_status[i]] += 1
+        window_status_cnt[int(window_status[i])] += 1
     print("window_status:", window_status)
     print("window_status_cnt:", window_status_cnt)
     window_status_cnt[0] = -1  # 排除0
-    max_status = max(window_status_cnt, key=lambda x: window_status_cnt[x])
+    max_status = 0
+    for i in range(len(window_status_cnt)):
+        if(window_status_cnt[max_status] < window_status_cnt[i]):
+            max_status = i
+    # max_status = max(window_status_cnt, key=lambda x: window_status_cnt[x])
     if window_status_cnt[max_status] >= thres2 * fps:
         return max_status
     else:
@@ -177,16 +187,16 @@ def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps)
     for i in range(len(eye_status)):
         # 首先判断是否打哈欠了
         if yawn_status[i] == -1:
-            output.append(YAWN)
+            output.append(2)
         # 如果没有打哈欠 但是闭眼
         elif eye_status[i] == -1:
-            output.append(EYE_CLOSE)
+            output.append(1)
         else:
-            output.append(NORMAL)
+            output.append(0)
     j = 0
     for i in range(len(tot_status)):
         if tot_status[i] == -1:
-            tot_status[i] = str(output[j])
+            tot_status[i] = output[j]
             j = j + 1
     print(tot_status)
     # result = Transform_result(transform_path,output)
@@ -201,12 +211,12 @@ def Mobilenet_Determin(eye_status, yawn_status, output):
     for i in range(len(eye_status)):
         # 首先判断是否打哈欠了
         if yawn_status[i] == 1:
-            output.append(YAWN)
+            output.append(2)
         # 如果没有打哈欠 但是闭眼
         elif eye_status[i] == 0:
-            output.append(EYE_CLOSE)
+            output.append(1)
         else:
-            output.append(NORMAL)
+            output.append(0)
     print(output)
 
 
@@ -252,6 +262,7 @@ class model:
     def inference(self, cap):
         # current_dir = os.getcwd()
         fps = cap.get(cv2.CAP_PROP_FPS)
+        fps = fps / FRAME_GROUP
         # transform_path = os.path.join(current_dir, "MT_helpers/transformer_ag_model.pth")
         transform_path = "/home/ma-user/infer/model/1/MT_helpers/transformer_ag_model.pth"
         # cap = cv2.VideoCapture(video_path)
@@ -271,8 +282,8 @@ class model:
 
             # # 抽帧：取每组的第一帧
             cnt += 1
-            # if cnt % FRAME_GROUP != 1:
-            #     continue
+            if cnt % FRAME_GROUP != 1:
+                continue
 
             # 识别人脸
             face_boxs = self.Combine_model.video_model[0].find_face(frame)

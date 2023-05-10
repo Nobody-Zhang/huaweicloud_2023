@@ -24,7 +24,7 @@ import svm.svmdetect as svmdetect
 
 # fps = 30
 # 抽帧
-FRAME_GROUP = 10
+FRAME_GROUP = 6
 # 设置三种状态的编号
 NORMAL = 0
 EYE_CLOSE = 1
@@ -38,7 +38,7 @@ def parse_args():
     parser.add_argument("--mouth_model", default="./svm/svm_model_mouth.pkl", help="yawn classfication model name")
     parser.add_argument("--eye_model", default="./svm/svm_model_eyes.pkl", help="eye classfication model name")
     parser.add_argument("--trans_model", default="./MT_helpers/transformer_ag_model.pth", help="transformer model")
-    parser.add_argument("--path", default="./test_video/night_woman_051_41_1.mp4",
+    parser.add_argument("--path", default="./test_video/night_woman_094_41_8.mp4",
                         help="path to video")
     parser.add_argument("--device", default="cpu", help="device for model use")
 
@@ -293,8 +293,32 @@ class Combination:
 
 
 # 滑动窗口后处理，默认不抽帧，如果要抽帧就把所有的fps用fps/FRAME_GROUP代替
-def Sliding_Window(tot_status, fps, thres1=2, thres2=0.45):
+def Sliding_Window(tot_status, fps, thres1=2.45, thres2=0.48):
     window_status = {}  # 所有窗口的状态
+    print("fps")
+    print(fps)
+    window_status_cnt = [0, 0, 0, 0, 0]
+    single_window_cnt = [0, 0, 0, 0, 0]
+    for i in range(len(tot_status) - int(3 * fps)):
+        if i == 0:
+            for j in range(int(3 * fps)):
+                single_window_cnt[int(tot_status[i + j])] += 1
+        else:
+            single_window_cnt[int(tot_status[i + int(3 * fps) - 1])] += 1
+            single_window_cnt[int(tot_status[i - 1])] -= 1
+        mxcnt = 0
+        mxth = 0
+        single_window_cnt[0] = -1
+        for j in range(5):
+            if mxcnt < single_window_cnt[j]:
+                mxcnt = single_window_cnt[j]
+                mxth = j
+        if mxcnt > 0.95 * 3 * fps:
+            return mxth
+    return 0
+    """
+        single_window_cnt[0] = -1  # 排除0
+        max_cnt = 0
     window_status_cnt = {}  # 窗口状态计数
     window_status_cnt[0] = 0
     window_status_cnt[1] = 0
@@ -310,26 +334,39 @@ def Sliding_Window(tot_status, fps, thres1=2, thres2=0.45):
     for i in range(len(tot_status) - int(2.5 * fps)):
         if i == 0:
             for j in range(int(2.5 * fps)):
-                single_window_cnt[tot_status[i + j]] += 1
+                print(i + j)
+                print(tot_status[i + j])
+                print(type(tot_status[i + j]))
+                single_window_cnt[int(tot_status[i + j])] += 1
         else:
-            single_window_cnt[tot_status[i + int(2.5 * fps) - 1]] += 1
-            single_window_cnt[tot_status[i - 1]] -= 1
+            single_window_cnt[int(tot_status[i + int(2.5 * fps) - 1])] += 1
+            single_window_cnt[int(tot_status[i - 1])] -= 1
         single_window_cnt[0] = -1  # 排除0
-        max_cnt = max(single_window_cnt, key=lambda x: single_window_cnt[x])
+        max_cnt = 0
+
+        # max_cnt = max(single_window_cnt, key=lambda x: single_window_cnt[x])
+        for j in range(len(single_window_cnt)):
+            if single_window_cnt[j] > single_window_cnt[max_cnt]:
+                max_cnt = j
         if single_window_cnt[max_cnt] >= thres1 * fps:
             window_status[i] = max_cnt
         else:
             window_status[i] = 0
     for i in range(len(window_status)):
-        window_status_cnt[window_status[i]] += 1
+        window_status_cnt[int(window_status[i])] += 1
     print("window_status:", window_status)
     print("window_status_cnt:", window_status_cnt)
     window_status_cnt[0] = -1  # 排除0
-    max_status = max(window_status_cnt, key=lambda x: window_status_cnt[x])
+    max_status = 0
+    for i in range(len(window_status_cnt)):
+        if(window_status_cnt[max_status] < window_status_cnt[i]):
+            max_status = i
+    # max_status = max(window_status_cnt, key=lambda x: window_status_cnt[x])
     if window_status_cnt[max_status] >= thres2 * fps:
         return max_status
     else:
         return 0
+    """
 
 
 # 根据output的状态决定该图片是哪一种状态
@@ -353,8 +390,9 @@ def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps)
     # result = Transform_result(transform_path,output)
     # result = Transform_result(transform_path, tot_status)
     # print(result[0])
-    result = Sliding_Window(tot_status, fps)
-    print("result:", result)
+    # result = tot_status# Sliding_Window(tot_status, fps)
+    # print("result:", result)
+    return tot_status
 
 
 # 根据output的状态决定该图片是哪一种状态
@@ -393,9 +431,9 @@ def Transform_result(model_path, status_list):
     return predicted
 
 
-if __name__ == '__main__':
+def generate_data(video_path):
     args = parse_args()
-    video_path = args.path
+    # video_path = args.path
     video_model_name = args.video_model
     image_model_name = args.image_model
     transform_path = args.trans_model
@@ -427,6 +465,7 @@ if __name__ == '__main__':
 
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
+    # fps = fps / FRAME_GROUP
     thread_t1 = time.time()
     # 设定线程函数
     # eye_process = Process(target = Combine_model.image_eye.inference)
@@ -462,7 +501,7 @@ if __name__ == '__main__':
         # # 抽帧：取每组的第一帧
         cnt += 1
         # if cnt % FRAME_GROUP != 1:
-        # continue
+        #     continue
 
         # 识别人脸
         face_boxs = Combine_model.video_model[0].find_face(frame)
@@ -512,4 +551,19 @@ if __name__ == '__main__':
     print(f'YAWN:{yawn_status_list}')
     # 状态判断
     # Mobilenet_Determin(eye_status_list,yawn_status_list,output)
-    SVM_Determin(eye_status_list, yawn_status_list, transform_path, tot_status, fps)
+    return SVM_Determin(eye_status_list, yawn_status_list, transform_path, tot_status, fps)
+
+
+if __name__ == '__main__':
+    vidio_dir = "/home/hzkd/DATA/"
+    save_dir = "/home/hzkd/Combine_video_image/Transformer_data/"
+    for fn in os.listdir(vidio_dir):
+        fn = vidio_dir + fn
+        tot_status = generate_data(fn)
+        right = fn[-7]
+        label = fn[-8]
+        if right == 1:
+            label = str(0)
+        fp = open(f"/home/hzkd/Combine_video_image/Transformer_data/{label}.txt", 'a')
+        fp.write(tot_status + '\n')
+        fp.close()
