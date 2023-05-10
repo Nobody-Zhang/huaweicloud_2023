@@ -103,7 +103,7 @@ class NanoDet:
             return 1, None
         elif driver[0] < sideface[0] and 0 < abs(sideface[0] - phone[0]) < .3 and 0 < abs(sideface[1] - phone[1]) < .3:
             return 1, None
-        elif sideface[0] != 0:
+        elif sideface[0] > driver[0] or (driver[0] - sideafce[0] < .1 and abs(driver[1] - sideface[1]) < .1):
             return 0, None
         elif driver_xyxy[0] != 0:
             face_img = img[driver_xyxy[1]:driver_xyxy[3], driver_xyxy[0]:driver_xyxy[2]]
