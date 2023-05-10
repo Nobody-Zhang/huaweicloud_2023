@@ -275,6 +275,8 @@ class model:
         eye_queue = []
         yawn_queue = []
 
+        flag = False
+
         while True:
             ret_val, frame = cap.read()
             if not ret_val:
@@ -303,12 +305,16 @@ class model:
                     eye_queue.append(eye_img)
                     yawn_queue.append(mouth_img)
                     tot_status.append(-1)
+                    flag = True
 
         print("End")
 
         print(f'orgin tot_status{tot_status}')
 
-        eye_status_list, yawn_status_list = SVM_Handle(eye_queue, yawn_queue)
+        eye_status_list = []
+        yawn_status_list = []
+        if(flag):
+            eye_status_list, yawn_status_list = SVM_Handle(eye_queue, yawn_queue)
 
         print(f'eye_status_list{eye_status_list}')
         print(f'yawn_status_list{yawn_status_list}')
