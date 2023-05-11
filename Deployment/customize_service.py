@@ -177,7 +177,17 @@ def Sliding_Window(tot_status, fps, thres1=2.45, thres2=0.48):
     # max_status = max(window_status_cnt, key=lambda x: window_status_cnt[x])
     if window_status_cnt[max_status] >= thres2 * fps:
         return max_status
-    else:
+    else:# 再来一次后处理
+        cnt = [0, 0, 0, 0, 0]
+        for i in range(len(tot_status)):
+            cnt[tot_status[i]] += 1
+        cnt[0] = -1
+        ans = 0
+        for i in range(5):
+            if cnt[i] > cnt[ans]:
+                ans = i
+        if cnt[ans] >= 2.75 * fps:
+            return ans
         return 0
 
 

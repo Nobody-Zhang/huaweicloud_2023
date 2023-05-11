@@ -38,7 +38,7 @@ def parse_args():
     parser.add_argument("--mouth_model", default="./svm/svm_model_mouth.pkl", help="yawn classfication model name")
     parser.add_argument("--eye_model", default="./svm/svm_model_eyes.pkl", help="eye classfication model name")
     parser.add_argument("--trans_model", default="./MT_helpers/transformer_ag_model.pth", help="transformer model")
-    parser.add_argument("--path", default="./test_video/night_woman_094_41_8.mp4",
+    parser.add_argument("--path", default="./test_video/day_man_001_10_1.mp4",
                         help="path to video")
     parser.add_argument("--device", default="cpu", help="device for model use")
 
@@ -114,6 +114,11 @@ def SVM_Handle(eye_queue, yawn_queue) -> tuple:
     mouth_classifier = svmdetect.ImageClassifier('./svm/svm_model_mouth.pkl')
     eye_gray = []
     yawn_gray = []
+    """
+    for i in yawn_queue:
+        cv2.imshow('mouth', i)
+        cv2.waitKey(50)
+    """
     # 先进行灰度处理、resize处理
     for eye_img in eye_queue:
         # cv2.imshow("eye_img",eye_img)
@@ -125,11 +130,27 @@ def SVM_Handle(eye_queue, yawn_queue) -> tuple:
         gray_mouth_img = cv2.cvtColor(mouth_img, cv2.COLOR_BGR2GRAY)
         gray_mouth_img = cv2.resize(gray_mouth_img, (100, 50))
         yawn_gray.append(gray_mouth_img)
+    """``
+    for i in eye_gray:
+        cv2.imshow('eye', i)
+        cv2.waitKey(50)
+    """
     features_eyes = eye_classifier.extract_features(eye_gray)
     features_mouths = mouth_classifier.extract_features(yawn_gray)
     eye_pred, t1 = eye_classifier.classify(features_eyes)
     yawn_pred, t2 = mouth_classifier.classify(features_mouths)
     t = t1 + t2
+    """
+    for i in range(len(yawn_gray)):
+        cv2.imshow(str(yawn_pred[i]), yawn_gray[i])
+        cv2.waitKey(50)
+    """
+
+    for i in range(len(yawn_gray)):
+        cv2.imshow(str(eye_pred[i]), eye_gray[i])
+        cv2.waitKey(50)
+    cv2.waitKey(2000)
+    cv2.destroyAllWindows()
     print(t)
     return eye_pred.tolist(), yawn_pred.tolist()
     # return Array.asList(eye_pred), yawn_pred.asList(num)
@@ -504,11 +525,11 @@ if __name__ == '__main__':
                 yawn_queue.append(mouth_img)
                 tot_status.append(-1)
                 flag = True
-        # 获得眼部和嘴部图片
-        # cv2.imshow('eye',eye_img)
-        # cv2.waitKey(1000)
-        # cv2.imshow('mouth',mouth_img)
-        # cv2.waitKey(1000)
+                # 获得眼部和嘴部图片
+                # cv2.imshow('eye',eye_img)
+                # cv2.waitKey(1000)
+                # cv2.imshow('mouth',mouth_img)
+                # cv2.waitKey(1)
         nanodet_t2 = time.time()
         print("nanodet时间")
         print(nanodet_t2 - nanodet_t1)
