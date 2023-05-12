@@ -130,7 +130,7 @@ def SVM_Handle(eye_queue, yawn_queue) -> tuple:
         gray_mouth_img = cv2.cvtColor(mouth_img, cv2.COLOR_BGR2GRAY)
         gray_mouth_img = cv2.resize(gray_mouth_img, (100, 50))
         yawn_gray.append(gray_mouth_img)
-    """``
+    """
     for i in eye_gray:
         cv2.imshow('eye', i)
         cv2.waitKey(50)
