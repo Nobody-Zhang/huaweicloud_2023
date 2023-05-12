@@ -38,7 +38,7 @@ def parse_args():
     parser.add_argument("--mouth_model", default="./svm/svm_model_mouth.pkl", help="yawn classfication model name")
     parser.add_argument("--eye_model", default="./svm/svm_model_eyes.pkl", help="eye classfication model name")
     parser.add_argument("--trans_model", default="./MT_helpers/transformer_ag_model.pth", help="transformer model")
-    parser.add_argument("--path", default="./test_video/day_man_001_10_1.mp4",
+    parser.add_argument("--path", default="./test_video/night_woman_058_10_2.mp4",
                         help="path to video")
     parser.add_argument("--device", default="cpu", help="device for model use")
 
