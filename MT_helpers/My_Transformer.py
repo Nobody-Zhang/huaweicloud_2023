@@ -272,7 +272,7 @@ if __name__ == "__main__":
     model.to(device)
 
     transformer = Transform(model)
-    transformer.train(dataset_path='transformer_data_extracted/', num_epochs=num_epochs, max_seq_length=seq_length)
+    transformer.train(dataset_path='data/transformer_data_extracted/', num_epochs=num_epochs, max_seq_length=seq_length)
     transformer.save_model(model_path="Saved_Model/transformer_extracted_length_model.pth")
     transformer.save_training_loss("extracted_training_loss_file.txt")
     transformer.plot_training_loss("extracted_training_loss_file.txt")

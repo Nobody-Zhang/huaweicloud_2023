@@ -17,4 +17,4 @@ def in_n_out(input_dir, output_dir, slice_n):
 
 
 if __name__ == "__main__":
-    in_n_out("transformer_data_orig", "transformer_data_extracted", 10)
+    in_n_out("data/transformer_data_orig", "data/transformer_data_extracted", 10)
