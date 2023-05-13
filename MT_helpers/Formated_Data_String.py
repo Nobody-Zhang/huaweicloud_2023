@@ -3,11 +3,13 @@ import ast
 
 def formatted_output(label):
     f_out = open(f"data/20230513/formatted_data/{label}.in", "a")
+    max_len=0
     # Open the file and read the lines
     with open(f'data/20230513/orig_data/{label}.txt', 'r') as f_in:
         lines = f_in.readlines()
         # Convert each line to a list and join the elements
-        for line in lines[1:]:
+        for line_num in range(1, len(lines), 2):
+            line = lines[line_num]
             separate_point = line.index(" ")
             fps = int(float(line[:separate_point]))
             lst = ast.literal_eval(line[separate_point + 1:])
@@ -19,13 +21,15 @@ def formatted_output(label):
             new_s = ""
             new_fps = 6
             while s_ptr < s_len:
-                for extracted_frames in range(fps / new_fps):
-                    new_s = new_s + s[s_ptr + extracted_frames * new_fps]
+                for extracted_frames in range(fps // new_fps):
+                    exact_frame = s_ptr + extracted_frames * new_fps
+                    new_s = new_s + s[exact_frame] if exact_frame < s_len else new_s
                 s_ptr += fps
             f_out.write(new_s + "\n")
 
     f_in.close()
     f_out.close()
+    print(max_len)
 
 
 if __name__ == "__main__":
