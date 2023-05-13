@@ -251,8 +251,8 @@ if __name__ == "__main__":
     dropout = 0.1
     batch_size = 32
     lr = 0.001
-    seq_length = 50
-    num_epochs = 200
+    seq_length = 90
+    num_epochs = 20
 
     """
     train_dataset = TextDataset('Ten_times/')
@@ -272,8 +272,8 @@ if __name__ == "__main__":
     model.to(device)
 
     transformer = Transform(model)
-    transformer.train(dataset_path='data/transformer_data_extracted/', num_epochs=num_epochs, max_seq_length=seq_length)
-    transformer.save_model(model_path="Saved_Model/transformer_extracted_length_model.pth")
-    transformer.save_training_loss("extracted_training_loss_file.txt")
-    transformer.plot_training_loss("extracted_training_loss_file.txt")
+    transformer.train(dataset_path='data/20230513/formatted_data/', num_epochs=num_epochs, max_seq_length=seq_length)
+    # transformer.save_model(model_path="Saved_Model/transformer_6fps_model.pth")
+    transformer.save_training_loss("6fps_loss.txt")
+    transformer.plot_training_loss("6fps_loss.txt")
     # transformer.evaluate('RNN_Generated_Training/', confusion_matrix=True)
