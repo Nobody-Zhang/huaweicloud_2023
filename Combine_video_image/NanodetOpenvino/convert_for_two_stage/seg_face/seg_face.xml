@@ -15193,9 +15193,9 @@
 		<conversion_parameters>
 			<data_type value="FP32" />
 			<framework value="onnx" />
-			<input_model value="DIR/seg_face.onnx" />
+			<input_model value="DIR/nanodet.onnx" />
 			<mean_values value="[103.53,116.28,123.675]" />
-			<model_name value="seg_face" />
+			<model_name value="nanodet" />
 			<output value="output" />
 			<output_dir value="DIR" />
 			<scale_values value="[57.375,57.12,58.395]" />

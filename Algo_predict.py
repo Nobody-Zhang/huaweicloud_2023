@@ -48,7 +48,7 @@ def dc_helper(seq):
 def get_highest_occurrence_number(d):
     """Helper method for getting highest occurring number in dictionary, return 0 if the occurrence is lower than 80"""
     for num, occurrence in d.items():
-        if occurrence > 120:  # intended to set to 70, risking 1% inaccuracy for 97% input accuracy
+        if occurrence > 80:  # intended to set to 70, risking 1% inaccuracy for 97% input accuracy
             return num
     return 0
 
@@ -62,7 +62,7 @@ def count_same(labels, predicts):
 
 
 if __name__ == "__main__":
-    sequ, label = load_folder()  # folder="RNN_Train_in"
+    sequ, label = load_folder(folder="MT_helpers/transformer_data_orig")  # folder="RNN_Train_in"
     predicted = classfier(sequ)
     correct = count_same(label, predicted)
     total = len(label)
