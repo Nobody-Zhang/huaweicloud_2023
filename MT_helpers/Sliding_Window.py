@@ -48,7 +48,7 @@ def window_dataset_detection(path, frames=30, tolerant=20):
 
 
 if __name__ == "__main__":
-    dataset_path = "transformer_data_orig"
+    dataset_path = "data/transformer_data_orig"
     frames = 30
     """
     dataset_path = "transformer_data_extracted"
