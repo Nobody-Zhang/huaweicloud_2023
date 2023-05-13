@@ -252,7 +252,7 @@ if __name__ == "__main__":
     batch_size = 32
     lr = 0.001
     seq_length = 90
-    num_epochs = 20
+    num_epochs = 200
 
     """
     train_dataset = TextDataset('Ten_times/')
@@ -273,7 +273,7 @@ if __name__ == "__main__":
 
     transformer = Transform(model)
     transformer.train(dataset_path='data/20230513/formatted_data/', num_epochs=num_epochs, max_seq_length=seq_length)
-    # transformer.save_model(model_path="Saved_Model/transformer_6fps_model.pth")
+    transformer.save_model(model_path="Saved_Model/transformer_6fps_model.pth")
     transformer.save_training_loss("6fps_loss.txt")
     transformer.plot_training_loss("6fps_loss.txt")
     # transformer.evaluate('RNN_Generated_Training/', confusion_matrix=True)
