@@ -200,8 +200,8 @@ def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps)
             j = j + 1
     print(tot_status)
     # result = Transform_result(transform_path,output)
-    # result = Transform_result(transform_path, tot_status)
-    result = Sliding_Window(tot_status, fps)
+    result = Transform_result(transform_path, tot_status)
+    # result = Sliding_Window(tot_status, fps)
     # print(result[0]) # (?)
     return result
 
@@ -264,7 +264,7 @@ class model:
         fps = cap.get(cv2.CAP_PROP_FPS)
         fps = fps / FRAME_GROUP
         # transform_path = os.path.join(current_dir, "MT_helpers/transformer_ag_model.pth")
-        transform_path = "/home/ma-user/infer/model/1/MT_helpers/transformer_ag_model.pth"
+        transform_path = "/home/ma-user/infer/model/1/MT_helpers/transformer_6fps_model.pth"
         # cap = cv2.VideoCapture(video_path)
         all_start = time.time()
         cnt = 0
