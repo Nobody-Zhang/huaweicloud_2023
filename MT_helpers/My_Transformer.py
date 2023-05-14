@@ -179,6 +179,18 @@ class Transform:
             if confusion_matrix:
                 return matrix / total
 
+    def evaluate_str(self, status_str, device=torch.device("cpu"),batch_size = 1, num_classes=5):
+        eval_model = self.model
+        eval_dataset = TextDataset(status_str)
+        eval_loader = data.DataLoader(eval_dataset, batch_size=batch_size, shuffle=True)
+        with torch.no_grad():
+            for inputs in eval_loader:
+                inputs = inputs.to(device)
+                outputs = eval_model(inputs)
+                _, predicted = torch.max(outputs.data, 1)
+
+        return predicted
+
     def train_iteration(self, train_loader, optimizer, criterion, device):
         self.model.train()
         train_loss = 0.0
