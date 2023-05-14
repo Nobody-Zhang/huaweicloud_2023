@@ -7,6 +7,57 @@ import torch.utils.data as data
 from matplotlib.pylab import plt
 import numpy as np
 
+class StrDataset(data.Dataset):
+    """
+    A PyTorch dataset for loading text classification data from a directory.
+    Assumes the data is split into 5 files, named as '0.in', '1.in', '2.in', '3.in', and '4.in',
+    and each line in the file is a text sequence to classify.
+    """
+
+    def __init__(self, string):
+        """
+        Initializes the dataset with the data in the given directory.
+        Args:
+            data_dir (str): The path to the directory containing the text classification data.
+        """
+        self.data = []
+        string = self.pad_sequence_str(string, max_length=50)
+        self.data.append(string)
+
+    def __len__(self):
+        """
+        Returns the number of data samples in the dataset.
+        """
+        return len(self.data)
+
+    def __getitem__(self, index):
+        """
+        Returns a data sample from the dataset at the given index.
+        Args:
+            index (int): The index of the data sample to return.
+        Returns:
+            x (Tensor): A tensor of input sequence data.
+            y (int): An integer label indicating the class of the input sequence.
+        """
+        x = self.data[index]
+        x = [int(c) for c in x]
+        x = torch.tensor(x, dtype=torch.long)
+        return x
+
+    def pad_sequence_str(self, seq, max_length=500, pad_char='0'):
+        """
+        Pads a given string sequence with a specified padding character to a maximum length.
+
+        Args:
+            seq (str): The string sequence to pad.
+            max_length (int): The maximum length to pad the sequence to (default: 500).
+            pad_char (str): The character to use for padding (default: '0').
+
+        Returns:
+            str: The padded string sequence.
+        """
+        padded_seq = seq + (pad_char * (max_length - len(seq))) if len(seq) < max_length else seq[:max_length]
+        return padded_seq
 
 # Transformer Classifier
 class TransformerClassifier(nn.Module):
@@ -179,9 +230,9 @@ class Transform:
             if confusion_matrix:
                 return matrix / total
 
-    def evaluate_str(self, status_str, device=torch.device("cpu"),batch_size = 1, num_classes=5):
+    def evaluate_str(self, status_str, device=torch.device("cpu"), batch_size=1, num_classes=5) -> int:
         eval_model = self.model
-        eval_dataset = TextDataset(status_str)
+        eval_dataset = StrDataset(status_str)
         eval_loader = data.DataLoader(eval_dataset, batch_size=batch_size, shuffle=True)
         with torch.no_grad():
             for inputs in eval_loader:
@@ -189,7 +240,7 @@ class Transform:
                 outputs = eval_model(inputs)
                 _, predicted = torch.max(outputs.data, 1)
 
-        return predicted
+        return int(predicted)
 
     def train_iteration(self, train_loader, optimizer, criterion, device):
         self.model.train()
@@ -281,12 +332,13 @@ if __name__ == "__main__":
     """
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # device = torch.device('cpu')
     model.to(device)
 
     transformer = Transform(model)
     transformer.load_model(model_path="Saved_Model/transformer_6fps_model.pth")
-    transformer.train(dataset_path='data/20230513/formatted_data/', num_epochs=num_epochs, max_seq_length=seq_length)
-    transformer.save_model(model_path="Saved_Model/transformer_6fps_model.pth")
-    transformer.save_training_loss("6fps_loss.txt")
-    transformer.plot_training_loss("6fps_loss.txt")
+    # transformer.train(dataset_path='data/20230513/formatted_data/', num_epochs=num_epochs, max_seq_length=seq_length)
+    # transformer.save_model(model_path="Saved_Model/transformer_6fps_model.pth")
+    # transformer.save_training_loss("6fps_loss.txt")
+    # transformer.plot_training_loss("6fps_loss.txt")
     # transformer.evaluate('RNN_Generated_Training/', confusion_matrix=True)
