@@ -7,7 +7,6 @@ import torch.utils.data as data
 from matplotlib.pylab import plt
 import numpy as np
 
-
 # Transformer Classifier
 class TransformerClassifier(nn.Module):
     """
@@ -230,7 +229,7 @@ class Transform:
             if confusion_matrix:
                 return matrix / total
 
-    def evaluate_str(self, status_str, device=torch.device("cpu"),batch_size = 1, num_classes=5):
+    def evaluate_str(self, status_str, device=torch.device("cpu"),batch_size = 1, num_classes=5) -> int:
         eval_model = self.model
         eval_dataset = StrDataset(status_str)
         eval_loader = data.DataLoader(eval_dataset, batch_size=batch_size, shuffle=True)
@@ -240,7 +239,7 @@ class Transform:
                 outputs = eval_model(inputs)
                 _, predicted = torch.max(outputs.data, 1)
 
-        return predicted
+        return int(predicted)
 
 
     def train_iteration(self, train_loader, optimizer, criterion, device):
