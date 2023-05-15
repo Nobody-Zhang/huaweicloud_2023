@@ -240,7 +240,7 @@ class Transform:
                 outputs = eval_model(inputs)
                 _, predicted = torch.max(outputs.data, 1)
 
-        return predicted
+        return int(predicted)
 
 
     def train_iteration(self, train_loader, optimizer, criterion, device):
