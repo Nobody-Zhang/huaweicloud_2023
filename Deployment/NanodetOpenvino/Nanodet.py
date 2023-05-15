@@ -72,8 +72,10 @@ class NanoDet:
         wide, height = img.shape[1], img.shape[0] # 输入图片宽、高
         driver = (0, 0, 0, 0) # 司机正脸xyxy坐标
         driver_xyxy = (0, 0, 0, 0) # 司机正脸xywh坐标
+        driver_conf = 0 # 正脸可信度
         phone = (0, 0, 0, 0) # 手机xyxy坐标
         sideface = (0, 0, 0, 0) # 司机侧脸xywh坐标
+        sideface_conf = 0 # 侧脸可信度
         
         nat = time.time()
         bboxes = self.model(img)[0]
@@ -84,12 +86,14 @@ class NanoDet:
         for box in bboxes: # 遍历每个box
             xyxy = (box.xmin, box.ymin, box.xmax, box.ymax)
             xywh = xyxy2xywh(*xyxy, wide, height)
+            conf = box.score
             cls = box.id
             if cls == 0: # 标签0，正脸
                 if .5 < xywh[0] and xywh[1] > driver[1] and xyxy[3]/height > .25: # box中心在右侧0.5 && box中心在司机下方 && 右下角y轴在0.25以下
                     if xywh[0] > driver[0]: # box中心在司机右侧，即找最右下角的正脸
                         driver = xywh # 替换司机
                         driver_xyxy = xyxy # 替换司机
+                        driver_conf = conf # 替换司机
             elif cls == 1: # 标签1，手机
                 if .4 < xywh[0] and .2 < xywh[1] and xywh[1] > phone[1]: # box中心在右侧0.4 && box中心在下侧0.2 && box中心在手机下方
                     if xywh[0] > phone[0]: # box中心在手机右侧，即找最右下角的手机
@@ -98,13 +102,20 @@ class NanoDet:
                 if .5 < xywh[0] and xywh[1] > sideface[1] and xyxy[3]/height > .25: # box中心在右侧0.5 && box中心在侧脸下方 && 右下角y轴在0.25以下
                     if xywh[0] > sideface[0]: # box中心在侧脸右侧，即找最右下角的侧脸
                         sideface = xywh  # 替换侧脸
+                        sideface_conf = conf # 替换侧脸
         # judge the driver status
         if driver[0] > sideface[0] and 0 < abs(driver[0] - phone[0]) < .3 and 0 < abs(driver[1] - phone[1]) < .3: # 最右边是正脸，正脸与手机相对位置xy不大于0.3
             return 1, None # 一眼定帧，鉴定为打电话
         elif driver[0] < sideface[0] and 0 < abs(sideface[0] - phone[0]) < .3 and 0 < abs(sideface[1] - phone[1]) < .3: # 最右边是侧脸，侧脸与手机相对位置xy不大于0.3
             return 1, None # 一眼定帧，鉴定为打电话
-        elif sideface[0] > driver[0] or (abs(driver[0] - sideface[0]) < .1 and abs(driver[1] - sideface[1]) < .1): # 侧脸在正脸右边或者侧脸与正脸很近（相对位置xy不大于0.1，说明一个头既是正脸又是侧脸）
-            return 0, None # 一眼定帧，鉴定为左顾右盼
+        elif abs(driver[0] - sideface[0]) < .1 and abs(driver[1] - sideface[1]) < .1: # 侧脸与正脸很近（相对位置xy不大于0.1，说明一个头既是正脸又是侧脸）
+            if sideface_conf >= driver_conf: # 侧脸可信度更高
+                return 0, None # 一眼定帧，鉴定为左顾右盼
+            else:
+                face_img = img[driver_xyxy[1]:driver_xyxy[3], driver_xyxy[0]:driver_xyxy[2]] # 把正脸切下来
+                return 2, face_img # 一眼定帧，鉴定为鉴定不了，送stage2
+        elif sideface[0] > driver[0]: # 正脸与侧脸不重合， 而且侧脸在正脸右边
+            return 0, None  # 一眼定帧，鉴定为左顾右盼
         elif driver_xyxy[0] != 0: # 都不是，而且有正脸
             face_img = img[driver_xyxy[1]:driver_xyxy[3], driver_xyxy[0]:driver_xyxy[2]] # 把正脸切下来
             return 2, face_img # 一眼定帧，鉴定为鉴定不了，送stage2
