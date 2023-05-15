@@ -203,6 +203,16 @@ def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps)
     result = Transform_result(transform_path, tot_status)
     # result = Sliding_Window(tot_status, fps)
     # print(result[0]) # (?)
+    """
+    增加
+    cnt_phone = 0
+    for i in range(len(tot_status)):
+        if tot_status[i] == 3:
+            cnt_phone += 1
+    result = Sliding_Window(tot_status, fps)
+    if cnt_phone >= 0.3 * fps and result != 3:
+        result = 0
+    """
     return result
 
 
