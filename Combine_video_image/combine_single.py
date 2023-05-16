@@ -37,7 +37,7 @@ def parse_args():
     parser.add_argument("--image_model", default="svm", help="image classfication model name")
     parser.add_argument("--mouth_model", default="./svm/svm_model_mouth.pkl", help="yawn classfication model name")
     parser.add_argument("--eye_model", default="./svm/svm_model_eyes.pkl", help="eye classfication model name")
-    parser.add_argument("--trans_model", default="./MT_helpers/transformer_6fps_model.pth", help="transformer model")
+    parser.add_argument("--trans_model", default="./MT_helpers/transformer_ag_model.pth", help="transformer model")
     parser.add_argument("--path", default="./test_video/day_man_062_11_2.mp4",
                         help="path to video")
     parser.add_argument("--device", default="cpu", help="device for model use")
@@ -391,9 +391,15 @@ def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps)
             j = j + 1
     print(tot_status)
     # result = Transform_result(transform_path,output)
-    result = Transform_result(transform_path, tot_status)
+    # result = Transform_result(transform_path, tot_status)
     # print(result[0])
-    # result = Sliding_Window(tot_status, fps)
+    cnt_phone = 0
+    for i in range(len(tot_status)):
+        if tot_status[i] == 3:
+            cnt_phone += 1
+    result = Sliding_Window(tot_status, fps)
+    if cnt_phone >= 0.3*fps and result != 3:
+        result = 0
     print("result:", result)
     return tot_status
 
