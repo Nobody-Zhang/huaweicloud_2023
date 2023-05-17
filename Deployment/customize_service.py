@@ -199,7 +199,7 @@ def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps)
             tot_status[i] = output[j]
             j = j + 1
     print(tot_status)
-    # result = Transform_result(transform_path,output)
+    result = Transform_result(transform_path,output)
     # result = Transform_result(transform_path, tot_status)
     # result = Sliding_Window(tot_status, fps)
     # print(result[0]) # (?)
@@ -208,12 +208,11 @@ def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps)
     for i in range(len(tot_status)):
         if tot_status[i] == 3:
             cnt_phone += 1
-    result = Sliding_Window(tot_status, fps)
+    # result = Sliding_Window(tot_status, fps)
     if cnt_phone >= 0.3 * fps and result != 3:
         result = 0
     return result
 
-"""
 # 根据output的状态决定该图片是哪一种状态           
 def Mobilenet_Determin(eye_status, yawn_status, output):
     for i in range(len(eye_status)):
@@ -248,7 +247,6 @@ def Transform_result(model_path, status_list):
 
     predicted = transformer.evaluate_str(status_str)
     return predicted
-"""
 
 class model:
     def __init__(self):
