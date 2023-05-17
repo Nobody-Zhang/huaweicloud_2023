@@ -1,6 +1,7 @@
 from multiprocessing import Process, Manager, Event
 import time
 import warnings
+
 warnings.filterwarnings("ignore")
 from PIL import Image
 import cv2
@@ -38,7 +39,7 @@ def parse_args():
     parser.add_argument("--mouth_model", default="./svm/svm_model_mouth.pkl", help="yawn classfication model name")
     parser.add_argument("--eye_model", default="./svm/svm_model_eyes.pkl", help="eye classfication model name")
     parser.add_argument("--trans_model", default="./MT_helpers/transformer_ag_model.pth", help="transformer model")
-    parser.add_argument("--path", default="./test_video/day_man_062_11_2.mp4",
+    parser.add_argument("--path", default="./test_video/night_woman_063_10_1.mp4",
                         help="path to video")
     parser.add_argument("--device", default="cpu", help="device for model use")
 
@@ -362,14 +363,13 @@ def Sliding_Window(tot_status, fps, thres1=2.45, thres2=0.48):
     window_status_cnt[0] = -1  # 排除0
     max_status = 0
     for i in range(len(window_status_cnt)):
-        if(window_status_cnt[max_status] < window_status_cnt[i]):
+        if (window_status_cnt[max_status] < window_status_cnt[i]):
             max_status = i
     # max_status = max(window_status_cnt, key=lambda x: window_status_cnt[x])
     if window_status_cnt[max_status] >= thres2 * fps:
         return max_status
     else:
         return 0
-
 
 
 # 根据output的状态决定该图片是哪一种状态
@@ -390,15 +390,15 @@ def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps)
             tot_status[i] = output[j]
             j = j + 1
     print(tot_status)
-    # result = Transform_result(transform_path,output)
+    result = Transform_result(transform_path, output)
     # result = Transform_result(transform_path, tot_status)
     # print(result[0])
     cnt_phone = 0
     for i in range(len(tot_status)):
         if tot_status[i] == 3:
             cnt_phone += 1
-    result = Sliding_Window(tot_status, fps)
-    if cnt_phone >= 0.3*fps and result != 3:
+    # result = Sliding_Window(tot_status, fps)
+    if cnt_phone >= 0.3 * fps and result != 3:
         result = 0
     print("result:", result)
     return tot_status
@@ -557,7 +557,7 @@ if __name__ == '__main__':
 
     eye_status_list = []
     yawn_status_list = []
-    if(flag):
+    if (flag):
         eye_status_list, yawn_status_list = SVM_Handle(eye_queue, yawn_queue)
 
     print(f'eye:{eye_status_list}')
