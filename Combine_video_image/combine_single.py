@@ -551,7 +551,7 @@ if __name__ == '__main__':
     # yawn_process.join()
     print("End")
     all_end = time.time()
-    print((all_end - all_start) / cnt)
+    print((all_end - all_start) / cnt if cnt != 0 else 0)
 
     print(tot_status)
 
