@@ -390,9 +390,10 @@ def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps)
             tot_status[i] = output[j]
             j = j + 1
     print(tot_status)
-    result = Transform_result(transform_path, output)
-    # result = Transform_result(transform_path, tot_status)
+    # result = Transform_result(transform_path, output)
+    result = Transform_result(transform_path, tot_status)
     # print(result[0])
+    """
     cnt_phone = 0
     for i in range(len(tot_status)):
         if tot_status[i] == 3:
@@ -400,6 +401,7 @@ def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps)
     # result = Sliding_Window(tot_status, fps)
     if cnt_phone >= 0.3 * fps and result != 3:
         result = 0
+    """
     print("result:", result)
     return tot_status
 
@@ -539,8 +541,8 @@ if __name__ == '__main__':
                 # cv2.imshow('mouth',mouth_img)
                 # cv2.waitKey(1)
         nanodet_t2 = time.time()
-        print("nanodet时间")
-        print(nanodet_t2 - nanodet_t1)
+        # print("nanodet时间")
+        # print(nanodet_t2 - nanodet_t1)
         # eye_queue.append(eye_img)
         # yawn_queue.append(mouth_img)
 
