@@ -476,7 +476,8 @@ if __name__ == '__main__':
 
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
-    # fps = fps / FRAME_GROUP
+    FRAME_GROUP = round(fps / 6)
+    fps = 6
     thread_t1 = time.time()
     # 设定线程函数
     # eye_process = Process(target = Combine_model.image_eye.inference)
@@ -511,8 +512,8 @@ if __name__ == '__main__':
         nanodet_t1 = time.time()
         # # 抽帧：取每组的第一帧
         cnt += 1
-        # if cnt % FRAME_GROUP != 1:
-        #     continue
+        if cnt % FRAME_GROUP != 1:
+            continue
 
         # 识别人脸
         face_boxs = Combine_model.video_model[0].find_face(frame)
@@ -521,10 +522,16 @@ if __name__ == '__main__':
         # cv2.waitKey(1000)
         # 判断能否裁出人脸
         if face_boxs[0] == -1 or face_boxs[0] == 0:
+            cv2.imshow('4', frame)
+            cv2.waitKey(100)
             tot_status.append(4)
         elif face_boxs[0] == 1:
+            cv2.imshow('3', frame)
+            cv2.waitKey(100)
             tot_status.append(3)
         else:
+            cv2.imshow('-1', frame)
+            cv2.waitKey(100)
             mouth_eye_boxes = Combine_model.video_model[1].find_eye_mouth(face_img)
             if not mouth_eye_boxes[0] or not mouth_eye_boxes[2]:
                 tot_status.append(4)
@@ -536,10 +543,10 @@ if __name__ == '__main__':
                 tot_status.append(-1)
                 flag = True
                 # 获得眼部和嘴部图片
-                # cv2.imshow('eye',eye_img)
-                # cv2.waitKey(1000)
-                # cv2.imshow('mouth',mouth_img)
-                # cv2.waitKey(1)
+                cv2.imshow('eye',eye_img)
+                cv2.waitKey(1)
+                cv2.imshow('mouth',mouth_img)
+                cv2.waitKey(1)
         nanodet_t2 = time.time()
         # print("nanodet时间")
         # print(nanodet_t2 - nanodet_t1)
