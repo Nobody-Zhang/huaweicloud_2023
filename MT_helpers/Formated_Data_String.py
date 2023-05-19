@@ -2,10 +2,10 @@ import ast
 
 
 def formatted_output(label):
-    f_out = open(f"data/20230513/formatted_data/{label}.in", "a")
+    f_out = open(f"data/20030519/formatted_data/{label}.in", "a")
     max_len=0
     # Open the file and read the lines
-    with open(f'data/20230513/orig_data/{label}.txt', 'r') as f_in:
+    with open(f'data/20030519/orig_data/{label}.txt', 'r') as f_in:
         lines = f_in.readlines()
         # Convert each line to a list and join the elements
         for line_num in range(1, len(lines), 2):
