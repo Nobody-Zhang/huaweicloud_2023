@@ -309,9 +309,9 @@ if __name__ == "__main__":
     model.to(device)
 
     transformer = Transform(model)
-    transformer.load_model(model_path="Saved_Model/transformer_6fps_altered_model.pth")
-    # transformer.train(dataset_path='data/20030519/formatted_data/', num_epochs=num_epochs, max_seq_length=seq_length)
-    # transformer.save_model(model_path="Saved_Model/transformer_6fps_altered_model.pth")
+    # transformer.load_model(model_path="Saved_Model/transformer_6fps_altered_model.pth")
+    transformer.train(dataset_path='data/20030519/formatted_data/', num_epochs=num_epochs, max_seq_length=seq_length)
+    transformer.save_model(model_path="Saved_Model/transformer_6fps_model.pth")
     # transformer.save_training_loss("6fps_loss.txt")
     # transformer.plot_training_loss("6fps_loss.txt")
     print(transformer.evaluate('data/20230513/formatted_data/', confusion_matrix=True, max_seq_length=seq_length))

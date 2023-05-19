@@ -21,17 +21,25 @@ def formatted_output(label):
             s_ptr = 0
             new_s = ""
             new_fps = 6
-            while s_ptr < s_len:
-                for extracted_frames in range(fps // new_fps):
+            while s_ptr < s_len - fps:
+                for extracted_frames in range(1, fps // new_fps):
                     exact_frame = s_ptr + extracted_frames * new_fps
-                    new_s = new_s + s[exact_frame] if exact_frame < s_len else new_s
+                    all_freq = {}
+                    for frames in s[s_ptr:exact_frame]:
+                        if frames in all_freq:
+                            all_freq[frames] += 1
+                        else:
+                            all_freq[frames] = 1
+                    res = max(all_freq, key=all_freq.get)
+                    new_s = new_s + res
                 s_ptr += fps
-
-            if line_specification[-8] == "0":
+            """
+            if line_specification[-8] == "1":
                 with open("data/20030519/formatted_data/0.in", "a") as f0:
                     f0.write(new_s + "\n")
             else:
                 f_out.write(new_s + "\n")
+            """
 
     f_in.close()
     f_out.close()
