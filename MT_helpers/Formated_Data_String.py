@@ -46,6 +46,35 @@ def formatted_output(label):
     print(max_len)
 
 
+def categorize_by_pn(label):
+    max_len=0
+    # Open the file and read the lines
+    with open(f'data/20030519/orig_data/{label}.txt', 'r') as f_in:
+        lines = f_in.readlines()
+        # Convert each line to a list and join the elements
+        for line_num in range(1, len(lines), 2):
+            line = lines[line_num]
+            line_specification = lines[line_num - 1]
+
+            if line_specification[-8] == "1":
+                with open(f"data/20030519/orig_data/{label}/1.in", "a") as f_out:
+                    f_out.write(line)
+            else:
+                with open(f"data/20030519/orig_data/{label}/0.in", "a") as f_out:
+                    f_out.write(line)
+
+            """
+            if line_specification[-8] == "1":
+                with open("data/20030519/formatted_data/0.in", "a") as f0:
+                    f0.write(new_s + "\n")
+            else:
+                f_out.write(new_s + "\n")
+            """
+
+    f_in.close()
+    print(max_len)
+
+
 if __name__ == "__main__":
-    for i in range(5):
-        formatted_output(i)
+    for i in range(1, 5):
+        categorize_by_pn(i)
