@@ -132,14 +132,14 @@ class StrDataset(data.Dataset):
     and each line in the file is a text sequence to classify.
     """
 
-    def __init__(self, str):
+    def __init__(self, str, max_seq_len = 120):
         """
         Initializes the dataset with the data in the given directory.
         Args:
             data_dir (str): The path to the directory containing the text classification data.
         """
         self.data = []
-        str = self.pad_sequence_str(str, max_length=50)
+        str = self.pad_sequence_str(str, max_length=max_seq_len)
         self.data.append(str)
 
     def __len__(self):
@@ -229,9 +229,9 @@ class Transform:
             if confusion_matrix:
                 return matrix / total
 
-    def evaluate_str(self, status_str, device=torch.device("cpu"),batch_size = 1, num_classes=5) -> int:
+    def evaluate_str(self, status_str, device=torch.device("cpu"),batch_size = 1, max_seq_len = 120) -> int:
         eval_model = self.model
-        eval_dataset = StrDataset(status_str)
+        eval_dataset = StrDataset(status_str, max_seq_len=max_seq_len)
         eval_loader = data.DataLoader(eval_dataset, batch_size=batch_size, shuffle=True)
         with torch.no_grad():
             for inputs in eval_loader:
