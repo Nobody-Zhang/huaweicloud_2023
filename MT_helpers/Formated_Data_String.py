@@ -10,6 +10,7 @@ def formatted_output(label):
         # Convert each line to a list and join the elements
         for line_num in range(1, len(lines), 2):
             line = lines[line_num]
+            line_specification = lines[line_num - 1]
             separate_point = line.index(" ")
             fps = int(float(line[:separate_point]))
             lst = ast.literal_eval(line[separate_point + 1:])
@@ -25,7 +26,12 @@ def formatted_output(label):
                     exact_frame = s_ptr + extracted_frames * new_fps
                     new_s = new_s + s[exact_frame] if exact_frame < s_len else new_s
                 s_ptr += fps
-            f_out.write(new_s + "\n")
+
+            if line_specification[-8] == "0":
+                with open("data/20030519/formatted_data/0.in", "a") as f0:
+                    f0.write(new_s + "\n")
+            else:
+                f_out.write(new_s + "\n")
 
     f_in.close()
     f_out.close()
