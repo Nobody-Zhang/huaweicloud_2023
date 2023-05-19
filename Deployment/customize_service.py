@@ -270,7 +270,7 @@ class model:
         fps = cap.get(cv2.CAP_PROP_FPS)
         fps = fps / FRAME_GROUP
         # transform_path = os.path.join(current_dir, "MT_helpers/transformer_ag_model.pth")
-        transform_path = "/home/ma-user/infer/model/1/MT_helpers/Saved_Model/transformer_6fps_model.pth"
+        transform_path = "/home/ma-user/infer/model/1/MT_helpers/Saved_Model/transformer_6fps_altered_model.pth"
         # cap = cv2.VideoCapture(video_path)
         all_start = time.time()
         cnt = 0

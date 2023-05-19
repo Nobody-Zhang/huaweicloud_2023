@@ -195,7 +195,7 @@ class Transform:
 
             print(f"Accuracy on test set: {100 * correct / total:.2f}% ({correct} out of {total})")
             if confusion_matrix:
-                return matrix / total
+                return matrix
 
     def evaluate_str(self, status_str, device=torch.device("cpu"), batch_size=1, num_classes=5) -> int:
         eval_model = self.model
@@ -303,10 +303,10 @@ if __name__ == "__main__":
     model.to(device)
 
     transformer = Transform(model)
-    # transformer.load_model(model_path="Saved_Model/transformer_6fps_model.pth")
-    transformer.train(dataset_path='data/20030519/formatted_data/', num_epochs=num_epochs, max_seq_length=seq_length)
-    transformer.save_model(model_path="Saved_Model/transformer_6fps_altered_model.pth")
+    transformer.load_model(model_path="Saved_Model/transformer_6fps_altered_model.pth")
+    # transformer.train(dataset_path='data/20030519/formatted_data/', num_epochs=num_epochs, max_seq_length=seq_length)
+    # transformer.save_model(model_path="Saved_Model/transformer_6fps_altered_model.pth")
     # transformer.save_training_loss("6fps_loss.txt")
     # transformer.plot_training_loss("6fps_loss.txt")
-    # transformer.evaluate('RNN_Generated_Training/', confusion_matrix=True)
+    print(transformer.evaluate('data/20030519/formatted_data/', confusion_matrix=True))
     # print(transformer.evaluate_str("000000000001100000000011111111111111111111111111111000000000000111000000000"))
