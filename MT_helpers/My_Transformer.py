@@ -149,9 +149,11 @@ class Transform:
     def __init__(self, model):
         self.model = model
         self.train_loss_list = []
+        self.max_seq_length = 120
 
     def train(self, dataset_path, criterion=nn.CrossEntropyLoss(), device=torch.device("cpu"),
-              batch_size=32, learning_rate=0.001, num_epochs=100, max_seq_length=500):
+              batch_size=32, learning_rate=0.001, num_epochs=100, max_seq_length=120):
+        self.max_seq_length = max_seq_length
         train_dataset = TDataset(data_dir=dataset_path, max_seq_length=max_seq_length)
         val_dataset = TDataset(data_dir=dataset_path, max_seq_length=max_seq_length)
         train_loader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
@@ -169,8 +171,10 @@ class Transform:
                 format(epoch + 1, num_epochs, train_loss, train_acc, val_loss, val_acc))
 
     def evaluate(self, evaluate_dataset_path, evaluate_model_path="", device=torch.device("cpu"), batch_size=32,
-                 confusion_matrix=False, num_classes=5):
-        eval_dataset = TDataset(evaluate_dataset_path)
+                 confusion_matrix=False, num_classes=5, max_seq_length=-1):
+        if max_seq_length < 0:
+            max_seq_length = self.max_seq_length
+        eval_dataset = TDataset(evaluate_dataset_path, max_seq_length=max_seq_length)
         eval_loader = data.DataLoader(eval_dataset, batch_size=batch_size, shuffle=True)
         eval_model = self.model
         if os.path.exists(evaluate_model_path):
@@ -197,9 +201,11 @@ class Transform:
             if confusion_matrix:
                 return matrix
 
-    def evaluate_str(self, status_str, device=torch.device("cpu"), batch_size=1, num_classes=5) -> int:
+    def evaluate_str(self, status_str, device=torch.device("cpu"), batch_size=1, max_seq_length=-1) -> int:
+        if max_seq_length < 0:
+            max_seq_length = self.max_seq_length
         eval_model = self.model
-        eval_dataset = TDataset(string=status_str, mode="Str")
+        eval_dataset = TDataset(string=status_str, mode="Str", max_seq_length=max_seq_length)
         eval_loader = data.DataLoader(eval_dataset, batch_size=batch_size, shuffle=True)
         with torch.no_grad():
             for inputs in eval_loader:
@@ -281,7 +287,7 @@ if __name__ == "__main__":
     dropout = 0.1
     batch_size = 32
     lr = 0.001
-    seq_length = 90
+    seq_length = 120
     num_epochs = 300
 
     """
@@ -303,10 +309,10 @@ if __name__ == "__main__":
     model.to(device)
 
     transformer = Transform(model)
-    # transformer.load_model(model_path="Saved_Model/transformer_6fps_altered_model.pth")
-    transformer.train(dataset_path='data/20030519/formatted_data/', num_epochs=num_epochs, max_seq_length=seq_length)
-    transformer.save_model(model_path="Saved_Model/transformer_6fps_altered_model.pth")
+    transformer.load_model(model_path="Saved_Model/transformer_6fps_altered_model.pth")
+    # transformer.train(dataset_path='data/20030519/formatted_data/', num_epochs=num_epochs, max_seq_length=seq_length)
+    # transformer.save_model(model_path="Saved_Model/transformer_6fps_altered_model.pth")
     # transformer.save_training_loss("6fps_loss.txt")
     # transformer.plot_training_loss("6fps_loss.txt")
-    # print(transformer.evaluate('data/20030519/formatted_data/', confusion_matrix=True))
+    print(transformer.evaluate('data/20230513/formatted_data/', confusion_matrix=True, max_seq_length=seq_length))
     # print(transformer.evaluate_str("000000000001100000000011111111111111111111111111111000000000000111000000000"))

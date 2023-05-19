@@ -32,12 +32,11 @@ def generate_others(digit: int) -> str:
 
 
 if __name__ == "__main__":
-    """
-    with open("data/20030519/formatted_data/2.in") as f:
+    with open("data/20030519/formatted_data/3.in") as f:
         max_len = 0
         min_len = 2000
         for line in f:
-            mix_len = line.count("2")
+            mix_len = len(line)
             max_len = mix_len if mix_len > max_len else max_len
             min_len = mix_len if mix_len < min_len else min_len
         print(max_len, min_len)
@@ -45,3 +44,4 @@ if __name__ == "__main__":
     with open("data/20030519/formatted_data/0.in", "a") as f:
         for i in range(1000):
             f.write(generate_0s() + "\n")
+    """
