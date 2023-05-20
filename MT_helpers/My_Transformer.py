@@ -76,7 +76,7 @@ class TDataset(data.Dataset):
     and each line in the file is a text sequence to classify.
     """
 
-    def __init__(self, data_dir=None, string=None, max_seq_length=50, mode="Text"):
+    def __init__(self, data_dir=None, string=None, max_seq_length=50, num_classes=5, mode="Text"):
         """
         Initializes the dataset with the data in the given directory.
         Args:
@@ -87,11 +87,12 @@ class TDataset(data.Dataset):
         """
         self.data = []
         self.mode = mode.lower()
+        self.num_classes = num_classes
         if self.mode == "text":
             if not os.path.exists(data_dir):
                 print("The directory does not exist! If you want to use str mode (dataset with only one string), "
                       "add mode=\"str\".")
-            for i in range(5):
+            for i in range(self.num_classes):
                 filename = data_dir + str(i) + '.in'
                 with open(filename, 'r') as f:
                     for line in f:
@@ -146,16 +147,17 @@ class TDataset(data.Dataset):
 
 
 class Transform:
-    def __init__(self, model):
+    def __init__(self, model, max_seq_length=120, num_classes=5):
         self.model = model
         self.train_loss_list = []
-        self.max_seq_length = 120
+        self.max_seq_length = max_seq_length
+        self.num_classes = num_classes
 
     def train(self, dataset_path, criterion=nn.CrossEntropyLoss(), device=torch.device("cpu"),
-              batch_size=32, learning_rate=0.001, num_epochs=100, max_seq_length=120):
-        self.max_seq_length = max_seq_length
-        train_dataset = TDataset(data_dir=dataset_path, max_seq_length=max_seq_length)
-        val_dataset = TDataset(data_dir=dataset_path, max_seq_length=max_seq_length)
+              batch_size=32, learning_rate=0.001, num_epochs=100):
+        train_dataset = TDataset(data_dir=dataset_path, max_seq_length=self.max_seq_length,
+                                 num_classes=self.num_classes)
+        val_dataset = TDataset(data_dir=dataset_path, max_seq_length=self.max_seq_length, num_classes=self.num_classes)
         train_loader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
         val_loader = data.DataLoader(val_dataset, batch_size=batch_size)
 
@@ -171,10 +173,8 @@ class Transform:
                 format(epoch + 1, num_epochs, train_loss, train_acc, val_loss, val_acc))
 
     def evaluate(self, evaluate_dataset_path, evaluate_model_path="", device=torch.device("cpu"), batch_size=32,
-                 confusion_matrix=False, num_classes=5, max_seq_length=-1):
-        if max_seq_length < 0:
-            max_seq_length = self.max_seq_length
-        eval_dataset = TDataset(evaluate_dataset_path, max_seq_length=max_seq_length)
+                 confusion_matrix=False):
+        eval_dataset = TDataset(evaluate_dataset_path, max_seq_length=self.max_seq_length, num_classes=self.num_classes)
         eval_loader = data.DataLoader(eval_dataset, batch_size=batch_size, shuffle=True)
         eval_model = self.model
         if os.path.exists(evaluate_model_path):
@@ -201,11 +201,9 @@ class Transform:
             if confusion_matrix:
                 return matrix
 
-    def evaluate_str(self, status_str, device=torch.device("cpu"), batch_size=1, max_seq_length=-1) -> int:
-        if max_seq_length < 0:
-            max_seq_length = self.max_seq_length
+    def evaluate_str(self, status_str, device=torch.device("cpu"), batch_size=1) -> int:
         eval_model = self.model
-        eval_dataset = TDataset(string=status_str, mode="Str", max_seq_length=max_seq_length)
+        eval_dataset = TDataset(string=status_str, mode="Str", max_seq_length=self.max_seq_length, num_classes=self.num_classes)
         eval_loader = data.DataLoader(eval_dataset, batch_size=batch_size, shuffle=True)
         with torch.no_grad():
             for inputs in eval_loader:
@@ -308,11 +306,11 @@ if __name__ == "__main__":
     device = torch.device('cpu')
     model.to(device)
 
-    transformer = Transform(model)
+    transformer = Transform(model, max_seq_length=seq_length, num_classes=num_classes)
     # transformer.load_model(model_path="Saved_Model/transformer_6fps_altered_model.pth")
-    transformer.train(dataset_path='data/20030519/formatted_data/', num_epochs=num_epochs, max_seq_length=seq_length)
+    transformer.train(dataset_path='data/20030519/formatted_data/', num_epochs=num_epochs)
     transformer.save_model(model_path="Saved_Model/transformer_6fps_altered_model.pth")
     # transformer.save_training_loss("6fps_loss.txt")
     # transformer.plot_training_loss("6fps_loss.txt")
-    print(transformer.evaluate('data/20230513/formatted_data/', confusion_matrix=True, max_seq_length=seq_length))
+    print(transformer.evaluate('data/20230513/formatted_data/', confusion_matrix=True))
     # print(transformer.evaluate_str("000000000001100000000011111111111111111111111111111000000000000111000000000"))
