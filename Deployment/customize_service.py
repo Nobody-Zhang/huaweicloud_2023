@@ -1,3 +1,4 @@
+import os.path
 from multiprocessing import Process, Manager, Event
 import time
 from PIL import Image
@@ -12,6 +13,7 @@ from skimage.transform import resize
 from model_service.pytorch_model_service import PTServingBaseService
 import numpy as np
 import warnings
+
 warnings.filterwarnings("ignore")
 
 # import video classfication
@@ -28,6 +30,8 @@ import svm.svmdetect as svmdetect
 # fps = 30
 # 抽帧
 FRAME_GROUP = 6
+
+
 # 设置三种状态的编号
 # NORMAL = 0
 # EYE_CLOSE = 1
@@ -172,7 +176,7 @@ def Sliding_Window(tot_status, fps, thres1=2.48, thres2=0.48):
     window_status_cnt[0] = -1  # 排除0
     max_status = 0
     for i in range(len(window_status_cnt)):
-        if(window_status_cnt[max_status] < window_status_cnt[i]):
+        if (window_status_cnt[max_status] < window_status_cnt[i]):
             max_status = i
     # max_status = max(window_status_cnt, key=lambda x: window_status_cnt[x])
     if window_status_cnt[max_status] >= thres2 * fps:
@@ -215,7 +219,8 @@ def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps)
     if cnt_phone >= 0.3 * fps:
         maxstatus = 3
 
-    result = Transform_result(transform_path,output, maxstatus)
+    model_path = os.path.join(transform_path, f"transformer_3fps_{maxstatus}_model.pth")
+    result = Transform_result(model_path, output, num_classes=2)
     if result == 0:
         return maxstatus
     else:
@@ -226,7 +231,8 @@ def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps)
     # 增加逻辑
     # result = Sliding_Window(tot_status, fps)
 
-# 根据output的状态决定该图片是哪一种状态           
+
+# 根据output的状态决定该图片是哪一种状态
 def Mobilenet_Determin(eye_status, yawn_status, output):
     for i in range(len(eye_status)):
         # 首先判断是否打哈欠了
@@ -240,18 +246,18 @@ def Mobilenet_Determin(eye_status, yawn_status, output):
     print(output)
 
 
-def Transform_result(model_path, status_list):
+def Transform_result(model_path, status_list, num_classes=5):
     vocab_size = 5
     hidden_size = 32
-    num_classes = 5
     num_layers = 2
     num_heads = 4
     dropout = 0.1
+    seq_length = 120
     model = TransformerClassifier(vocab_size, hidden_size, num_classes, num_layers, num_heads, dropout)
     device = torch.device('cpu')
     model.to(device)
 
-    transformer = Transform(model)
+    transformer = Transform(model, max_seq_length=seq_length, num_classes=num_classes)
     transformer.load_model(model_path)
 
     status_str = ""
@@ -260,6 +266,7 @@ def Transform_result(model_path, status_list):
 
     predicted = transformer.evaluate_str(status_str)
     return predicted
+
 
 class model:
     def __init__(self):
@@ -332,7 +339,7 @@ class model:
 
         eye_status_list = []
         yawn_status_list = []
-        if(flag):
+        if (flag):
             eye_status_list, yawn_status_list = SVM_Handle(eye_queue, yawn_queue)
 
         print(f'eye_status_list{eye_status_list}')
