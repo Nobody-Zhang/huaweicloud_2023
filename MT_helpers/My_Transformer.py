@@ -280,14 +280,14 @@ class Transform:
 if __name__ == "__main__":
     vocab_size = 5
     hidden_size = 32
-    num_classes = 2
+    num_classes = 5
     num_layers = 2
     num_heads = 4
     dropout = 0.1
     batch_size = 32
     lr = 0.01
     seq_length = 50
-    num_epochs = 810
+    num_epochs = 500
 
     """
     train_dataset = TextDataset('Ten_times/')
@@ -309,9 +309,9 @@ if __name__ == "__main__":
 
     transformer = Transform(model, max_seq_length=seq_length, num_classes=num_classes)
     # transformer.load_model(model_path="Saved_Model/transformer_3fps_1_model.pth")  # transformer_3fps_1_model
-    transformer.train(dataset_path='data/20030519/formatted_data/4/', num_epochs=num_epochs)
-    transformer.save_model(model_path="Saved_Model/transformer_3fps_4_model.pth")
+    transformer.train(dataset_path='data/20230520/', num_epochs=num_epochs)
+    transformer.save_model(model_path="Saved_Model/transformer_3fps_model.pth")
     # transformer.save_training_loss("6fps_loss.txt")
     # transformer.plot_training_loss("6fps_loss.txt")
-    print(transformer.evaluate(f'data/20030519/formatted_data/4/', confusion_matrix=True))
+    print(transformer.evaluate(f'data/20230520/', confusion_matrix=True))
     # print(transformer.evaluate_str("0000000111111111100"))
