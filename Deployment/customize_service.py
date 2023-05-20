@@ -199,19 +199,32 @@ def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps)
             tot_status[i] = output[j]
             j = j + 1
     print(tot_status)
-    result = Transform_result(transform_path,output)
+    # -------统计所有的出现最多的东西---------
+    cnt_all = [0, 0, 0, 0, 0]
+    cnt_phone = 0
+    for i in range(len(tot_status)):
+        cnt_all[tot_status[i]] += 1
+        if tot_status[i] == 3:
+            cnt_phone += 1
+
+    maxstatus = 0
+    cnt_all[0] = -1
+    for i in range(5):
+        if cnt_all[maxstatus] < cnt_all[i]:
+            maxstatus = i
+    if cnt_phone >= 0.3 * fps:
+        maxstatus = 3
+
+    result = Transform_result(transform_path,output, maxstatus)
+    if result == 0:
+        return maxstatus
+    else:
+        return 0
     # result = Transform_result(transform_path, tot_status)
     # result = Sliding_Window(tot_status, fps)
     # print(result[0]) # (?)
     # 增加逻辑
-    cnt_phone = 0
-    for i in range(len(tot_status)):
-        if tot_status[i] == 3:
-            cnt_phone += 1
     # result = Sliding_Window(tot_status, fps)
-    if cnt_phone >= 0.3 * fps and result != 3:
-        result = 0
-    return result
 
 # 根据output的状态决定该图片是哪一种状态           
 def Mobilenet_Determin(eye_status, yawn_status, output):
