@@ -203,7 +203,8 @@ class Transform:
 
     def evaluate_str(self, status_str, device=torch.device("cpu"), batch_size=1) -> int:
         eval_model = self.model
-        eval_dataset = TDataset(string=status_str, mode="Str", max_seq_length=self.max_seq_length, num_classes=self.num_classes)
+        eval_dataset = TDataset(string=status_str, mode="Str", max_seq_length=self.max_seq_length,
+                                num_classes=self.num_classes)
         eval_loader = data.DataLoader(eval_dataset, batch_size=batch_size, shuffle=True)
         with torch.no_grad():
             for inputs in eval_loader:
@@ -285,8 +286,8 @@ if __name__ == "__main__":
     dropout = 0.1
     batch_size = 32
     lr = 0.01
-    seq_length = 120
-    num_epochs = 410
+    seq_length = 50
+    num_epochs = 810
 
     """
     train_dataset = TextDataset('Ten_times/')
@@ -306,11 +307,12 @@ if __name__ == "__main__":
     # device = torch.device('cpu')
     model.to(device)
 
-    transformer = Transform(model, max_seq_length=seq_length, num_classes=num_classes)
-    transformer.load_model(model_path="Saved_Model/transformer_3fps_1_model.pth") # transformer_3fps_1_model
-    transformer.train(dataset_path='data/20030519/formatted_data/1/', num_epochs=num_epochs)
-    # transformer.save_model(model_path="Saved_Model/transformer_3fps_1_model.pth")
-    # transformer.save_training_loss("6fps_loss.txt")
-    # transformer.plot_training_loss("6fps_loss.txt")
-    print(transformer.evaluate('data/20030519/formatted_data/1/', confusion_matrix=True))
-    # print(transformer.evaluate_str("0000000111111111100"))
+    for i in range(1, 5):
+        transformer = Transform(model, max_seq_length=seq_length, num_classes=num_classes)
+        transformer.load_model(model_path=f"Saved_Model/transformer_3fps_{i}_model.pth")  # transformer_3fps_1_model
+        transformer.train(dataset_path=f'data/20030519/formatted_data/{i}/', num_epochs=num_epochs)
+        # transformer.save_model(model_path="Saved_Model/transformer_3fps_1_model.pth")
+        # transformer.save_training_loss("6fps_loss.txt")
+        # transformer.plot_training_loss("6fps_loss.txt")
+        print(transformer.evaluate(f'data/20030519/formatted_data/{i}/', confusion_matrix=True))
+        # print(transformer.evaluate_str("0000000111111111100"))
