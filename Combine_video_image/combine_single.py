@@ -38,7 +38,7 @@ def parse_args():
     parser.add_argument("--image_model", default="svm", help="image classfication model name")
     parser.add_argument("--mouth_model", default="./svm/svm_model_mouth.pkl", help="yawn classfication model name")
     parser.add_argument("--eye_model", default="./svm/svm_model_eyes.pkl", help="eye classfication model name")
-    parser.add_argument("--trans_model", default="./MT_helpers/transformer_6fps_altered_model.pth", help="transformer model")
+    parser.add_argument("--trans_model", default="./MT_helpers/Saved_Model", help="transformer model")
     parser.add_argument("--path", default="./test_video/night_woman_063_10_1.mp4",
                         help="path to video")
     parser.add_argument("--device", default="cpu", help="device for model use")
@@ -390,20 +390,29 @@ def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps)
             tot_status[i] = output[j]
             j = j + 1
     print(tot_status)
-    # result = Transform_result(transform_path, output)
-    result = Transform_result(transform_path, tot_status)
-    # print(result[0])
-    """
+
+    # -------统计所有的出现最多的东西---------
+    cnt_all = [0, 0, 0, 0, 0]
     cnt_phone = 0
     for i in range(len(tot_status)):
+        cnt_all[tot_status[i]] += 1
         if tot_status[i] == 3:
             cnt_phone += 1
-    # result = Sliding_Window(tot_status, fps)
-    if cnt_phone >= 0.3 * fps and result != 3:
-        result = 0
-    """
-    print("result:", result)
-    return tot_status
+
+    maxstatus = 0
+    cnt_all[0] = -1
+    for i in range(5):
+        if cnt_all[maxstatus] < cnt_all[i]:
+            maxstatus = i
+    if cnt_phone >= 0.3 * fps:
+        maxstatus = 3
+
+    model_path = os.path.join(transform_path, f"transformer_3fps_{maxstatus}_model.pth")
+    result = Transform_result(model_path, output, num_classes=2)
+    if result == 0:
+        return maxstatus
+    else:
+        return 0
 
 
 # 根据output的状态决定该图片是哪一种状态
@@ -420,18 +429,18 @@ def Mobilenet_Determin(eye_status, yawn_status, output):
     print(output)
 
 
-def Transform_result(model_path, status_list):
+def Transform_result(model_path, status_list, num_classes=5):
     vocab_size = 5
     hidden_size = 32
-    num_classes = 5
     num_layers = 2
     num_heads = 4
     dropout = 0.1
+    seq_length = 120
     model = TransformerClassifier(vocab_size, hidden_size, num_classes, num_layers, num_heads, dropout)
     device = torch.device('cpu')
     model.to(device)
 
-    transformer = Transform(model)
+    transformer = Transform(model, max_seq_length=seq_length, num_classes=num_classes)
     transformer.load_model(model_path)
 
     status_str = ""
