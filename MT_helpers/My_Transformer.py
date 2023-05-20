@@ -286,7 +286,7 @@ if __name__ == "__main__":
     batch_size = 32
     lr = 0.01
     seq_length = 120
-    num_epochs = 400
+    num_epochs = 810
 
     """
     train_dataset = TextDataset('Ten_times/')
