@@ -220,7 +220,7 @@ def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps)
         maxstatus = 3
 
     model_path = os.path.join(transform_path, f"transformer_3fps_{maxstatus}_model.pth")
-    result = Transform_result(model_path, output, num_classes=2, label=maxstatus)
+    result = Transform_result(model_path, tot_status, num_classes=2, label=maxstatus)
     if result == 0:
         return maxstatus
     else:
