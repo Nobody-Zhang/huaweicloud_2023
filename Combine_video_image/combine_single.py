@@ -582,7 +582,7 @@ if __name__ == '__main__':
     print(f'YAWN:{yawn_status_list}')
     # 状态判断
     # Mobilenet_Determin(eye_status_list,yawn_status_list,output)
-    SVM_Determin(eye_status_list, yawn_status_list, transform_path, tot_status, fps)
+    print(SVM_Determin(eye_status_list, yawn_status_list, transform_path, tot_status, fps))
 
 """
 if __name__ == '__main__':
