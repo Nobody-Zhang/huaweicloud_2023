@@ -134,20 +134,6 @@ def Sliding_Window(tot_status, fps, thres1=2.48, thres2=0.48):
     window_status = {}  # 所有窗口的状态
     window_status_cnt = [0, 0, 0, 0, 0]
     single_window_cnt = [0, 0, 0, 0, 0]
-    """
-    window_status_cnt = {}  # 窗口状态计数
-    window_status_cnt[0] = 0
-    window_status_cnt[1] = 0
-    window_status_cnt[2] = 0
-    window_status_cnt[3] = 0
-    window_status_cnt[4] = 0
-    single_window_cnt = {}
-    single_window_cnt[0] = 0
-    single_window_cnt[1] = 0
-    single_window_cnt[2] = 0
-    single_window_cnt[3] = 0
-    single_window_cnt[4] = 0
-    """
     for i in range(len(tot_status) - int(2.5 * fps)):
         if i == 0:
             for j in range(int(2.5 * fps)):
@@ -178,7 +164,6 @@ def Sliding_Window(tot_status, fps, thres1=2.48, thres2=0.48):
     for i in range(len(window_status_cnt)):
         if (window_status_cnt[max_status] < window_status_cnt[i]):
             max_status = i
-    # max_status = max(window_status_cnt, key=lambda x: window_status_cnt[x])
     if window_status_cnt[max_status] >= thres2 * fps:
         return max_status
     else:
@@ -225,11 +210,6 @@ def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps)
         return maxstatus
     else:
         return 0
-    # result = Transform_result(transform_path, tot_status)
-    # result = Sliding_Window(tot_status, fps)
-    # print(result[0]) # (?)
-    # 增加逻辑
-    # result = Sliding_Window(tot_status, fps)
 
 
 # 根据output的状态决定该图片是哪一种状态
@@ -290,9 +270,7 @@ class model:
         fps = cap.get(cv2.CAP_PROP_FPS)
         FRAME_GROUP = round(fps / 3)
         fps = 3
-        # transform_path = os.path.join(current_dir, "MT_helpers/transformer_ag_model.pth")
-        transform_path = "/home/ma-user/infer/model/1/MT_helpers/Saved_Model"
-        # cap = cv2.VideoCapture(video_path)
+        transform_path = "/home/ma-user/infer/model/1/MT_helpers/models"
         all_start = time.time()
         cnt = 0
 
