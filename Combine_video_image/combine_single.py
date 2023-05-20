@@ -25,7 +25,7 @@ import svm.svmdetect as svmdetect
 
 # fps = 30
 # 抽帧
-FRAME_GROUP = 6
+# FRAME_GROUP = 6
 # 设置三种状态的编号
 NORMAL = 0
 EYE_CLOSE = 1
