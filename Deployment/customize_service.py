@@ -29,7 +29,7 @@ import svm.svmdetect as svmdetect
 
 # fps = 30
 # 抽帧
-FRAME_GROUP = 6
+# FRAME_GROUP = 6
 
 
 # 设置三种状态的编号
@@ -288,9 +288,10 @@ class model:
     def inference(self, cap):
         # current_dir = os.getcwd()
         fps = cap.get(cv2.CAP_PROP_FPS)
-        fps = fps / FRAME_GROUP
+        FRAME_GROUP = round(fps / 3)
+        fps = 3
         # transform_path = os.path.join(current_dir, "MT_helpers/transformer_ag_model.pth")
-        transform_path = "/home/ma-user/infer/model/1/MT_helpers/Saved_Model/transformer_6fps_altered_model.pth"
+        transform_path = "/home/ma-user/infer/model/1/MT_helpers/Saved_Model"
         # cap = cv2.VideoCapture(video_path)
         all_start = time.time()
         cnt = 0

@@ -476,8 +476,8 @@ if __name__ == '__main__':
 
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
-    FRAME_GROUP = round(fps / 6)
-    fps = 6
+    FRAME_GROUP = round(fps / 3)
+    fps = 3
     thread_t1 = time.time()
     # 设定线程函数
     # eye_process = Process(target = Combine_model.image_eye.inference)
