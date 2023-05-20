@@ -220,7 +220,7 @@ def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps)
         maxstatus = 3
 
     model_path = os.path.join(transform_path, f"transformer_3fps_{maxstatus}_model.pth")
-    result = Transform_result(model_path, output, num_classes=2)
+    result = Transform_result(model_path, output, num_classes=2, label=maxstatus)
     if result == 0:
         return maxstatus
     else:
@@ -246,8 +246,8 @@ def Mobilenet_Determin(eye_status, yawn_status, output):
     print(output)
 
 
-def Transform_result(model_path, status_list, num_classes=5):
-    vocab_size = 5
+def Transform_result(model_path, status_list, num_classes=5, label=1):
+    vocab_size = 5 if label != 1 else 6
     hidden_size = 32
     num_layers = 2
     num_heads = 4

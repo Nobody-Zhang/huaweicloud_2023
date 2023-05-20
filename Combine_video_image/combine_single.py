@@ -430,7 +430,7 @@ def Mobilenet_Determin(eye_status, yawn_status, output):
 
 
 def Transform_result(model_path, status_list, num_classes=5, label=1):
-    vocab_size = 5 if label!= 1 else 6
+    vocab_size = 5 if label != 1 else 6
     hidden_size = 32
     num_layers = 2
     num_heads = 4
@@ -552,9 +552,9 @@ if __name__ == '__main__':
                 tot_status.append(-1)
                 flag = True
                 # 获得眼部和嘴部图片
-                cv2.imshow('eye',eye_img)
+                cv2.imshow('eye', eye_img)
                 cv2.waitKey(1)
-                cv2.imshow('mouth',mouth_img)
+                cv2.imshow('mouth', mouth_img)
                 cv2.waitKey(1)
         nanodet_t2 = time.time()
         # print("nanodet时间")
