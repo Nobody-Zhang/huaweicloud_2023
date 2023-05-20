@@ -22,9 +22,9 @@ def formatted_output(label, sign=0):
             new_fps = 3
             new_s_list = [""] * (fps // new_fps)
             while s_ptr < s_len - fps:
-                for extracted_frames in range(1, fps // new_fps):
-                    exact_frame_start = s_ptr + extracted_frames * new_fps
-                    for exact_frame in range(new_fps):
+                for extracted_frames in range(new_fps):
+                    exact_frame_start = s_ptr + extracted_frames * fps // new_fps
+                    for exact_frame in range(fps // new_fps):
                         new_s_list[exact_frame] += s[exact_frame + exact_frame_start]
 
                     """
@@ -38,7 +38,6 @@ def formatted_output(label, sign=0):
                     new_s = new_s + res
                     """
                 s_ptr += fps
-
             for new_s in new_s_list:
                 if len(new_s) > 0:
                     f_out.write(new_s + "\n")
