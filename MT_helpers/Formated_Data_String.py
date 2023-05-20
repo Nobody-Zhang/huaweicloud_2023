@@ -1,14 +1,22 @@
 import ast
 
 
-def formatted_output(label, sign=0):
-    f_out = open(f"data/20030519/formatted_data/{label}/{sign}.in", "a")
-    max_len=0
+def formatted_output(label, sign=0, mode="bipartite"):
+    if mode == "bipartite":
+        out_fp = f"data/20030519/formatted_data/{label}/{sign}.in"
+        in_fp = f'data/20030519/orig_data/{label}/{sign}.in'
+    else:
+        out_fp = f"data/20030519/formatted_data/{label}.in"
+        in_fp = f'data/20030519/orig_data/{label}.txt'
+
+    f_out = open(out_fp, "a")
+    max_len = 0
     # Open the file and read the lines
-    with open(f'data/20030519/orig_data/{label}/{sign}.in', 'r') as f_in:
+    with open(in_fp, 'r') as f_in:
         lines = f_in.readlines()
         # Convert each line to a list and join the elements
-        for line_num in range(len(lines)):
+        for line_num in range(1, len(lines), 2):
+            line_specification = lines[line_num - 1]
             line = lines[line_num]
             separate_point = line.index(" ")
             fps = int(float(line[:separate_point]))
@@ -47,52 +55,21 @@ def formatted_output(label, sign=0):
     print(max_len)
 
 
-def changed_formatted_output(label):
-    f_out = open(f"data/20030519/formatted_data/{label}.in", "a")
-    max_len=0
-    # Open the file and read the lines
-    with open(f'data/20030519/orig_data/{label}.txt', 'r') as f_in:
-        lines = f_in.readlines()
-        # Convert each line to a list and join the elements
-        for line_num in range(1, len(lines), 2):
-            line = lines[line_num]
-            line_specification = lines[line_num - 1]
-            separate_point = line.index(" ")
-            fps = int(float(line[:separate_point]))
-            lst = ast.literal_eval(line[separate_point + 1:])
-            s = ''.join(str(x) for x in lst)
+def bipartite_to_plain(label: int):
+    input_dir = f"data/20030519/formatted_data/{label}/"
+    output_dir = f"data/20030519/formatted_data/"
+    for sign in range(2):
+        # if label & 1: negative -> 0.in; label & 0: positive -> label.in
+        f_pl = open(f"{output_dir}{label if not sign else 0}.in", "a")
+        with open(f"{input_dir}{sign}.in", "r") as f_bi:
+            for line in f_bi:
+                f_pl.write(line)  # because each line has a line separator at the end
 
-            # write 6 fps to output file
-            s_len = len(s)
-            s_ptr = 0
-            new_s = ""
-            new_fps = 6
-            while s_ptr < s_len - fps:
-                for extracted_frames in range(1, fps // new_fps):
-                    exact_frame = s_ptr + extracted_frames * new_fps
-                    all_freq = {}
-                    for frames in s[s_ptr:exact_frame]:
-                        if frames in all_freq:
-                            all_freq[frames] += 1
-                        else:
-                            all_freq[frames] = 1
-                    res = max(all_freq, key=all_freq.get)
-                    new_s = new_s + res
-                s_ptr += fps
-            """
-            if line_specification[-8] == "1":
-                with open("data/20030519/formatted_data/0.in", "a") as f0:
-                    f0.write(new_s + "\n")
-            else:
-                f_out.write(new_s + "\n")
-            """
+        f_pl.close()
 
-    f_in.close()
-    f_out.close()
-    print(max_len)
 
 def categorize_by_pn(label):
-    max_len=0
+    max_len = 0
     # Open the file and read the lines
     with open(f'data/20030519/orig_data/{label}.txt', 'r') as f_in:
         lines = f_in.readlines()
@@ -121,6 +98,11 @@ def categorize_by_pn(label):
 
 
 if __name__ == "__main__":
+    """
     for i in range(1, 5):
         formatted_output(i, sign=0)
         formatted_output(i, sign=1)
+    """
+    # formatted_output(0, mode="all")
+    for i in range(1, 5):
+        bipartite_to_plain(i)
