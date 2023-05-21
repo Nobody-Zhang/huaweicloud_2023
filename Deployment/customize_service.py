@@ -196,7 +196,7 @@ def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps)
         if tot_status[i] == 3:
             cnt_phone += 1
 
-    model_path = os.path.join(transform_path, f"transformer_3fps_model.pth")
+    model_path = os.path.join(transform_path, f"transformer_6fps_model.pth")
 
     result = Transform_result(model_path, tot_status, num_classes=5)
     return result
