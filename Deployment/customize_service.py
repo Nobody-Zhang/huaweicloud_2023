@@ -297,8 +297,8 @@ class model:
     def inference(self, cap):
         # current_dir = os.getcwd()
         fps = cap.get(cv2.CAP_PROP_FPS)
-        FRAME_GROUP = round(fps / 3)
-        fps = 3
+        # FRAME_GROUP = round(fps / 3)
+        # fps = 3
         transform_path = "/home/ma-user/infer/model/1/MT_helpers/models"
         all_start = time.time()
         cnt = 0
@@ -318,8 +318,8 @@ class model:
 
             # # 抽帧：取每组的第一帧
             cnt += 1
-            if cnt % FRAME_GROUP != 1:
-                continue
+            # if cnt % FRAME_GROUP != 1:
+            #     continue
 
             # 识别人脸
             face_boxs = self.Combine_model.video_model[0].find_face(frame)
