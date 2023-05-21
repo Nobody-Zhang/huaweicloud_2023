@@ -3,11 +3,11 @@ import ast
 
 def formatted_output(label, sign=0, mode="bipartite", new_fps=3):
     if mode == "bipartite":
-        out_fp = f"data/20030519/formatted_data/{label}/{sign}.in"
+        out_fp = f"data/20230521/formatted_data/{label}/{sign}.in"
         in_fp = f'data/20030519/orig_data/{label}/{sign}.in'
     else:
-        out_fp = f"data/20230521/{label}.in"
-        in_fp = f'data/20030519/orig_data/{label}.txt'
+        out_fp = f"data/all_60fps/formatted_data/{label}.in"
+        in_fp = f'data/all_60fps/orig_data/{label}.txt'
 
     f_out = open(out_fp, "a")
     max_len = 0
@@ -102,9 +102,10 @@ if __name__ == "__main__":
         formatted_output(i, sign=0, new_fps=6)
         formatted_output(i, sign=1, new_fps=6)
     """
-    for i in range(5):
-        formatted_output(i, mode="all", new_fps=6)
+    # formatted_output(0, mode="all", new_fps=6)
     """
     for i in range(1, 5):
         bipartite_to_plain(i)
     """
+    for i in range(5):
+        formatted_output(i, mode="all", new_fps=3)
