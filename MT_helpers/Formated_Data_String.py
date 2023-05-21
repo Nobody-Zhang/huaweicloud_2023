@@ -1,12 +1,12 @@
 import ast
 
 
-def formatted_output(label, sign=0, mode="bipartite"):
+def formatted_output(label, sign=0, mode="bipartite", new_fps=3):
     if mode == "bipartite":
         out_fp = f"data/20030519/formatted_data/{label}/{sign}.in"
         in_fp = f'data/20030519/orig_data/{label}/{sign}.in'
     else:
-        out_fp = f"data/20030519/formatted_data/{label}.in"
+        out_fp = f"data/20230521/{label}.in"
         in_fp = f'data/20030519/orig_data/{label}.txt'
 
     f_out = open(out_fp, "a")
@@ -27,7 +27,6 @@ def formatted_output(label, sign=0, mode="bipartite"):
             s_len = len(s)
             s_ptr = 0
             # new_s = ""
-            new_fps = 3
             new_s_list = [""] * (fps // new_fps)
             while s_ptr < s_len - fps:
                 for extracted_frames in range(new_fps):
@@ -57,7 +56,7 @@ def formatted_output(label, sign=0, mode="bipartite"):
 
 def bipartite_to_plain(label: int):
     input_dir = f"data/20030519/formatted_data/{label}/"
-    output_dir = f"data/20030519/formatted_data/"
+    output_dir = f"data/20030521/formatted_data/"
     for sign in range(2):
         # if label & 1: negative -> 0.in; label & 0: positive -> label.in
         f_pl = open(f"{output_dir}{label if not sign else 0}.in", "a")
@@ -100,9 +99,12 @@ def categorize_by_pn(label):
 if __name__ == "__main__":
     """
     for i in range(1, 5):
-        formatted_output(i, sign=0)
-        formatted_output(i, sign=1)
+        formatted_output(i, sign=0, new_fps=6)
+        formatted_output(i, sign=1, new_fps=6)
     """
-    # formatted_output(0, mode="all")
+    for i in range(5):
+        formatted_output(i, mode="all", new_fps=6)
+    """
     for i in range(1, 5):
         bipartite_to_plain(i)
+    """
