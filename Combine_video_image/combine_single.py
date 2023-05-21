@@ -399,7 +399,7 @@ def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps)
         if tot_status[i] == 3:
             cnt_phone += 1
 
-    model_path = os.path.join(transform_path, f"transformer_6fps_model.pth")
+    model_path = os.path.join(transform_path, f"transformer_3fps_30_model.pth")
 
     result = Transform_result(model_path, tot_status, num_classes=5)
     return result
@@ -492,7 +492,7 @@ if __name__ == '__main__':
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
     FRAME_GROUP = round(fps / 3)
-    fps = 6
+    fps = 3
     thread_t1 = time.time()
     # 设定线程函数
     # eye_process = Process(target = Combine_model.image_eye.inference)
