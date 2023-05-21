@@ -130,45 +130,67 @@ class Combination:
 
 
 # 滑动窗口后处理，默认不抽帧，如果要抽帧就把所有的fps用fps/FRAME_GROUP代替
-def Sliding_Window(tot_status, fps, thres1=2.48, thres2=0.48):
-    window_status = {}  # 所有窗口的状态
-    window_status_cnt = [0, 0, 0, 0, 0]
-    single_window_cnt = [0, 0, 0, 0, 0]
-    for i in range(len(tot_status) - int(2.5 * fps)):
-        if i == 0:
-            for j in range(int(2.5 * fps)):
-                print(i + j)
-                print(tot_status[i + j])
-                print(type(tot_status[i + j]))
-                single_window_cnt[int(tot_status[i + j])] += 1
-        else:
-            single_window_cnt[int(tot_status[i + int(2.5 * fps) - 1])] += 1
-            single_window_cnt[int(tot_status[i - 1])] -= 1
-        single_window_cnt[0] = -1  # 排除0
-        max_cnt = 0
+# def Sliding_Window(tot_status, fps, thres1=2.48, thres2=0.48):
+#     window_status = {}  # 所有窗口的状态
+#     window_status_cnt = [0, 0, 0, 0, 0]
+#     single_window_cnt = [0, 0, 0, 0, 0]
+#     for i in range(len(tot_status) - int(2.5 * fps)):
+#         if i == 0:
+#             for j in range(int(2.5 * fps)):
+#                 print(i + j)
+#                 print(tot_status[i + j])
+#                 print(type(tot_status[i + j]))
+#                 single_window_cnt[int(tot_status[i + j])] += 1
+#         else:
+#             single_window_cnt[int(tot_status[i + int(2.5 * fps) - 1])] += 1
+#             single_window_cnt[int(tot_status[i - 1])] -= 1
+#         single_window_cnt[0] = -1  # 排除0
+#         max_cnt = 0
+# 
+#         # max_cnt = max(single_window_cnt, key=lambda x: single_window_cnt[x])
+#         for j in range(len(single_window_cnt)):
+#             if single_window_cnt[j] > single_window_cnt[max_cnt]:
+#                 max_cnt = j
+#         if single_window_cnt[max_cnt] >= thres1 * fps:
+#             window_status[i] = max_cnt
+#         else:
+#             window_status[i] = 0
+#     for i in range(len(window_status)):
+#         window_status_cnt[int(window_status[i])] += 1
+#     print("window_status:", window_status)
+#     print("window_status_cnt:", window_status_cnt)
+#     window_status_cnt[0] = -1  # 排除0
+#     max_status = 0
+#     for i in range(len(window_status_cnt)):
+#         if (window_status_cnt[max_status] < window_status_cnt[i]):
+#             max_status = i
+#     if window_status_cnt[max_status] >= thres2 * fps:
+#         return max_status
+#     else:
+#         return 0
 
-        # max_cnt = max(single_window_cnt, key=lambda x: single_window_cnt[x])
-        for j in range(len(single_window_cnt)):
-            if single_window_cnt[j] > single_window_cnt[max_cnt]:
-                max_cnt = j
-        if single_window_cnt[max_cnt] >= thres1 * fps:
-            window_status[i] = max_cnt
+def Sliding_Window(total_status, fps, thres1=2.5, thres2=0.1):
+    classes_cnt = [0, 0, 0, 0, 0]
+    threshold = int(thres1 * fps)
+    tolerance = int(thres2 * fps)
+    gap = 0
+    cur_class = 0
+    last_gap = 0
+    
+    for frame in total_status:
+        if frame != cur_class:
+            gap += 1
+            classes_cnt[frame] += 1
+            last_gap = frame
+            if gap >= tolerance:
+                classes_cnt[cur_class] = 0
+                cur_class = last_gap
         else:
-            window_status[i] = 0
-    for i in range(len(window_status)):
-        window_status_cnt[int(window_status[i])] += 1
-    print("window_status:", window_status)
-    print("window_status_cnt:", window_status_cnt)
-    window_status_cnt[0] = -1  # 排除0
-    max_status = 0
-    for i in range(len(window_status_cnt)):
-        if (window_status_cnt[max_status] < window_status_cnt[i]):
-            max_status = i
-    if window_status_cnt[max_status] >= thres2 * fps:
-        return max_status
-    else:
-        return 0
-
+            classes_cnt[frame] += 1
+            gap = 0
+            if cur_class != 0 and classes_cnt[frame] >= threshold:
+                return frame
+    return 0
 
 # 根据output的状态决定该图片(?视频)是哪一种状态           
 def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps):
@@ -188,17 +210,18 @@ def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps)
             tot_status[i] = output[j]
             j = j + 1
     print(tot_status)
+    result = Sliding_Window(tot_status, fps)
     # -------统计所有的出现最多的东西---------
-    cnt_all = [0, 0, 0, 0, 0]
-    cnt_phone = 0
-    for i in range(len(tot_status)):
-        cnt_all[tot_status[i]] += 1
-        if tot_status[i] == 3:
-            cnt_phone += 1
-
-    model_path = os.path.join(transform_path, f"transformer_3fps_30_model.pth")
-
-    result = Transform_result(model_path, tot_status, num_classes=5)
+    # cnt_all = [0, 0, 0, 0, 0]
+    # cnt_phone = 0
+    # for i in range(len(tot_status)):
+    #     cnt_all[tot_status[i]] += 1
+    #     if tot_status[i] == 3:
+    #         cnt_phone += 1
+    # 
+    # model_path = os.path.join(transform_path, f"transformer_3fps_30_model.pth")
+    # 
+    # result = Transform_result(model_path, tot_status, num_classes=5)
     return result
     """
     maxstatus = 0
