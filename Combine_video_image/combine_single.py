@@ -399,6 +399,11 @@ def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps)
         if tot_status[i] == 3:
             cnt_phone += 1
 
+    model_path = os.path.join(transform_path, f"transformer_3fps_model.pth")
+
+    result = Transform_result(model_path, tot_status, num_classes=5)
+    return result
+    """
     maxstatus = 0
     cnt_all[0] = -1
     for i in range(5):
@@ -406,13 +411,14 @@ def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps)
             maxstatus = i
     if cnt_phone >= 0.3 * fps:
         maxstatus = 3
-
+    
     model_path = os.path.join(transform_path, f"transformer_3fps_{maxstatus}_model.pth")
     result = Transform_result(model_path, output, num_classes=2)
     if result == 0:
         return maxstatus
     else:
         return 0
+    """
 
 
 # 根据output的状态决定该图片是哪一种状态
