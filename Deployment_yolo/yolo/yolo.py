@@ -42,59 +42,23 @@ def xyxy2xywh(xmin: int, ymin: int, xmax: int, ymax: int, wide: int, height: int
     return x, y, w, h
 
 
-def Sliding_Window(tot_status, fps, thres1=2.48, thres2=0.48):
-    window_status = {}  # 所有窗口的状态
-    window_status_cnt = [0, 0, 0, 0, 0]
+def Sliding_Window(total_status, fps, thres=8 / 9):
     single_window_cnt = [0, 0, 0, 0, 0]
-    """
-    window_status_cnt = {}  # 窗口状态计数
-    window_status_cnt[0] = 0
-    window_status_cnt[1] = 0
-    window_status_cnt[2] = 0
-    window_status_cnt[3] = 0
-    window_status_cnt[4] = 0
-    single_window_cnt = {}
-    single_window_cnt[0] = 0
-    single_window_cnt[1] = 0
-    single_window_cnt[2] = 0
-    single_window_cnt[3] = 0
-    single_window_cnt[4] = 0
-    """
-    for i in range(len(tot_status) - int(2.5 * fps)):
+    threshold = int(thres * fps * 3)
+    for i in range(len(total_status) - int(3 * fps)):
         if i == 0:
-            for j in range(int(2.5 * fps)):
-                print(i + j)
-                print(tot_status[i + j])
-                print(type(tot_status[i + j]))
-                single_window_cnt[int(tot_status[i + j])] += 1
+            for j in range(int(3 * fps)):
+                # print(i + j)
+                # print(tot_status[i + j])
+                # print(type(tot_status[i + j]))
+                single_window_cnt[int(total_status[i + j])] += 1
         else:
-            single_window_cnt[int(tot_status[i + int(2.5 * fps) - 1])] += 1
-            single_window_cnt[int(tot_status[i - 1])] -= 1
-        single_window_cnt[0] = -1  # 排除0
-        max_cnt = 0
-
-        # max_cnt = max(single_window_cnt, key=lambda x: single_window_cnt[x])
-        for j in range(len(single_window_cnt)):
-            if single_window_cnt[j] > single_window_cnt[max_cnt]:
-                max_cnt = j
-        if single_window_cnt[max_cnt] >= thres1 * fps:
-            window_status[i] = max_cnt
-        else:
-            window_status[i] = 0
-    for i in range(len(window_status)):
-        window_status_cnt[int(window_status[i])] += 1
-    print("window_status:", window_status)
-    print("window_status_cnt:", window_status_cnt)
-    window_status_cnt[0] = -1  # 排除0
-    max_status = 0
-    for i in range(len(window_status_cnt)):
-        if (window_status_cnt[max_status] < window_status_cnt[i]):
-            max_status = i
-    # max_status = max(window_status_cnt, key=lambda x: window_status_cnt[x])
-    if window_status_cnt[max_status] >= thres2 * fps:
-        return max_status
-    else:
-        return 0
+            single_window_cnt[int(total_status[i + int(3 * fps) - 1])] += 1
+            single_window_cnt[int(total_status[i - 1])] -= 1
+        for i in range(1, 5):
+            if single_window_cnt[i] >= threshold:
+                return i
+    return 0
 
 
 class YOLO_Status:
@@ -203,7 +167,7 @@ class YOLO_Status:
 
 
 @torch.no_grad()
-def yolo_run(weights=ROOT / 'INT8_openvino_model/best_int8.xml',  # model.pt path(s)
+def yolo_run(weights=ROOT / 'best.onnx',  # model.pt path(s)
              source='',  # file/dir/URL/glob, 0 for webcam
              data=ROOT / 'one_stage.yaml',  # dataset.yaml path
              imgsz=(640, 640),  # inference size (height, width)
