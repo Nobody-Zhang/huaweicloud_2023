@@ -173,7 +173,7 @@ class YOLO_Status:
 
 
 @torch.no_grad()
-def yolo_run(weights=ROOT / 'best.onnx',  # model.pt path(s)
+def yolo_run(weights=ROOT / 'openvino_model/yolov5n.xml',  # model.pt path(s)
              source='',  # file/dir/URL/glob, 0 for webcam
              data=ROOT / 'one_stage.yaml',  # dataset.yaml path
              imgsz=(640, 640),  # inference size (height, width)
