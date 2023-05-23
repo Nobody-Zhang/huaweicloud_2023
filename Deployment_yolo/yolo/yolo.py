@@ -300,6 +300,6 @@ def yolo_run(weights=ROOT / 'best.onnx',  # model.pt path(s)
     return result
 
 
-# if __name__ == "__main__":
-#     result = yolo_run(source='night_woman_005_31_4.mp4')
-#     print(result)
+if __name__ == "__main__":
+    result = yolo_run(source='night_woman_005_31_4.mp4', )
+    print(result)
