@@ -73,7 +73,6 @@ def SVM_Handle(eye_queue, yawn_queue) -> tuple:
 
 # 组合Nanodet/Yolo + SVM/MobileNetV2
 class Combination:
-
     def __init__(self, video_model_name="nanodet", image_model_name="mobilenet",
                  mouth_model="./mobilenet/MobileNetV2_mouthclass.pth",
                  eye_model="./mobilenet/MobileNetV2_eyeclass.pth",
@@ -340,7 +339,7 @@ class PTVisionService(PTServingBaseService):
         self.model = model()
 
     def _inference(self, data):
-        yolo_list = yolo_run(source = '/home/ma-user/infer/model/1/test.mp4')
+        yolo_list = yolo_run(source = self.capture)
         cap = cv2.VideoCapture(self.capture)
         result = self.model.inference(cap)
         return result
