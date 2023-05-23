@@ -340,7 +340,7 @@ class PTVisionService(PTServingBaseService):
         self.model = model()
 
     def _inference(self, data):
-        yolo_list = yolo_run(source = '/home/ma-user/infer/model/1/test.mp4')
+        yolo_list = yolo_run(source = self.capture)
         cap = cv2.VideoCapture(self.capture)
         result = self.model.inference(cap)
         return result
