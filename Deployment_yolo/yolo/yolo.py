@@ -21,7 +21,7 @@ from utils.general import (LOGGER, check_file, check_img_size, check_imshow, che
 from utils.plots import *
 from utils.torch_utils import select_device, time_sync
 
-
+# write by llr
 # transform xyxy loacationn to xywh loacation, scale in (0, 1)
 def xyxy2xywh(xmin: int, ymin: int, xmax: int, ymax: int, wide: int, height: int) -> tuple:
     """
@@ -181,7 +181,6 @@ def yolo_run(weights=ROOT / 'INT8_openvino_model/best_int8.xml',  # model.pt pat
     source = str(source)
     # save_img = not nosave and not source.endswith('.txt')  # save inference images
     is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
-
 
     # Load model
     device = select_device(device)
