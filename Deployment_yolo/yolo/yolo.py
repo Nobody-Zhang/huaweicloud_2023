@@ -175,7 +175,7 @@ class YOLO_Status:
 @torch.no_grad()
 def yolo_run(weights=ROOT / 'openvino_model/yolov5n.xml',  # model.pt path(s)
              source='',  # file/dir/URL/glob, 0 for webcam
-             data=ROOT / 'one_stage.yaml',  # dataset.yaml path
+             data=ROOT / 'yolov5n.yaml',  # dataset.yaml path
              imgsz=(640, 640),  # inference size (height, width)
              conf_thres=0.25,  # confidence threshold
              iou_thres=0.45,  # NMS IOU threshold
@@ -225,7 +225,7 @@ def yolo_run(weights=ROOT / 'openvino_model/yolov5n.xml',  # model.pt path(s)
     model.warmup(imgsz=(1 if pt else bs, 3, *imgsz), half=half)  # warmup
     dt, seen = [0.0, 0.0, 0.0], 0
     # Run inference
-    fps = dataset.cap.get(cv2.CAP_PROP_FRAME_COUNT)
+    fps = dataset.cap.get(cv2.CAP_PROP_FPS)
     FRAME_GROUP = int(fps / 3)
     fps = 3
     t_start = time_sync()  # start_time
@@ -301,5 +301,5 @@ def yolo_run(weights=ROOT / 'openvino_model/yolov5n.xml',  # model.pt path(s)
 
 
 if __name__ == "__main__":
-    result = yolo_run(source='night_woman_005_31_4.mp4', )
+    result = yolo_run(source='night_woman_005_31_4.mp4')
     print(result)
