@@ -411,7 +411,7 @@ class DetectMultiBackend(nn.Module):
             request = self.executable_network.requests[0]  # inference request
             request.set_blob(blob_name='images', blob=self.ie.Blob(desc, im))  # name=next(iter(request.input_blobs))
             request.infer()
-            y = request.output_blobs['output'].buffer  # name=next(iter(request.output_blobs))
+            y = request.output_blobs['output0'].buffer  # name=next(iter(request.output_blobs))
         elif self.engine:  # TensorRT
             assert im.shape == self.bindings['images'].shape, (im.shape, self.bindings['images'].shape)
             self.binding_addrs['images'] = int(im.data_ptr())
