@@ -1,4 +1,3 @@
-
 # import argparse
 import os
 import sys
@@ -21,6 +20,7 @@ from utils.general import (LOGGER, check_file, check_img_size, check_imshow, che
 from utils.plots import *
 from utils.torch_utils import select_device, time_sync
 
+
 # write by llr
 # transform xyxy loacationn to xywh loacation, scale in (0, 1)
 def xyxy2xywh(xmin: int, ymin: int, xmax: int, ymax: int, wide: int, height: int) -> tuple:
@@ -40,6 +40,61 @@ def xyxy2xywh(xmin: int, ymin: int, xmax: int, ymax: int, wide: int, height: int
     w = (xmax - xmin) / wide
     h = (ymax - ymin) / height
     return x, y, w, h
+
+
+def Sliding_Window(tot_status, fps, thres1=2.48, thres2=0.48):
+    window_status = {}  # 所有窗口的状态
+    window_status_cnt = [0, 0, 0, 0, 0]
+    single_window_cnt = [0, 0, 0, 0, 0]
+    """
+    window_status_cnt = {}  # 窗口状态计数
+    window_status_cnt[0] = 0
+    window_status_cnt[1] = 0
+    window_status_cnt[2] = 0
+    window_status_cnt[3] = 0
+    window_status_cnt[4] = 0
+    single_window_cnt = {}
+    single_window_cnt[0] = 0
+    single_window_cnt[1] = 0
+    single_window_cnt[2] = 0
+    single_window_cnt[3] = 0
+    single_window_cnt[4] = 0
+    """
+    for i in range(len(tot_status) - int(2.5 * fps)):
+        if i == 0:
+            for j in range(int(2.5 * fps)):
+                print(i + j)
+                print(tot_status[i + j])
+                print(type(tot_status[i + j]))
+                single_window_cnt[int(tot_status[i + j])] += 1
+        else:
+            single_window_cnt[int(tot_status[i + int(2.5 * fps) - 1])] += 1
+            single_window_cnt[int(tot_status[i - 1])] -= 1
+        single_window_cnt[0] = -1  # 排除0
+        max_cnt = 0
+
+        # max_cnt = max(single_window_cnt, key=lambda x: single_window_cnt[x])
+        for j in range(len(single_window_cnt)):
+            if single_window_cnt[j] > single_window_cnt[max_cnt]:
+                max_cnt = j
+        if single_window_cnt[max_cnt] >= thres1 * fps:
+            window_status[i] = max_cnt
+        else:
+            window_status[i] = 0
+    for i in range(len(window_status)):
+        window_status_cnt[int(window_status[i])] += 1
+    print("window_status:", window_status)
+    print("window_status_cnt:", window_status_cnt)
+    window_status_cnt[0] = -1  # 排除0
+    max_status = 0
+    for i in range(len(window_status_cnt)):
+        if (window_status_cnt[max_status] < window_status_cnt[i]):
+            max_status = i
+    # max_status = max(window_status_cnt, key=lambda x: window_status_cnt[x])
+    if window_status_cnt[max_status] >= thres2 * fps:
+        return max_status
+    else:
+        return 0
 
 
 class YOLO_Status:
@@ -151,32 +206,33 @@ class YOLO_Status:
 
 @torch.no_grad()
 def yolo_run(weights=ROOT / 'INT8_openvino_model/best_int8.xml',  # model.pt path(s)
-        source='',  # file/dir/URL/glob, 0 for webcam
-        data=ROOT / 'mycoco.yaml',  # dataset.yaml path
-        imgsz=(640, 640),  # inference size (height, width)
-        conf_thres=0.25,  # confidence threshold
-        iou_thres=0.45,  # NMS IOU threshold
-        max_det=1000,  # maximum detections per image
-        device='cpu',  # cuda device, i.e. 0 or 0,1,2,3 or cpu
-        view_img=False,  # show results
-        save_txt=False,  # save results to *.txt
-        save_conf=False,  # save confidences in --save-txt labels
-        save_crop=False,  # save cropped prediction boxes
-        nosave=False,  # do not save images/videos
-        classes=None,  # filter by class: --class 0, or --class 0 2 3
-        agnostic_nms=False,  # class-agnostic NMS
-        augment=False,  # augmented inference
-        visualize=False,  # visualize features
-        update=False,  # update all models
-        project=ROOT / 'runs/detect',  # save results to project/name
-        name='exp',  # save results to project/name
-        exist_ok=False,  # existing project/name ok, do not increment
-        line_thickness=3,  # bounding box thickness (pixels)
-        hide_labels=False,  # hide labels
-        hide_conf=False,  # hide confidences
-        half=False,  # use FP16 half-precision inference
-        dnn=False,  # use OpenCV DNN for ONNX inference
-        ):
+             source='',  # file/dir/URL/glob, 0 for webcam
+             data=ROOT / 'mycoco.yaml',  # dataset.yaml path
+             imgsz=(640, 640),  # inference size (height, width)
+             conf_thres=0.25,  # confidence threshold
+             iou_thres=0.45,  # NMS IOU threshold
+             max_det=1000,  # maximum detections per image
+             device='cpu',  # cuda device, i.e. 0 or 0,1,2,3 or cpu
+             view_img=False,  # show results
+             save_txt=False,  # save results to *.txt
+             save_conf=False,  # save confidences in --save-txt labels
+             save_crop=False,  # save cropped prediction boxes
+             nosave=False,  # do not save images/videos
+             classes=None,  # filter by class: --class 0, or --class 0 2 3
+             agnostic_nms=False,  # class-agnostic NMS
+             augment=False,  # augmented inference
+             visualize=False,  # visualize features
+             update=False,  # update all models
+             project=ROOT / 'runs/detect',  # save results to project/name
+             name='exp',  # save results to project/name
+             exist_ok=False,  # existing project/name ok, do not increment
+             line_thickness=3,  # bounding box thickness (pixels)
+             hide_labels=False,  # hide labels
+             hide_conf=False,  # hide confidences
+             half=False,  # use FP16 half-precision inference
+             dnn=False,  # use OpenCV DNN for ONNX inference
+             FRAME_GROUP=1,  # frame group
+             ):
     list = []
     source = str(source)
     # save_img = not nosave and not source.endswith('.txt')  # save inference images
@@ -194,15 +250,23 @@ def yolo_run(weights=ROOT / 'INT8_openvino_model/best_int8.xml',  # model.pt pat
         model.model.half() if half else model.model.float()
     bs = 1  # batch_size
     # Dataloader
-    
+
     dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt)
 
     vid_path, vid_writer = [None] * bs, [None] * bs
 
-    # Run inference
     model.warmup(imgsz=(1 if pt else bs, 3, *imgsz), half=half)  # warmup
     dt, seen = [0.0, 0.0, 0.0], 0
+    # Run inference
+
+    t_start = time_sync()  # start_time
+
+    cntt = 0
+    # ---------------------------------------------
     for path, im, im0s, vid_cap, s in dataset:
+        cntt += 1
+        if cntt % FRAME_GROUP != 0:
+            continue  # skip some frames
         t1 = time_sync()
         im = torch.from_numpy(im).to(device)
         im = im.half() if half else im.float()  # uint8 to fp16/32
@@ -222,11 +286,10 @@ def yolo_run(weights=ROOT / 'INT8_openvino_model/best_int8.xml',  # model.pt pat
         pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
         dt[2] += time_sync() - t3
 
-
         # Process predictions
         for i, det in enumerate(pred):  # per image
             seen += 1
-            
+
             p, im0, frame = path, im0s.copy(), getattr(dataset, 'frame', 0)
 
             p = Path(p)  # to Path
@@ -242,22 +305,28 @@ def yolo_run(weights=ROOT / 'INT8_openvino_model/best_int8.xml',  # model.pt pat
                 list.append(det.numpy())
 
                 # print(result)
-            
-            
+
         # LOGGER.info(f'{s}Done. ({t3 - t2:.3f}s)')
 
     # Print results
     t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
     LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *imgsz)}' % t)
     print(list)
-    return list
-    # if update:
-    #     strip_optimizer(weights)  # update model (to fix SourceChangeWarning)
-    
-    
+    # -------------------一定注意，这里得到的是tot_status，be like [0, 0, 2, ...]，数字！--------------------------
+    tot_status = []  # 这里要改
+    fps = int(dataset.cap.get(cv2.CAP_PROP_FRAME_COUNT) / FRAME_GROUP)
+    category = Sliding_Window(tot_status, fps)
 
-    
+    # --------------------最后的返回！！！！！！-------------------------
+    t_end = time_sync()  # end_time
+    duration = t_end - t_start
 
-if __name__ == "__main__":
-      list = yolo_run(source = 'night_woman_005_31_4.mp4')
-      print(list[0])
+    result = {"result": {"category": 0, "duration": 6000}}
+    result['result']['category'] = category
+    result['result']['duration'] = int(np.round((duration) * 1000))
+    return result
+
+
+# if __name__ == "__main__":
+#     list = yolo_run(source='night_woman_005_31_4.mp4')
+#     print(list[0])
