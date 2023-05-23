@@ -105,10 +105,7 @@ class YOLO_Status:
         self.condition = [0, 1, 2, 4, 3]
         pass
 
-    def detect(self, img) -> list:
-        pass
-
-    def determin(self, img) -> int:
+    def determin(self, img, dets) -> int:
         """
         determin which status this frame belongs to\n
         0 -> normal status\n
@@ -118,6 +115,7 @@ class YOLO_Status:
         4 -> turning around\n
 
         :param img: input image, format the same as detect function
+        :param dets: the detect boxes
         :returns: an int status symbol
         """
         wide, height = img.shape[1], img.shape[0]  # 输入图片宽、高
@@ -135,15 +133,15 @@ class YOLO_Status:
         mouth_status = 0  # 嘴状态，0 为闭， 1为张
 
         # 处理boxes
-        bboxes = self.detect(img)
+        bboxes = dets
         for box in bboxes:  # 遍历每个box
             xyxy = tuple(box[:4])  # xyxy坐标
             xywh = xyxy2xywh(*xyxy, wide, height)  # xywh坐标
             conf = box[4]  # 可信度
             cls = box[5]  # 类别
             if cls == self.cls_["face"]:  # 正脸
-                if .5 < xywh[0] and xywh[1] > driver[1] and xyxy[
-                    3] / height > .25:  # box中心在右侧0.5 并且 在司机下侧 并且 右下角在y轴0.25以下
+                if .5 < xywh[0] and xywh[1] > driver[1] and xyxy[3] / height > .25:
+                    # box中心在右侧0.5 并且 在司机下侧 并且 右下角在y轴0.25以下
                     driver = xywh  # 替换司机
                     driver_conf = conf
             elif cls == self.cls_["sideface"]:  # 侧脸
@@ -151,8 +149,8 @@ class YOLO_Status:
                     sideface = xywh  # 替换侧脸
                     sideface_conf = conf
             elif cls == self.cls_["phone"]:  # 手机
-                if .4 < xywh[0] and .2 < xywh[1] and xywh[1] > phone[1] and xywh[0] > phone[
-                    0]:  # box位置在右0.4, 下0.2, 原手机右下
+                if .4 < xywh[0] and .2 < xywh[1] and xywh[1] > phone[1] and xywh[0] > phone[0]:
+                    # box位置在右0.4, 下0.2, 原手机右下
                     phone = xywh  # 替换手机
             elif cls == self.cls_["open_eye"]:  # 睁眼
                 if xywh[0] > openeye[0]:  # 找最右边的，下面的同理
@@ -163,11 +161,11 @@ class YOLO_Status:
                     closeeye = xywh
                     closeeye_score = conf
             elif cls == self.cls_["open_mouth"]:  # 张嘴
-                if xywh[0] > mouth:
+                if xywh[0] > mouth[0]:
                     mouth = xywh
                     mouth_status = 1
             elif cls == self.cls_["close_mouth"]:  # 闭嘴
-                if xywh[0] > mouth:
+                if xywh[0] > mouth[0]:
                     mouth = xywh
                     mouth_status = 0
 
@@ -183,7 +181,7 @@ class YOLO_Status:
             if driver_conf > sideface_conf:  # 正脸可信度更高
                 status = max(status, self.status_prior["normal"])
             else:  # 侧脸可信度更高
-                status = max(status, self.status_prior["turing"])
+                status = max(status, self.status_prior["turning"])
         elif sideface[0] > driver[0]:  # 正侧脸不重合，并且侧脸在正脸右侧，说明司机是侧脸
             status = max(status, self.status_prior["turning"])
 
@@ -207,7 +205,7 @@ class YOLO_Status:
 @torch.no_grad()
 def yolo_run(weights=ROOT / 'INT8_openvino_model/best_int8.xml',  # model.pt path(s)
              source='',  # file/dir/URL/glob, 0 for webcam
-             data=ROOT / 'mycoco.yaml',  # dataset.yaml path
+             data=ROOT / 'one_stage.yaml',  # dataset.yaml path
              imgsz=(640, 640),  # inference size (height, width)
              conf_thres=0.25,  # confidence threshold
              iou_thres=0.45,  # NMS IOU threshold
@@ -233,7 +231,6 @@ def yolo_run(weights=ROOT / 'INT8_openvino_model/best_int8.xml',  # model.pt pat
              dnn=False,  # use OpenCV DNN for ONNX inference
              FRAME_GROUP=1,  # frame group
              ):
-    list = []
     source = str(source)
     # save_img = not nosave and not source.endswith('.txt')  # save inference images
     is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
@@ -262,6 +259,9 @@ def yolo_run(weights=ROOT / 'INT8_openvino_model/best_int8.xml',  # model.pt pat
     t_start = time_sync()  # start_time
 
     cntt = 0
+    tot_status = []
+    YOLO_determin = YOLO_Status()
+
     # ---------------------------------------------
     for path, im, im0s, vid_cap, s in dataset:
         cntt += 1
@@ -292,28 +292,29 @@ def yolo_run(weights=ROOT / 'INT8_openvino_model/best_int8.xml',  # model.pt pat
 
             p, im0, frame = path, im0s.copy(), getattr(dataset, 'frame', 0)
 
-            p = Path(p)  # to Path
+            # p = Path(p)  # to Path
             # save_path = str(save_dir / p.name)  # im.jpg
             # txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # im.txt
-            s += '%gx%g ' % im.shape[2:]  # print string
-            gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
-            imc = im0.copy() if save_crop else im0  # for save_crop
-            annotator = Annotator(im0, line_width=line_thickness, example=str(names))
+            # s += '%gx%g ' % im.shape[2:]  # print string
+            # gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
+            # imc = im0.copy() if save_crop else im0  # for save_crop
+            # annotator = Annotator(im0, line_width=line_thickness, example=str(names))
             if len(det):
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
-                list.append(det.numpy())
+                print(det.numpy())
+                cur_status = YOLO_determin.determin(im0, det.numpy())
+                tot_status.append(cur_status)
 
-                # print(result)
+                print(cur_status)
 
         # LOGGER.info(f'{s}Done. ({t3 - t2:.3f}s)')
 
     # Print results
     t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
     LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *imgsz)}' % t)
-    print(list)
+
     # -------------------一定注意，这里得到的是tot_status，be like [0, 0, 2, ...]，数字！--------------------------
-    tot_status = []  # 这里要改
     fps = int(dataset.cap.get(cv2.CAP_PROP_FRAME_COUNT) / FRAME_GROUP)
     category = Sliding_Window(tot_status, fps)
 
@@ -327,6 +328,6 @@ def yolo_run(weights=ROOT / 'INT8_openvino_model/best_int8.xml',  # model.pt pat
     return result
 
 
-# if __name__ == "__main__":
-#     list = yolo_run(source='night_woman_005_31_4.mp4')
-#     print(list[0])
+if __name__ == "__main__":
+    result = yolo_run(source='night_woman_005_31_4.mp4')
+    print(result)
