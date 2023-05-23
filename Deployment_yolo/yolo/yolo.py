@@ -44,6 +44,12 @@ def xyxy2xywh(xmin: int, ymin: int, xmax: int, ymax: int, wide: int, height: int
 
 def Sliding_Window(total_status, fps, thres=8 / 9):
     single_window_cnt = [0, 0, 0, 0, 0]
+    tmp = [0, 0, 0, 0, 0]
+    for i in range(len(total_status)):
+        tmp[int(total_status[i])] += 1
+
+    if tmp[3] >= int(thres * fps * 2):
+        return 3
     threshold = int(thres * fps * 3)
     for i in range(len(total_status) - int(3 * fps)):
         if i == 0:
@@ -219,7 +225,9 @@ def yolo_run(weights=ROOT / 'best.onnx',  # model.pt path(s)
     model.warmup(imgsz=(1 if pt else bs, 3, *imgsz), half=half)  # warmup
     dt, seen = [0.0, 0.0, 0.0], 0
     # Run inference
-
+    fps = dataset.cap.get(cv2.CAP_PROP_FRAME_COUNT)
+    FRAME_GROUP = int(fps / 3)
+    fps = 3
     t_start = time_sync()  # start_time
 
     cntt = 0
@@ -279,7 +287,7 @@ def yolo_run(weights=ROOT / 'best.onnx',  # model.pt path(s)
     LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *imgsz)}' % t)
 
     # -------------------一定注意，这里得到的是tot_status，be like [0, 0, 2, ...]，数字！--------------------------
-    fps = int(dataset.cap.get(cv2.CAP_PROP_FRAME_COUNT) / FRAME_GROUP)
+
     category = Sliding_Window(tot_status, fps)
 
     # --------------------最后的返回！！！！！！-------------------------
@@ -292,6 +300,6 @@ def yolo_run(weights=ROOT / 'best.onnx',  # model.pt path(s)
     return result
 
 
-if __name__ == "__main__":
-    result = yolo_run(source='night_woman_005_31_4.mp4')
-    print(result)
+# if __name__ == "__main__":
+#     result = yolo_run(source='night_woman_005_31_4.mp4')
+#     print(result)
