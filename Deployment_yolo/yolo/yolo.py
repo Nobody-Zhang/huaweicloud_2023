@@ -196,7 +196,7 @@ def yolo_run(weights=ROOT / 'INT8_openvino_model/best_int8.xml',  # model.pt pat
     # Dataloader
     
     dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt)
-        
+
     vid_path, vid_writer = [None] * bs, [None] * bs
 
     # Run inference
