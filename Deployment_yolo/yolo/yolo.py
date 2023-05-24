@@ -224,15 +224,15 @@ def yolo_run(weights=ROOT / 'openvino_model/yolov5n.xml',  # model.pt path(s)
 
     model.warmup(imgsz=(1 if pt else bs, 3, *imgsz), half=half)  # warmup
     dt, seen = [0.0, 0.0, 0.0], 0
-    # Run inference
     fps = dataset.cap.get(cv2.CAP_PROP_FPS)
     FRAME_GROUP = int(fps / 3)
     fps = 3
-    t_start = time_sync()  # start_time
 
     cntt = 0
     tot_status = []
     YOLO_determin = YOLO_Status()
+    # Run inference
+    t_start = time_sync()  # start_time
 
     # ---------------------------------------------
     for path, im, im0s, vid_cap, s in dataset:
