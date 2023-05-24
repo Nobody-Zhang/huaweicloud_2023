@@ -7,7 +7,6 @@ import torch.utils.data as data
 from matplotlib.pylab import plt
 import numpy as np
 
-
 # Transformer Classifier
 class TransformerClassifier(nn.Module):
     """
@@ -69,27 +68,39 @@ class TransformerClassifier(nn.Module):
         return x
 
 
-class TextDataset(data.Dataset):
+class TDataset(data.Dataset):
     """
     A PyTorch dataset for loading text classification data from a directory.
     Assumes the data is split into 5 files, named as '0.in', '1.in', '2.in', '3.in', and '4.in',
     and each line in the file is a text sequence to classify.
     """
 
-    def __init__(self, data_dir):
+    def __init__(self, data_dir=None, string=None, max_seq_length=50, num_classes=5, mode="Text"):
         """
         Initializes the dataset with the data in the given directory.
         Args:
-            data_dir (str): The path to the directory containing the text classification data.
+            data_dir (str): The path to the directory containing the text classification data. (Text Mode)
+            string (str): The exact string for classification (Str Mode)
+            max_seq_length: padding use
+
         """
         self.data = []
-        for i in range(5):
-            filename = data_dir + str(i) + '.in'
-            with open(filename, 'r') as f:
-                for line in f:
-                    line = line.strip()
-                    line = self.pad_sequence_str(line, max_length=50)
-                    self.data.append((line, i))
+        self.mode = mode.lower()
+        self.num_classes = num_classes
+        if self.mode == "text":
+            if not os.path.exists(data_dir):
+                print("The directory does not exist! If you want to use str mode (dataset with only one string), "
+                      "add mode=\"str\".")
+            for i in range(self.num_classes):
+                filename = data_dir + str(i) + '.in'
+                with open(filename, 'r') as f:
+                    for line in f:
+                        line = line.strip()
+                        line = self.pad_sequence_str(line, max_length=max_seq_length)
+                        self.data.append((line, i))
+        elif self.mode == "str":
+            string = self.pad_sequence_str(string, max_length=max_seq_length)
+            self.data.append(string)
 
     def __len__(self):
         """
@@ -106,64 +117,19 @@ class TextDataset(data.Dataset):
             x (Tensor): A tensor of input sequence data.
             y (int): An integer label indicating the class of the input sequence.
         """
-        x, y = self.data[index]
-        x = [int(c) for c in x]
-        x = torch.tensor(x, dtype=torch.long)
-        return x, y
+        if self.mode == "text":
+            x, y = self.data[index]
+            x = [int(c) for c in x]
+            x = torch.tensor(x, dtype=torch.long)
+            return x, y
 
-    def pad_sequence_str(self, seq, max_length=500, pad_char='0'):
-        """
-        Pads a given string sequence with a specified padding character to a maximum length.
+        elif self.mode == "str":
+            x = self.data[index]
+            x = [int(c) for c in x]
+            x = torch.tensor(x, dtype=torch.long)
+            return x
 
-        Args:
-            seq (str): The string sequence to pad.
-            max_length (int): The maximum length to pad the sequence to (default: 500).
-            pad_char (str): The character to use for padding (default: '0').
-
-        Returns:
-            str: The padded string sequence.
-        """
-        padded_seq = seq + (pad_char * (max_length - len(seq))) if len(seq) < max_length else seq[:max_length]
-        return padded_seq
-
-class StrDataset(data.Dataset):
-    """
-    A PyTorch dataset for loading text classification data from a directory.
-    Assumes the data is split into 5 files, named as '0.in', '1.in', '2.in', '3.in', and '4.in',
-    and each line in the file is a text sequence to classify.
-    """
-
-    def __init__(self, str):
-        """
-        Initializes the dataset with the data in the given directory.
-        Args:
-            data_dir (str): The path to the directory containing the text classification data.
-        """
-        self.data = []
-        str = self.pad_sequence_str(str, max_length=50)
-        self.data.append(str)
-
-    def __len__(self):
-        """
-        Returns the number of data samples in the dataset.
-        """
-        return len(self.data)
-
-    def __getitem__(self, index):
-        """
-        Returns a data sample from the dataset at the given index.
-        Args:
-            index (int): The index of the data sample to return.
-        Returns:
-            x (Tensor): A tensor of input sequence data.
-            y (int): An integer label indicating the class of the input sequence.
-        """
-        x = self.data[index]
-        x = [int(c) for c in x]
-        x = torch.tensor(x, dtype=torch.long)
-        return x
-
-    def pad_sequence_str(self, seq, max_length=500, pad_char='0'):
+    def pad_sequence_str(self, seq, max_length=50, pad_char='0'):
         """
         Pads a given string sequence with a specified padding character to a maximum length.
 
@@ -179,14 +145,17 @@ class StrDataset(data.Dataset):
         return padded_seq
 
 class Transform:
-    def __init__(self, model):
+    def __init__(self, model, max_seq_length=120, num_classes=5):
         self.model = model
         self.train_loss_list = []
+        self.max_seq_length = max_seq_length
+        self.num_classes = num_classes
 
     def train(self, dataset_path, criterion=nn.CrossEntropyLoss(), device=torch.device("cpu"),
               batch_size=32, learning_rate=0.001, num_epochs=100):
-        train_dataset = TextDataset(dataset_path)
-        val_dataset = TextDataset(dataset_path)
+        train_dataset = TDataset(data_dir=dataset_path, max_seq_length=self.max_seq_length,
+                                 num_classes=self.num_classes)
+        val_dataset = TDataset(data_dir=dataset_path, max_seq_length=self.max_seq_length, num_classes=self.num_classes)
         train_loader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
         val_loader = data.DataLoader(val_dataset, batch_size=batch_size)
 
@@ -202,13 +171,13 @@ class Transform:
                 format(epoch + 1, num_epochs, train_loss, train_acc, val_loss, val_acc))
 
     def evaluate(self, evaluate_dataset_path, evaluate_model_path="", device=torch.device("cpu"), batch_size=32,
-                 confusion_matrix=False, num_classes=5):
-        eval_dataset = TextDataset(evaluate_dataset_path)
+                 confusion_matrix=False):
+        eval_dataset = TDataset(evaluate_dataset_path, max_seq_length=self.max_seq_length, num_classes=self.num_classes)
         eval_loader = data.DataLoader(eval_dataset, batch_size=batch_size, shuffle=True)
         eval_model = self.model
         if os.path.exists(evaluate_model_path):
             eval_model.load_state_dict(torch.load(evaluate_model_path))
-        matrix = np.zeros([num_classes, num_classes])
+        matrix = np.zeros([self.num_classes, self.num_classes])
         with torch.no_grad():
             correct = 0
             total = 0
@@ -224,15 +193,16 @@ class Transform:
                 if confusion_matrix:
                     for i in range(labels.size(0)):
                         matrix[labels[i].item(), predicted[i].item()] += 1 if (
-                                labels[i].item() < num_classes and predicted[i].item() < num_classes) else 0
+                                labels[i].item() < self.num_classes and predicted[i].item() < self.num_classes) else 0
 
             print(f"Accuracy on test set: {100 * correct / total:.2f}% ({correct} out of {total})")
             if confusion_matrix:
                 return matrix / total
 
-    def evaluate_str(self, status_str, device=torch.device("cpu"),batch_size = 1, num_classes=5):
+    def evaluate_str(self, status_str, device=torch.device("cpu"), batch_size=1) -> int:
         eval_model = self.model
-        eval_dataset = StrDataset(status_str)
+        eval_dataset = TDataset(string=status_str, mode="Str", max_seq_length=self.max_seq_length,
+                                num_classes=self.num_classes)
         eval_loader = data.DataLoader(eval_dataset, batch_size=batch_size, shuffle=True)
         with torch.no_grad():
             for inputs in eval_loader:
@@ -240,7 +210,7 @@ class Transform:
                 outputs = eval_model(inputs)
                 _, predicted = torch.max(outputs.data, 1)
 
-        return predicted
+        return int(predicted)
 
 
     def train_iteration(self, train_loader, optimizer, criterion, device):

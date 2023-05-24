@@ -1,6 +1,7 @@
 from multiprocessing import Process, Manager, Event
 import time
 import warnings
+
 warnings.filterwarnings("ignore")
 from PIL import Image
 import cv2
@@ -24,7 +25,7 @@ import svm.svmdetect as svmdetect
 
 # fps = 30
 # 抽帧
-FRAME_GROUP = 6
+# FRAME_GROUP = 6
 # 设置三种状态的编号
 NORMAL = 0
 EYE_CLOSE = 1
@@ -37,8 +38,8 @@ def parse_args():
     parser.add_argument("--image_model", default="svm", help="image classfication model name")
     parser.add_argument("--mouth_model", default="./svm/svm_model_mouth.pkl", help="yawn classfication model name")
     parser.add_argument("--eye_model", default="./svm/svm_model_eyes.pkl", help="eye classfication model name")
-    parser.add_argument("--trans_model", default="./MT_helpers/transformer_ag_model.pth", help="transformer model")
-    parser.add_argument("--path", default="./test_video/day_man_062_11_2.mp4",
+    parser.add_argument("--trans_model", default="./MT_helpers/Saved_Model", help="transformer model")
+    parser.add_argument("--path", default="./test_video/night_woman_063_10_1.mp4",
                         help="path to video")
     parser.add_argument("--device", default="cpu", help="device for model use")
 
@@ -362,14 +363,13 @@ def Sliding_Window(tot_status, fps, thres1=2.45, thres2=0.48):
     window_status_cnt[0] = -1  # 排除0
     max_status = 0
     for i in range(len(window_status_cnt)):
-        if(window_status_cnt[max_status] < window_status_cnt[i]):
+        if (window_status_cnt[max_status] < window_status_cnt[i]):
             max_status = i
     # max_status = max(window_status_cnt, key=lambda x: window_status_cnt[x])
     if window_status_cnt[max_status] >= thres2 * fps:
         return max_status
     else:
         return 0
-
 
 
 # 根据output的状态决定该图片是哪一种状态
@@ -390,12 +390,35 @@ def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps)
             tot_status[i] = output[j]
             j = j + 1
     print(tot_status)
-    # result = Transform_result(transform_path,output)
-    # result = Transform_result(transform_path, tot_status)
-    # print(result[0])
-    result = Sliding_Window(tot_status, fps)
-    print("result:", result)
-    return tot_status
+
+    # -------统计所有的出现最多的东西---------
+    cnt_all = [0, 0, 0, 0, 0]
+    cnt_phone = 0
+    for i in range(len(tot_status)):
+        cnt_all[tot_status[i]] += 1
+        if tot_status[i] == 3:
+            cnt_phone += 1
+
+    model_path = os.path.join(transform_path, f"transformer_3fps_30_model.pth")
+
+    result = Transform_result(model_path, tot_status, num_classes=5)
+    return result
+    """
+    maxstatus = 0
+    cnt_all[0] = -1
+    for i in range(5):
+        if cnt_all[maxstatus] < cnt_all[i]:
+            maxstatus = i
+    if cnt_phone >= 0.3 * fps:
+        maxstatus = 3
+    
+    model_path = os.path.join(transform_path, f"transformer_3fps_{maxstatus}_model.pth")
+    result = Transform_result(model_path, output, num_classes=2)
+    if result == 0:
+        return maxstatus
+    else:
+        return 0
+    """
 
 
 # 根据output的状态决定该图片是哪一种状态
@@ -412,18 +435,18 @@ def Mobilenet_Determin(eye_status, yawn_status, output):
     print(output)
 
 
-def Transform_result(model_path, status_list):
+def Transform_result(model_path, status_list, num_classes=5):
     vocab_size = 5
     hidden_size = 32
-    num_classes = 5
     num_layers = 2
     num_heads = 4
     dropout = 0.1
+    seq_length = 50
     model = TransformerClassifier(vocab_size, hidden_size, num_classes, num_layers, num_heads, dropout)
     device = torch.device('cpu')
     model.to(device)
 
-    transformer = Transform(model)
+    transformer = Transform(model, max_seq_length=seq_length, num_classes=num_classes)
     transformer.load_model(model_path)
 
     status_str = ""
@@ -468,7 +491,8 @@ if __name__ == '__main__':
 
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
-    # fps = fps / FRAME_GROUP
+    FRAME_GROUP = round(fps / 3)
+    fps = 3
     thread_t1 = time.time()
     # 设定线程函数
     # eye_process = Process(target = Combine_model.image_eye.inference)
@@ -503,8 +527,8 @@ if __name__ == '__main__':
         nanodet_t1 = time.time()
         # # 抽帧：取每组的第一帧
         cnt += 1
-        # if cnt % FRAME_GROUP != 1:
-        #     continue
+        if cnt % FRAME_GROUP != 1:
+            continue
 
         # 识别人脸
         face_boxs = Combine_model.video_model[0].find_face(frame)
@@ -513,10 +537,16 @@ if __name__ == '__main__':
         # cv2.waitKey(1000)
         # 判断能否裁出人脸
         if face_boxs[0] == -1 or face_boxs[0] == 0:
+            cv2.imshow('4', frame)
+            cv2.waitKey(100)
             tot_status.append(4)
         elif face_boxs[0] == 1:
+            cv2.imshow('3', frame)
+            cv2.waitKey(100)
             tot_status.append(3)
         else:
+            cv2.imshow('-1', frame)
+            cv2.waitKey(100)
             mouth_eye_boxes = Combine_model.video_model[1].find_eye_mouth(face_img)
             if not mouth_eye_boxes[0] or not mouth_eye_boxes[2]:
                 tot_status.append(4)
@@ -528,13 +558,13 @@ if __name__ == '__main__':
                 tot_status.append(-1)
                 flag = True
                 # 获得眼部和嘴部图片
-                # cv2.imshow('eye',eye_img)
-                # cv2.waitKey(1000)
-                # cv2.imshow('mouth',mouth_img)
-                # cv2.waitKey(1)
+                cv2.imshow('eye', eye_img)
+                cv2.waitKey(1)
+                cv2.imshow('mouth', mouth_img)
+                cv2.waitKey(1)
         nanodet_t2 = time.time()
-        print("nanodet时间")
-        print(nanodet_t2 - nanodet_t1)
+        # print("nanodet时间")
+        # print(nanodet_t2 - nanodet_t1)
         # eye_queue.append(eye_img)
         # yawn_queue.append(mouth_img)
 
@@ -545,20 +575,20 @@ if __name__ == '__main__':
     # yawn_process.join()
     print("End")
     all_end = time.time()
-    print((all_end - all_start) / cnt)
+    print((all_end - all_start) / cnt if cnt != 0 else 0)
 
     print(tot_status)
 
     eye_status_list = []
     yawn_status_list = []
-    if(flag):
+    if (flag):
         eye_status_list, yawn_status_list = SVM_Handle(eye_queue, yawn_queue)
 
     print(f'eye:{eye_status_list}')
     print(f'YAWN:{yawn_status_list}')
     # 状态判断
     # Mobilenet_Determin(eye_status_list,yawn_status_list,output)
-    SVM_Determin(eye_status_list, yawn_status_list, transform_path, tot_status, fps)
+    print(SVM_Determin(eye_status_list, yawn_status_list, transform_path, tot_status, fps))
 
 """
 if __name__ == '__main__':

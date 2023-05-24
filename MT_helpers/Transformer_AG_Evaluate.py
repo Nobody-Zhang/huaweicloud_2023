@@ -1,7 +1,7 @@
 import torch
 import torch.utils.data as data
 
-from My_Transformer import TextDataset, TransformerClassifier
+from My_Transformer import TDataset, TransformerClassifier
 
 
 def evaluate(model, eval_loader, optimizer, criterion, device):
@@ -35,10 +35,11 @@ if __name__ == "__main__":
     batch_size = 32
     lr = 0.001
     num_epochs = 100
-    eval_dataset = TextDataset('Ten_times/', max_seq_length=50)
+    eval_dataset = TDataset('data/transformer_data_extracted/', max_seq_length=90)
+    eval_dataset = TDataset('data/transformer_data_extracted/', max_seq_length=90)
     eval_loader = data.DataLoader(eval_dataset, batch_size=batch_size, shuffle=True)
     model = TransformerClassifier(vocab_size, hidden_size, num_classes, num_layers, num_heads, dropout)
-    model.load_state_dict(torch.load('Saved_Model/transformer_extracted_length_model.pth'))
+    model.load_state_dict(torch.load('Saved_Model/transformer_6fps_model.pth'))
     with torch.no_grad():
         correct = 0
         total = 0
