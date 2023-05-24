@@ -44,12 +44,12 @@ def xyxy2xywh(xmin: int, ymin: int, xmax: int, ymax: int, wide: int, height: int
 
 def Sliding_Window(total_status, fps, thres=8 / 9):
     single_window_cnt = [0, 0, 0, 0, 0]
-    tmp = [0, 0, 0, 0, 0]
-    for i in range(len(total_status)):
-        tmp[int(total_status[i])] += 1
-
-    if tmp[3] >= int(thres * fps * 2):
-        return 3
+    # tmp = [0, 0, 0, 0, 0]
+    # for i in range(len(total_status)):
+    #     tmp[int(total_status[i])] += 1
+    #
+    # if tmp[3] >= int(thres * fps * 2):
+    #     return 3
     threshold = int(thres * fps * 3)
     for i in range(len(total_status) - int(3 * fps)):
         if i == 0:
@@ -173,12 +173,12 @@ class YOLO_Status:
 
 
 @torch.no_grad()
-def yolo_run(weights=ROOT / 'openvino_model/yolov5n.xml',  # model.pt path(s)
+def yolo_run(weights=ROOT / 'best_openvino_model/best.xml',  # model.pt path(s)
              source='',  # file/dir/URL/glob, 0 for webcam
-             data=ROOT / 'yolov5n.yaml',  # dataset.yaml path
+             data=ROOT / 'best_openvino_model/best.yaml',  # dataset.yaml path
              imgsz=(640, 640),  # inference size (height, width)
-             conf_thres=0.25,  # confidence threshold
-             iou_thres=0.45,  # NMS IOU threshold
+             conf_thres=0.10,  # confidence threshold
+             iou_thres=0.40,  # NMS IOU threshold
              max_det=1000,  # maximum detections per image
              device='cpu',  # cuda device, i.e. 0 or 0,1,2,3 or cpu
              view_img=False,  # show results
@@ -289,7 +289,7 @@ def yolo_run(weights=ROOT / 'openvino_model/yolov5n.xml',  # model.pt path(s)
     # -------------------一定注意，这里得到的是tot_status，be like [0, 0, 2, ...]，数字！--------------------------
 
     category = Sliding_Window(tot_status, fps)
-
+    print(tot_status)
     # --------------------最后的返回！！！！！！-------------------------
     t_end = time_sync()  # end_time
     duration = t_end - t_start
