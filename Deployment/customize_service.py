@@ -1,3 +1,4 @@
+import os.path
 from multiprocessing import Process, Manager, Event
 import time
 from PIL import Image
@@ -12,6 +13,7 @@ from skimage.transform import resize
 from model_service.pytorch_model_service import PTServingBaseService
 import numpy as np
 import warnings
+
 warnings.filterwarnings("ignore")
 
 # import video classfication
@@ -27,7 +29,9 @@ import svm.svmdetect as svmdetect
 
 # fps = 30
 # 抽帧
-FRAME_GROUP = 6
+# FRAME_GROUP = 6
+
+
 # 设置三种状态的编号
 # NORMAL = 0
 # EYE_CLOSE = 1
@@ -40,7 +44,7 @@ def parse_args():
     parser.add_argument("--image_model", default="svm", help="image classfication model name")
     parser.add_argument("--mouth_model", default="./svm/svm_model_mouth.pkl", help="yawn classfication model name")
     parser.add_argument("--eye_model", default="./svm/svm_model_eyes.pkl", help="eye classfication model name")
-    parser.add_argument("--trans_model", default="./MT_helpers/transformer_ag_model.pth", help="transformer model")
+    parser.add_argument("--trans_model", default="./MT_helpers/models", help="transformer model directory")
     parser.add_argument("--path", default="./day_man_001_10_1.mp4", help="path to video")
     parser.add_argument("--device", default="cpu", help="device for model use")
 
@@ -126,60 +130,67 @@ class Combination:
 
 
 # 滑动窗口后处理，默认不抽帧，如果要抽帧就把所有的fps用fps/FRAME_GROUP代替
-def Sliding_Window(tot_status, fps, thres1=2.48, thres2=0.48):
-    window_status = {}  # 所有窗口的状态
-    window_status_cnt = [0, 0, 0, 0, 0]
-    single_window_cnt = [0, 0, 0, 0, 0]
-    """
-    window_status_cnt = {}  # 窗口状态计数
-    window_status_cnt[0] = 0
-    window_status_cnt[1] = 0
-    window_status_cnt[2] = 0
-    window_status_cnt[3] = 0
-    window_status_cnt[4] = 0
-    single_window_cnt = {}
-    single_window_cnt[0] = 0
-    single_window_cnt[1] = 0
-    single_window_cnt[2] = 0
-    single_window_cnt[3] = 0
-    single_window_cnt[4] = 0
-    """
-    for i in range(len(tot_status) - int(2.5 * fps)):
-        if i == 0:
-            for j in range(int(2.5 * fps)):
-                print(i + j)
-                print(tot_status[i + j])
-                print(type(tot_status[i + j]))
-                single_window_cnt[int(tot_status[i + j])] += 1
-        else:
-            single_window_cnt[int(tot_status[i + int(2.5 * fps) - 1])] += 1
-            single_window_cnt[int(tot_status[i - 1])] -= 1
-        single_window_cnt[0] = -1  # 排除0
-        max_cnt = 0
+# def Sliding_Window(tot_status, fps, thres1=2.48, thres2=0.48):
+#     window_status = {}  # 所有窗口的状态
+#     window_status_cnt = [0, 0, 0, 0, 0]
+#     single_window_cnt = [0, 0, 0, 0, 0]
+#     for i in range(len(tot_status) - int(2.5 * fps)):
+#         if i == 0:
+#             for j in range(int(2.5 * fps)):
+#                 print(i + j)
+#                 print(tot_status[i + j])
+#                 print(type(tot_status[i + j]))
+#                 single_window_cnt[int(tot_status[i + j])] += 1
+#         else:
+#             single_window_cnt[int(tot_status[i + int(2.5 * fps) - 1])] += 1
+#             single_window_cnt[int(tot_status[i - 1])] -= 1
+#         single_window_cnt[0] = -1  # 排除0
+#         max_cnt = 0
+# 
+#         # max_cnt = max(single_window_cnt, key=lambda x: single_window_cnt[x])
+#         for j in range(len(single_window_cnt)):
+#             if single_window_cnt[j] > single_window_cnt[max_cnt]:
+#                 max_cnt = j
+#         if single_window_cnt[max_cnt] >= thres1 * fps:
+#             window_status[i] = max_cnt
+#         else:
+#             window_status[i] = 0
+#     for i in range(len(window_status)):
+#         window_status_cnt[int(window_status[i])] += 1
+#     print("window_status:", window_status)
+#     print("window_status_cnt:", window_status_cnt)
+#     window_status_cnt[0] = -1  # 排除0
+#     max_status = 0
+#     for i in range(len(window_status_cnt)):
+#         if (window_status_cnt[max_status] < window_status_cnt[i]):
+#             max_status = i
+#     if window_status_cnt[max_status] >= thres2 * fps:
+#         return max_status
+#     else:
+#         return 0
 
-        # max_cnt = max(single_window_cnt, key=lambda x: single_window_cnt[x])
-        for j in range(len(single_window_cnt)):
-            if single_window_cnt[j] > single_window_cnt[max_cnt]:
-                max_cnt = j
-        if single_window_cnt[max_cnt] >= thres1 * fps:
-            window_status[i] = max_cnt
+def Sliding_Window(total_status, fps, thres1=2.5, thres2=0.1):
+    classes_cnt = [0, 0, 0, 0, 0]
+    threshold = int(thres1 * fps)
+    tolerance = int(thres2 * fps)
+    gap = 0
+    cur_class = 0
+    last_gap = 0
+    
+    for frame in total_status:
+        if frame != cur_class:
+            gap += 1
+            classes_cnt[frame] += 1
+            last_gap = frame
+            if gap >= tolerance:
+                classes_cnt[cur_class] = 0
+                cur_class = last_gap
         else:
-            window_status[i] = 0
-    for i in range(len(window_status)):
-        window_status_cnt[int(window_status[i])] += 1
-    print("window_status:", window_status)
-    print("window_status_cnt:", window_status_cnt)
-    window_status_cnt[0] = -1  # 排除0
-    max_status = 0
-    for i in range(len(window_status_cnt)):
-        if(window_status_cnt[max_status] < window_status_cnt[i]):
-            max_status = i
-    # max_status = max(window_status_cnt, key=lambda x: window_status_cnt[x])
-    if window_status_cnt[max_status] >= thres2 * fps:
-        return max_status
-    else:
-        return 0
-
+            classes_cnt[frame] += 1
+            gap = 0
+            if cur_class != 0 and classes_cnt[frame] >= threshold:
+                return frame
+    return 0
 
 # 根据output的状态决定该图片(?视频)是哪一种状态           
 def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps):
@@ -199,14 +210,38 @@ def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps)
             tot_status[i] = output[j]
             j = j + 1
     print(tot_status)
-    # result = Transform_result(transform_path,output)
-    # result = Transform_result(transform_path, tot_status)
     result = Sliding_Window(tot_status, fps)
-    # print(result[0]) # (?)
+    # -------统计所有的出现最多的东西---------
+    # cnt_all = [0, 0, 0, 0, 0]
+    # cnt_phone = 0
+    # for i in range(len(tot_status)):
+    #     cnt_all[tot_status[i]] += 1
+    #     if tot_status[i] == 3:
+    #         cnt_phone += 1
+    # 
+    # model_path = os.path.join(transform_path, f"transformer_3fps_30_model.pth")
+    # 
+    # result = Transform_result(model_path, tot_status, num_classes=5)
     return result
+    """
+    maxstatus = 0
+    cnt_all[0] = -1
+    for i in range(5):
+        if cnt_all[maxstatus] < cnt_all[i]:
+            maxstatus = i
+    if cnt_phone >= 0.3 * fps:
+        maxstatus = 3
+
+    model_path = os.path.join(transform_path, f"transformer_3fps_{maxstatus}_model.pth")
+    result = Transform_result(model_path, tot_status, num_classes=2)
+    if result == 0:
+        return maxstatus
+    else:
+        return 0
+    """
 
 
-# 根据output的状态决定该图片是哪一种状态           
+# 根据output的状态决定该图片是哪一种状态
 def Mobilenet_Determin(eye_status, yawn_status, output):
     for i in range(len(eye_status)):
         # 首先判断是否打哈欠了
@@ -220,18 +255,18 @@ def Mobilenet_Determin(eye_status, yawn_status, output):
     print(output)
 
 
-def Transform_result(model_path, status_list):
+def Transform_result(model_path, status_list, num_classes=5):
     vocab_size = 5
     hidden_size = 32
-    num_classes = 5
     num_layers = 2
     num_heads = 4
     dropout = 0.1
+    seq_length = 50
     model = TransformerClassifier(vocab_size, hidden_size, num_classes, num_layers, num_heads, dropout)
     device = torch.device('cpu')
     model.to(device)
 
-    transformer = Transform(model)
+    transformer = Transform(model, max_seq_length=seq_length, num_classes=num_classes)
     transformer.load_model(model_path)
 
     status_str = ""
@@ -262,10 +297,9 @@ class model:
     def inference(self, cap):
         # current_dir = os.getcwd()
         fps = cap.get(cv2.CAP_PROP_FPS)
-        fps = fps / FRAME_GROUP
-        # transform_path = os.path.join(current_dir, "MT_helpers/transformer_ag_model.pth")
-        transform_path = "/home/ma-user/infer/model/1/MT_helpers/transformer_ag_model.pth"
-        # cap = cv2.VideoCapture(video_path)
+        # FRAME_GROUP = round(fps / 3)
+        # fps = 3
+        transform_path = "/home/ma-user/infer/model/1/MT_helpers/models"
         all_start = time.time()
         cnt = 0
 
@@ -284,8 +318,8 @@ class model:
 
             # # 抽帧：取每组的第一帧
             cnt += 1
-            if cnt % FRAME_GROUP != 1:
-                continue
+            # if cnt % FRAME_GROUP != 1:
+            #     continue
 
             # 识别人脸
             face_boxs = self.Combine_model.video_model[0].find_face(frame)
@@ -313,7 +347,7 @@ class model:
 
         eye_status_list = []
         yawn_status_list = []
-        if(flag):
+        if (flag):
             eye_status_list, yawn_status_list = SVM_Handle(eye_queue, yawn_queue)
 
         print(f'eye_status_list{eye_status_list}')
