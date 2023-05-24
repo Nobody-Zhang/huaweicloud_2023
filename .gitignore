@@ -10,3 +10,4 @@
 /Nanodet-openvino/convert_for_two_stage/night_woman_005_31_4.mp4
 /Nanodet-openvino/convert_for_two_stage/open_model_zoo/
 /Combine_video_image/test_video
+Deployment_yolo/yolo/*.mp4
