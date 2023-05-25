@@ -42,7 +42,7 @@ def xyxy2xywh(xmin: int, ymin: int, xmax: int, ymax: int, wide: int, height: int
     return x, y, w, h
 
 
-def Sliding_Window(total_status, fps, thres=8 / 9):
+def Sliding_Window(total_status, fps, thres=9/11):
     single_window_cnt = [0, 0, 0, 0, 0]
     # tmp = [0, 0, 0, 0, 0]
     # for i in range(len(total_status)):
@@ -50,16 +50,13 @@ def Sliding_Window(total_status, fps, thres=8 / 9):
     #
     # if tmp[3] >= int(thres * fps * 2):
     #     return 3
-    threshold = int(thres * fps * 3)
-    for i in range(len(total_status) - int(3 * fps)):
+    threshold = int(thres * fps * 11/3)
+    for i in range(len(total_status) - int(11/3 * fps)):
         if i == 0:
             for j in range(int(3 * fps)):
-                # print(i + j)
-                # print(tot_status[i + j])
-                # print(type(tot_status[i + j]))
                 single_window_cnt[int(total_status[i + j])] += 1
         else:
-            single_window_cnt[int(total_status[i + int(3 * fps) - 1])] += 1
+            single_window_cnt[int(total_status[i + int(11/3 * fps) - 1])] += 1
             single_window_cnt[int(total_status[i - 1])] -= 1
         for i in range(1, 5):
             if single_window_cnt[i] >= threshold:
