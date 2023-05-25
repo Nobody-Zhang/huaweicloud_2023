@@ -68,9 +68,8 @@ class YOLO_Status:
     def __init__(self):
         self.cls_ = {"close_eye": 0, "close_mouth": 1, "face": 2, "open_eye": 3, "open_mouth": 4, "phone": 5,
                      "sideface": 6}
-        self.status_prior = {"normal": 0, "closeeye": 1, "yawn": 2, "calling": 4, "turning": 3}
-        self.condition = [0, 1, 2, 4, 3]
-        pass
+        self.status_prior = {"normal": 0, "closeeye": 1, "yawn": 3, "calling": 4, "turning": 2}
+        self.condition = [0, 1, 4, 2, 3]
 
     def determin(self, img, dets) -> int:
         """
@@ -88,16 +87,22 @@ class YOLO_Status:
         wide, height = img.shape[1], img.shape[0]  # 输入图片宽、高
         status = 0  # 最终状态，默认为0
         driver = (0, 0, 0, 0)  # 司机正脸xywh坐标
+        driver_xyxy = (0, 0, 0, 0)  # 司机正脸xyxy坐标
         driver_conf = 0  # 正脸可信度
         sideface = (0, 0, 0, 0)  # 司机侧脸xywh坐标
+        sideface_xyxy = (0, 0, 0, 0)  # 侧脸xyxy坐标
         sideface_conf = 0  # 侧脸可信度
+        face = (0, 0, 0, 0)  # 司机的脸，不管正侧
+        face_xyxy = (0, 0, 0, 0)  # 司机的脸xyxy坐标
         phone = (0, 0, 0, 0)  # 手机xywh坐标
         openeye = (0, 0, 0, 0)  # 睁眼xywh坐标
         closeeye = (0, 0, 0, 0)  # 闭眼xywh坐标， 以防两只眼睛识别不一样
         openeye_score = 0  # 睁眼可信度
         closeeye_score = 0  # 闭眼可信度
+        eyes = []  # 第一遍扫描眼睛列表
         mouth = (0, 0, 0, 0)  # 嘴xywh坐标
         mouth_status = 0  # 嘴状态，0 为闭， 1为张
+        mouths = []  # 第一遍扫描嘴列表
 
         # 处理boxes
         bboxes = dets
@@ -107,51 +112,70 @@ class YOLO_Status:
             conf = box[4]  # 可信度
             cls = box[5]  # 类别
             if cls == self.cls_["face"]:  # 正脸
-                if .5 < xywh[0] and xywh[1] > driver[1] and xyxy[3] / height > .25:
-                    # box中心在右侧0.5 并且 在司机下侧 并且 右下角在y轴0.25以下
+                if .5 < xywh[0] and xywh[1] > driver[1]:
+                    # box中心在右侧0.5 并且 在司机下侧
                     driver = xywh  # 替换司机
+                    driver_xyxy = xyxy
                     driver_conf = conf
             elif cls == self.cls_["sideface"]:  # 侧脸
-                if .5 < xywh[0] and xywh[1] > sideface[1] and xyxy[3] / height > .25:  # box位置，与face一致
+                if .5 < xywh[0] and xywh[1] > sideface[1]:  # box位置，与face一致
                     sideface = xywh  # 替换侧脸
+                    sideface_xyxy = xyxy
                     sideface_conf = conf
             elif cls == self.cls_["phone"]:  # 手机
                 if .4 < xywh[0] and .2 < xywh[1] and xywh[1] > phone[1] and xywh[0] > phone[0]:
                     # box位置在右0.4, 下0.2, 原手机右下
                     phone = xywh  # 替换手机
-            elif cls == self.cls_["open_eye"]:  # 睁眼
-                if xywh[0] > openeye[0]:  # 找最右边的，下面的同理
-                    openeye = xywh
-                    openeye_score = conf
-            elif cls == self.cls_["close_eye"]:  # 闭眼
-                if xywh[0] > closeeye[0]:
-                    closeeye = xywh
-                    closeeye_score = conf
-            elif cls == self.cls_["open_mouth"]:  # 张嘴
-                if xywh[0] > mouth[0]:
-                    mouth = xywh
-                    mouth_status = 1
-            elif cls == self.cls_["close_mouth"]:  # 闭嘴
-                if xywh[0] > mouth[0]:
-                    mouth = xywh
-                    mouth_status = 0
+            elif cls == self.cls_["open_eye"] or cls == self.cls_["close_eye"]:  # 眼睛，先存着
+                eyes.append((cls, xywh, conf))
+            elif cls == self.cls_["open_mouth"] or cls == self.cls_["close_mouth"]:  # 嘴，先存着
+                mouths.append((cls, xywh))
+
 
         # 判断状态
-        if driver[0] > sideface[0] and 0 < abs(driver[0] - phone[0]) < .3 and 0 < abs(
-                driver[1] - phone[1]) < .3:  # 正脸打电话，手机与正脸相对0～0.3之内
-            status = max(status, self.status_prior["calling"])  # 判断状态为打电话
-        elif driver[0] < sideface[0] and 0 < abs(sideface[0] - phone[0]) < .3 and 0 < abs(
-                sideface[1] - phone[1]) < .3:  # 侧脸打电话，同正脸判断
-            status = max(status, self.status_prior["calling"])
-
+        face = driver
+        face_xyxy = driver_xyxy
         if abs(driver[0] - sideface[0]) < .1 and abs(driver[1] - sideface[1]) < .1:  # 正脸与侧脸很接近，说明同时检测出了正脸和侧脸
             if driver_conf > sideface_conf:  # 正脸可信度更高
                 status = max(status, self.status_prior["normal"])
+                face = driver
+                face_xyxy = driver_xyxy
             else:  # 侧脸可信度更高
                 status = max(status, self.status_prior["turning"])
+                face = sideface
+                face_xyxy = sideface_xyxy
         elif sideface[0] > driver[0]:  # 正侧脸不重合，并且侧脸在正脸右侧，说明司机是侧脸
             status = max(status, self.status_prior["turning"])
+            face = sideface
+            face_xyxy = sideface_xyxy
+        
+        if abs(face[0] - phone[0]) < .3 and abs(face[1] - phone[1]) < .3:
+            status = max(status, self.status_prior["calling"])  # 判断状态为打电话
+        
+        for eye_i in eyes:
+            if eye_i[1][0] < face_xyxy[0] or eye_i[1][0] > face_xyxy[2] or eye_i[1][1] < face_xyxy[1] or eye_i[1][1] < face_xyxy[3]:
+                continue
+            if eye_i[0] == self.cls_["open_eye"]:  # 睁眼
+                if eye_i[1][0] > openeye[0]:  # 找最右边的，下面的同理
+                    openeye = eye_i[1]
+                    openeye_score = eye_i[2]
+            elif eye_i[0] == self.cls_["close_eye"]:  # 睁眼
+                if eye_i[1][0] > closeeye[0]:  # 找最右边的，下面的同理
+                    closeeye = eye_i[1]
+                    closeeye_score = eye_i[2]
 
+        for mouth_i in mouths:
+            if mouth_i[1][0] < face_xyxy[0] or mouth_i[1][0] > face_xyxy[2] or mouth_i[1][1] < face_xyxy[1] or mouth_i[1][1] < face_xyxy[3]:
+                continue
+            if mouth_i[0] == self.cls_["open_mouth"]:  # 张嘴
+                if mouth_i[1][0] > mouth[0]:
+                    mouth = mouth_i[1]
+                    mouth_status = 1
+            elif mouth_i[0] == self.cls_["close_mouth"]:  # 闭嘴
+                if mouth_i[1][0] > mouth[0]:
+                    mouth = mouth_i[1]
+                    mouth_status = 0
+            
         if mouth_status == 1:  # 嘴是张着的
             status = max(status, self.status_prior["yawn"])
 
