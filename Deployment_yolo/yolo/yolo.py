@@ -287,6 +287,12 @@ def yolo_run(weights=ROOT / 'pot_openvino_model/best_int8.xml',  # model.pt path
 
     category = Sliding_Window(tot_status, fps)
     print(tot_status)
+    cnt3 = 0
+    for i in tot_status:
+        if i == 3:
+            cnt3 += 1
+    if cnt3 >= 1.5 * fps and category != 3:
+        category = 0
     # --------------------最后的返回！！！！！！-------------------------
     t_end = time_sync()  # end_time
     duration = t_end - t_start
