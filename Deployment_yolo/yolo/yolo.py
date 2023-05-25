@@ -173,9 +173,9 @@ class YOLO_Status:
 
 
 @torch.no_grad()
-def yolo_run(weights=ROOT / 'best_openvino_model/best.xml',  # model.pt path(s)
+def yolo_run(weights=ROOT / 'pot_openvino_model/best_int8.xml',  # model.pt path(s)
              source='',  # file/dir/URL/glob, 0 for webcam
-             data=ROOT / 'best_openvino_model/best.yaml',  # dataset.yaml path
+             data=ROOT / 'one_stage.yaml',  # dataset.yaml path
              imgsz=(640, 640),  # inference size (height, width)
              conf_thres=0.20,  # confidence threshold
              iou_thres=0.40,  # NMS IOU threshold
@@ -301,5 +301,5 @@ def yolo_run(weights=ROOT / 'best_openvino_model/best.xml',  # model.pt path(s)
 
 
 if __name__ == "__main__":
-    result = yolo_run(source='night_woman_005_31_4.mp4')
+    result = yolo_run(source='day_man_062_11_2.mp4')
     print(result)
