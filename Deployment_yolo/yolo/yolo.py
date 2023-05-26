@@ -2,7 +2,7 @@
 import os
 import sys
 from pathlib import Path
-
+import math
 import cv2
 import torch
 import torch.backends.cudnn as cudnn
@@ -42,25 +42,20 @@ def xyxy2xywh(xmin: int, ymin: int, xmax: int, ymax: int, wide: int, height: int
     return x, y, w, h
 
 
-def Sliding_Window(total_status, fps, thres=9/11):
+def Sliding_Window(total_status, fps):
     single_window_cnt = [0, 0, 0, 0, 0]
-    # tmp = [0, 0, 0, 0, 0]
-    # for i in range(len(total_status)):
-    #     tmp[int(total_status[i])] += 1
-    #
-    # if tmp[3] >= int(thres * fps * 2):
-    #     return 3
-    threshold = int(thres * fps * 11/3)
-    for i in range(len(total_status) - int(11/3 * fps)):
+
+    threshold = 3 # 大于3帧就认为是这个状态
+    for i in range(len(total_status) - int(4 * fps)):
         if i == 0:
-            for j in range(int(3 * fps)):
+            for j in range(int(4 * fps)):
                 single_window_cnt[int(total_status[i + j])] += 1
         else:
-            single_window_cnt[int(total_status[i + int(11/3 * fps) - 1])] += 1
+            single_window_cnt[int(total_status[i + int(4 * fps) - 1])] += 1
             single_window_cnt[int(total_status[i - 1])] -= 1
-        for i in range(1, 5):
-            if single_window_cnt[i] >= threshold:
-                return i
+        for j in range(1, 5):
+            if single_window_cnt[j] >= threshold:
+                return j
     return 0
 
 
@@ -246,8 +241,11 @@ def yolo_run(weights=ROOT / 'best_openvino_model/best.xml',  # model.pt path(s)
     model.warmup(imgsz=(1 if pt else bs, 3, *imgsz), half=half)  # warmup
     dt, seen = [0.0, 0.0, 0.0], 0
     fps = dataset.cap.get(cv2.CAP_PROP_FPS)
-    FRAME_GROUP = int(fps / 3)
-    fps = 3
+
+    rate = fps
+    frame_num = int(dataset.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    FRAME_GROUP = int(fps / 1)
+    fps = 1
 
     cntt = 0
     tot_status = []
@@ -308,6 +306,8 @@ def yolo_run(weights=ROOT / 'best_openvino_model/best.xml',  # model.pt path(s)
     LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *imgsz)}' % t)
 
     # -------------------一定注意，这里得到的是tot_status，be like [0, 0, 2, ...]，数字！--------------------------
+    for i in range(5):# 防止视频时间不够，补0
+        tot_status.append(0)
 
     category = Sliding_Window(tot_status, fps)
     # print(tot_status)
@@ -323,10 +323,15 @@ def yolo_run(weights=ROOT / 'best_openvino_model/best.xml',  # model.pt path(s)
 
     result = {"result": {"category": 0, "duration": 6000}}
     result['result']['category'] = category
-    result['result']['duration'] = int(np.round((duration) * 1000))
+
+    # result['result']['duration'] = int(np.round((duration) * 1000))
+    result['result']['duration'] = int(duration * 1000)
     return result
 
+def sigmoid(x):
+     return 1 / (1 + math.exp(-x))
 
 # if __name__ == "__main__":
 #     result = yolo_run(source='day_man_001_10_1.mp4')
+#
 #     print(result)
