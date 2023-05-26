@@ -151,9 +151,9 @@ class YOLO_Status:
         
         if abs(face[0] - phone[0]) < .3 and abs(face[1] - phone[1]) < .3:
             status = max(status, self.status_prior["calling"])  # 判断状态为打电话
-        
+
         for eye_i in eyes:
-            if eye_i[1][0] < face_xyxy[0] or eye_i[1][0] > face_xyxy[2] or eye_i[1][1] < face_xyxy[1] or eye_i[1][1] < face_xyxy[3]:
+            if eye_i[1][0] < face_xyxy[0]/wide or eye_i[1][0] > face_xyxy[2]/wide or eye_i[1][1] < face_xyxy[1]/height or eye_i[1][1] > face_xyxy[3]/height:
                 continue
             if eye_i[0] == self.cls_["open_eye"]:  # 睁眼
                 if eye_i[1][0] > openeye[0]:  # 找最右边的，下面的同理
@@ -165,7 +165,7 @@ class YOLO_Status:
                     closeeye_score = eye_i[2]
 
         for mouth_i in mouths:
-            if mouth_i[1][0] < face_xyxy[0] or mouth_i[1][0] > face_xyxy[2] or mouth_i[1][1] < face_xyxy[1] or mouth_i[1][1] < face_xyxy[3]:
+            if mouth_i[1][0] < face_xyxy[0]/wide or mouth_i[1][0] > face_xyxy[2]/wide or mouth_i[1][1] < face_xyxy[1]/height or mouth_i[1][1] > face_xyxy[3]/height:
                 continue
             if mouth_i[0] == self.cls_["open_mouth"]:  # 张嘴
                 if mouth_i[1][0] > mouth[0]:
