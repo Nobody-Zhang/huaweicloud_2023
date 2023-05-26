@@ -194,9 +194,9 @@ class YOLO_Status:
 
 
 @torch.no_grad()
-def yolo_run(weights=ROOT / 'pot_openvino_model/best_int8.xml',  # model.pt path(s)
+def yolo_run(weights=ROOT / 'best_openvino_model/best.xml',  # model.pt path(s)
              source='',  # file/dir/URL/glob, 0 for webcam
-             data=ROOT / 'one_stage.yaml',  # dataset.yaml path
+             data=ROOT / 'best_openvino_model/best.yaml',  # dataset.yaml path
              imgsz=(640, 640),  # inference size (height, width)
              conf_thres=0.20,  # confidence threshold
              iou_thres=0.40,  # NMS IOU threshold
@@ -295,11 +295,11 @@ def yolo_run(weights=ROOT / 'pot_openvino_model/best_int8.xml',  # model.pt path
             if len(det):
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
-                print(det.numpy())
+                # print(det.numpy())
                 cur_status = YOLO_determin.determin(im0, det.numpy())
                 tot_status.append(cur_status)
 
-                print(cur_status)
+                # print(cur_status)
 
         # LOGGER.info(f'{s}Done. ({t3 - t2:.3f}s)')
 
@@ -310,7 +310,7 @@ def yolo_run(weights=ROOT / 'pot_openvino_model/best_int8.xml',  # model.pt path
     # -------------------一定注意，这里得到的是tot_status，be like [0, 0, 2, ...]，数字！--------------------------
 
     category = Sliding_Window(tot_status, fps)
-    print(tot_status)
+    # print(tot_status)
     cnt3 = 0
     for i in tot_status:
         if i == 3:
@@ -327,6 +327,6 @@ def yolo_run(weights=ROOT / 'pot_openvino_model/best_int8.xml',  # model.pt path
     return result
 
 
-if __name__ == "__main__":
-    result = yolo_run(source='day_man_062_11_2.mp4')
-    print(result)
+# if __name__ == "__main__":
+#     result = yolo_run(source='day_man_001_10_1.mp4')
+#     print(result)
