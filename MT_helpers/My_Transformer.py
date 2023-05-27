@@ -286,8 +286,8 @@ if __name__ == "__main__":
     dropout = 0.1
     batch_size = 32
     lr = 0.01
-    seq_length = 45
-    num_epochs = 1000
+    seq_length = 90
+    num_epochs = 50
 
     """
     train_dataset = TextDataset('Ten_times/')
@@ -309,8 +309,8 @@ if __name__ == "__main__":
 
     transformer = Transform(model, max_seq_length=seq_length, num_classes=num_classes)
     # transformer.load_model(model_path="Saved_Model/transformer_3fps_1_model.pth")  # transformer_3fps_1_model
-    transformer.train(dataset_path='data/all_60fps/formatted_data/', num_epochs=num_epochs)
-    transformer.save_model(model_path="Saved_Model/transformer_3fps_30_model.pth")
+    transformer.train(dataset_path='data/20230526/formatted_data/', num_epochs=num_epochs)
+    transformer.save_model(model_path="Saved_Model/transformer_6fps_yolo_model.pth")
     # transformer.save_training_loss("6fps_loss.txt")
     # transformer.plot_training_loss("6fps_loss.txt")
     print(transformer.evaluate(f'data/all_60fps/formatted_data/', confusion_matrix=True))
