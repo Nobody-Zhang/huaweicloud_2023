@@ -230,8 +230,8 @@ def yolo_run(weights=ROOT / 'last_openvino_model/last.xml',  # model.pt path(s)
              half=False,  # use FP16 half-precision inference
              dnn=False,  # use OpenCV DNN for ONNX inference
 
-             FRAME_PER_SECOND=2,  # 改这里！！！一秒几帧
-             window_size=3.5  # 改这里！！！滑动窗口大小
+             FRAME_PER_SECOND=1,  # 改这里！！！一秒几帧
+             window_size=3  # 改这里！！！滑动窗口大小
              ):
     source = str(source)
     # save_img = not nosave and not source.endswith('.txt')  # save inference images
@@ -347,8 +347,3 @@ def yolo_run(weights=ROOT / 'last_openvino_model/last.xml',  # model.pt path(s)
 
 def sigmoid(x):
     return 1 / (1 + math.exp(-x))
-
-if __name__ == "__main__":
-    result = yolo_run(source='day_man_002_40_3.mp4')
-
-    print(result)
