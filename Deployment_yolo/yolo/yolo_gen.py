@@ -408,6 +408,6 @@ def calculating_score(vidio_dir,save_dir):
 
 
 if __name__ == "__main__":
-    vidio_dir = "/home/hzkd/gsm/problem_videos/"
+    vidio_dir = "/home/hzkd/gsm/DATA_PRE/"
     save_dir = "/home/hzkd/gsm/Combine_video_image/Transformer_data/"
     calculating_score(vidio_dir,save_dir)
