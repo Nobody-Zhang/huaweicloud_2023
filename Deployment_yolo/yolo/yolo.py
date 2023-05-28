@@ -203,9 +203,9 @@ class YOLO_Status:
 
 
 @torch.no_grad()
-def yolo_run(weights=ROOT / 'last_openvino_model/last.xml',  # model.pt path(s)
+def yolo_run(weights=ROOT / 'yolov5n_best_openvino_model/yolov5n_best.xml',  # model.pt path(s)
              source='',  # file/dir/URL/glob, 0 for webcam
-             data=ROOT / 'last_openvino_model/last.yaml',  # dataset.yaml path
+             data=ROOT / 'yolov5n_best_openvino_model/yolov5n_best.yaml',  # dataset.yaml path
              imgsz=(640, 640),  # inference size (height, width)
              conf_thres=0.20,  # confidence threshold
              iou_thres=0.40,  # NMS IOU threshold
@@ -342,7 +342,7 @@ def yolo_run(weights=ROOT / 'last_openvino_model/last.xml',  # model.pt path(s)
 
     # result['result']['duration'] = int(np.round((duration) * 1000))
     result['result']['duration'] = int(duration * 1000)
-    return fps, tot_status, category, score
+    return result
 
 
 def sigmoid(x):
