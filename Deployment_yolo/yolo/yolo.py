@@ -143,7 +143,10 @@ class YOLO_Status:
             status = max(status, self.status_prior["turning"])
             face = sideface
             face_xyxy = sideface_xyxy
-        
+
+        if face[2] == 0:  # 司机躲猫猫捏
+            status = max(status, self.status_prior["turning"])
+
         if abs(face[0] - phone[0]) < .3 and abs(face[1] - phone[1]) < .3:
             status = max(status, self.status_prior["calling"])  # 判断状态为打电话
 
