@@ -42,19 +42,19 @@ def xyxy2xywh(xmin: int, ymin: int, xmax: int, ymax: int, wide: int, height: int
     return x, y, w, h
 
 
-def Sliding_Window(total_status, fps):
+def Sliding_Window(total_status, fps, window_size):
     single_window_cnt = [0, 0, 0, 0, 0]
 
     threshold = 3 # 大于3帧就认为是这个状态
-    for i in range(len(total_status) - int(4 * fps)):
+    for i in range(len(total_status) - int(window_size * fps)):
         if i == 0:
-            for j in range(int(4 * fps)):
+            for j in range(int(window_size * fps)):
                 single_window_cnt[int(total_status[i + j])] += 1
         else:
-            single_window_cnt[int(total_status[i + int(4 * fps) - 1])] += 1
+            single_window_cnt[int(total_status[i + int(window_size * fps) - 1])] += 1
             single_window_cnt[int(total_status[i - 1])] -= 1
         for j in range(1, 5):
-            if single_window_cnt[j] >= threshold:
+            if single_window_cnt[j] >= threshold*fps:
                 return j
     return 0
 
@@ -215,7 +215,9 @@ def yolo_run(weights=ROOT / 'best_openvino_model/best.xml',  # model.pt path(s)
              hide_conf=False,  # hide confidences
              half=False,  # use FP16 half-precision inference
              dnn=False,  # use OpenCV DNN for ONNX inference
-             FRAME_GROUP=1,  # frame group
+
+             FRAME_PER_SECOND = 1,  # 改这里！！！一秒几帧
+             window_size = 4  # 改这里！！！滑动窗口大小
              ):
     source = str(source)
     # save_img = not nosave and not source.endswith('.txt')  # save inference images
@@ -241,11 +243,9 @@ def yolo_run(weights=ROOT / 'best_openvino_model/best.xml',  # model.pt path(s)
     model.warmup(imgsz=(1 if pt else bs, 3, *imgsz), half=half)  # warmup
     dt, seen = [0.0, 0.0, 0.0], 0
     fps = dataset.cap.get(cv2.CAP_PROP_FPS)
-
-    rate = fps
     frame_num = int(dataset.cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    FRAME_GROUP = int(fps / 1)
-    fps = 1
+    FRAME_GROUP = int(fps / FRAME_PER_SECOND)
+    fps = FRAME_PER_SECOND
 
     cntt = 0
     tot_status = []
@@ -309,7 +309,7 @@ def yolo_run(weights=ROOT / 'best_openvino_model/best.xml',  # model.pt path(s)
     for i in range(5):# 防止视频时间不够，补0
         tot_status.append(0)
 
-    category = Sliding_Window(tot_status, fps)
+    category = Sliding_Window(tot_status, fps, window_size)
     # print(tot_status)
     cnt3 = 0
     for i in tot_status:
