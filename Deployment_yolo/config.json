@@ -80,6 +80,11 @@
                     "restraint": ""
                 },
                 {
+                    "package_name": "onnx",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
                     "package_name": "matplotlib",
                     "package_version": "",
                     "restraint": ""
@@ -101,6 +106,21 @@
                 },
                 {
                     "package_name": "scikit-image",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
+                    "package_name": "thop",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
+                    "package_name": "gsutil",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
+                    "package_name": "progress",
                     "package_version": "",
                     "restraint": ""
                 },

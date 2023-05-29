@@ -1,0 +1,9 @@
+stride: 32
+names:
+  0: close_eye
+  1: close_mouth
+  2: face
+  3: open_eye
+  4: open_mouth
+  5: phone
+  6: side_face
