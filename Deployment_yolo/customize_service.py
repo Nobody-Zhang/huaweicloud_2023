@@ -124,60 +124,21 @@ class Combination:
     #      return [nanodet_face, nanodet_eye_mouth]
 
 
-# 滑动窗口后处理，默认不抽帧，如果要抽帧就把所有的fps用fps/FRAME_GROUP代替
-def Sliding_Window(tot_status, fps, thres1=2.48, thres2=0.48):
-    window_status = {}  # 所有窗口的状态
-    window_status_cnt = [0, 0, 0, 0, 0]
+def Sliding_Window(total_status, fps, window_size):
     single_window_cnt = [0, 0, 0, 0, 0]
-    """
-    window_status_cnt = {}  # 窗口状态计数
-    window_status_cnt[0] = 0
-    window_status_cnt[1] = 0
-    window_status_cnt[2] = 0
-    window_status_cnt[3] = 0
-    window_status_cnt[4] = 0
-    single_window_cnt = {}
-    single_window_cnt[0] = 0
-    single_window_cnt[1] = 0
-    single_window_cnt[2] = 0
-    single_window_cnt[3] = 0
-    single_window_cnt[4] = 0
-    """
-    for i in range(len(tot_status) - int(2.5 * fps)):
-        if i == 0:
-            for j in range(int(2.5 * fps)):
-                print(i + j)
-                print(tot_status[i + j])
-                print(type(tot_status[i + j]))
-                single_window_cnt[int(tot_status[i + j])] += 1
-        else:
-            single_window_cnt[int(tot_status[i + int(2.5 * fps) - 1])] += 1
-            single_window_cnt[int(tot_status[i - 1])] -= 1
-        single_window_cnt[0] = -1  # 排除0
-        max_cnt = 0
 
-        # max_cnt = max(single_window_cnt, key=lambda x: single_window_cnt[x])
-        for j in range(len(single_window_cnt)):
-            if single_window_cnt[j] > single_window_cnt[max_cnt]:
-                max_cnt = j
-        if single_window_cnt[max_cnt] >= thres1 * fps:
-            window_status[i] = max_cnt
+    threshold = 3 # 大于3帧就认为是这个状态
+    for i in range(len(total_status) - int(window_size * fps)):
+        if i == 0:
+            for j in range(int(window_size * fps)):
+                single_window_cnt[int(total_status[i + j])] += 1
         else:
-            window_status[i] = 0
-    for i in range(len(window_status)):
-        window_status_cnt[int(window_status[i])] += 1
-    print("window_status:", window_status)
-    print("window_status_cnt:", window_status_cnt)
-    window_status_cnt[0] = -1  # 排除0
-    max_status = 0
-    for i in range(len(window_status_cnt)):
-        if(window_status_cnt[max_status] < window_status_cnt[i]):
-            max_status = i
-    # max_status = max(window_status_cnt, key=lambda x: window_status_cnt[x])
-    if window_status_cnt[max_status] >= thres2 * fps:
-        return max_status
-    else:
-        return 0
+            single_window_cnt[int(total_status[i + int(window_size * fps) - 1])] += 1
+            single_window_cnt[int(total_status[i - 1])] -= 1
+        for j in range(1, 5):
+            if single_window_cnt[j] >= threshold*fps:
+                return j
+    return 0
 
 
 # 根据output的状态决定该图片(?视频)是哪一种状态           
@@ -200,7 +161,7 @@ def SVM_Determin(eye_status, yawn_status, transform_path, tot_status: list, fps)
     print(tot_status)
     # result = Transform_result(transform_path,output)
     # result = Transform_result(transform_path, tot_status)
-    result = Sliding_Window(tot_status, fps)
+    result = Sliding_Window(tot_status, fps, window_size = 3.6)
     # print(result[0]) # (?)
     return result
 
