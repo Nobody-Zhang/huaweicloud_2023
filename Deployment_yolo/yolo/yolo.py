@@ -230,8 +230,8 @@ def yolo_run(weights=ROOT / 'yolov5n_best_openvino_model/yolov5n_best.xml',  # m
              half=False,  # use FP16 half-precision inference
              dnn=False,  # use OpenCV DNN for ONNX inference
 
-             FRAME_PER_SECOND=1,  # 改这里！！！一秒几帧
-             window_size=3  # 改这里！！！滑动窗口大小
+             FRAME_PER_SECOND=2,  # 改这里！！！一秒几帧
+             window_size=3.5  # 改这里！！！滑动窗口大小
              ):
     source = str(source)
     # save_img = not nosave and not source.endswith('.txt')  # save inference images
@@ -347,3 +347,6 @@ def yolo_run(weights=ROOT / 'yolov5n_best_openvino_model/yolov5n_best.xml',  # m
 
 def sigmoid(x):
     return 1 / (1 + math.exp(-x))
+
+# if __name__ == '__main__':
+#     print(yolo_run(source='night_man_002_30_3.mp4'))
