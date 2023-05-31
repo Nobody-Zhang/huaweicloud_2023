@@ -45,7 +45,7 @@ def xyxy2xywh(xmin: int, ymin: int, xmax: int, ymax: int, wide: int, height: int
 def Sliding_Window(total_status, fps, window_size):
     single_window_cnt = [0, 0, 0, 0, 0]
 
-    threshold = 3  # 大于3帧就认为是这个状态
+    threshold = 3  # 大于3s就认为是这个状态
     for i in range(len(total_status) - int(window_size * fps)):
         if i == 0:
             for j in range(int(window_size * fps)):
@@ -230,8 +230,8 @@ def yolo_run(weights=ROOT / 'yolov5n_best_openvino_model/yolov5n_best.xml',  # m
              half=False,  # use FP16 half-precision inference
              dnn=False,  # use OpenCV DNN for ONNX inference
 
-             FRAME_PER_SECOND=2,  # 改这里！！！一秒几帧
-             window_size=3.5  # 改这里！！！滑动窗口大小
+             FRAME_PER_SECOND=1,  # 改这里！！！一秒几帧
+             window_size=4  # 改这里！！！滑动窗口大小
              ):
     source = str(source)
     # save_img = not nosave and not source.endswith('.txt')  # save inference images
