@@ -2,7 +2,7 @@
 import os
 import sys
 from pathlib import Path
-
+import math
 import cv2
 import torch
 import torch.backends.cudnn as cudnn
@@ -42,42 +42,20 @@ def xyxy2xywh(xmin: int, ymin: int, xmax: int, ymax: int, wide: int, height: int
     return x, y, w, h
 
 
-<<<<<<< HEAD
-def Sliding_Window(total_status, fps, window_size):
+def Sliding_Window(total_status, fps):
     single_window_cnt = [0, 0, 0, 0, 0]
 
-    threshold = 3  # 大于3s就认为是这个状态
-    for i in range(len(total_status) - int(window_size * fps)):
+    threshold = 3  # 大于3帧就认为是这个状态
+    for i in range(len(total_status) - int(4 * fps)):
         if i == 0:
-            for j in range(int(window_size * fps)):
+            for j in range(int(4 * fps)):
                 single_window_cnt[int(total_status[i + j])] += 1
         else:
-            single_window_cnt[int(total_status[i + int(window_size * fps) - 1])] += 1
+            single_window_cnt[int(total_status[i + int(4 * fps) - 1])] += 1
             single_window_cnt[int(total_status[i - 1])] -= 1
         for j in range(1, 5):
-            if single_window_cnt[j] >= threshold * fps:
+            if single_window_cnt[j] >= threshold:
                 return j
-=======
-def Sliding_Window(total_status, fps, thres=9/11):
-    single_window_cnt = [0, 0, 0, 0, 0]
-    # tmp = [0, 0, 0, 0, 0]
-    # for i in range(len(total_status)):
-    #     tmp[int(total_status[i])] += 1
-    #
-    # if tmp[3] >= int(thres * fps * 2):
-    #     return 3
-    threshold = int(thres * fps * 11/3)
-    for i in range(len(total_status) - int(11/3 * fps)):
-        if i == 0:
-            for j in range(int(3 * fps)):
-                single_window_cnt[int(total_status[i + j])] += 1
-        else:
-            single_window_cnt[int(total_status[i + int(11/3 * fps) - 1])] += 1
-            single_window_cnt[int(total_status[i - 1])] -= 1
-        for i in range(1, 5):
-            if single_window_cnt[i] >= threshold:
-                return i
->>>>>>> parent of 69b857a (FPS = 1)
     return 0
 
 
@@ -120,8 +98,6 @@ class YOLO_Status:
         mouth = (0, 0, 0, 0)  # 嘴xywh坐标
         mouth_status = 0  # 嘴状态，0 为闭， 1为张
         mouths = []  # 第一遍扫描嘴列表
-        phone_flag = False
-        face_flag = False
 
         # 处理boxes
         bboxes = dets
@@ -136,27 +112,19 @@ class YOLO_Status:
                     driver = xywh  # 替换司机
                     driver_xyxy = xyxy
                     driver_conf = conf
-                    face_flag = True
             elif cls == self.cls_["sideface"]:  # 侧脸
                 if .5 < xywh[0] and xywh[1] > sideface[1]:  # box位置，与face一致
                     sideface = xywh  # 替换侧脸
                     sideface_xyxy = xyxy
                     sideface_conf = conf
-                    face_flag = True
             elif cls == self.cls_["phone"]:  # 手机
                 if .4 < xywh[0] and .2 < xywh[1] and xywh[1] > phone[1] and xywh[0] > phone[0]:
                     # box位置在右0.4, 下0.2, 原手机右下
                     phone = xywh  # 替换手机
-                    phone_flag = True  # 表示当前其实有手机
             elif cls == self.cls_["open_eye"] or cls == self.cls_["close_eye"]:  # 眼睛，先存着
                 eyes.append((cls, xywh, conf))
             elif cls == self.cls_["open_mouth"] or cls == self.cls_["close_mouth"]:  # 嘴，先存着
                 mouths.append((cls, xywh))
-
-        if not face_flag:  # 没有检测到脸
-            return 4 # 4 -> turning around
-
-
 
         # 判断状态
         face = driver
@@ -175,10 +143,7 @@ class YOLO_Status:
             face = sideface
             face_xyxy = sideface_xyxy
 
-        if face[2] == 0:  # 司机躲猫猫捏
-            status = max(status, self.status_prior["turning"])
-
-        if abs(face[0] - phone[0]) < .3 and abs(face[1] - phone[1]) < .3 and phone_flag:
+        if abs(face[0] - phone[0]) < .3 and abs(face[1] - phone[1]) < .3:
             status = max(status, self.status_prior["calling"])  # 判断状态为打电话
 
         for eye_i in eyes:
@@ -225,9 +190,9 @@ class YOLO_Status:
 
 
 @torch.no_grad()
-def yolo_run(weights=ROOT / 'yolov5n_best_openvino_model/yolov5n_best.xml',  # model.pt path(s)
+def yolo_run(weights=ROOT / 'best_openvino_model/best.xml',  # model.pt path(s)
              source='',  # file/dir/URL/glob, 0 for webcam
-             data=ROOT / 'yolov5n_best_openvino_model/yolov5n_best.yaml',  # dataset.yaml path
+             data=ROOT / 'best_openvino_model/best.yaml',  # dataset.yaml path
              imgsz=(640, 640),  # inference size (height, width)
              conf_thres=0.20,  # confidence threshold
              iou_thres=0.40,  # NMS IOU threshold
@@ -251,9 +216,7 @@ def yolo_run(weights=ROOT / 'yolov5n_best_openvino_model/yolov5n_best.xml',  # m
              hide_conf=False,  # hide confidences
              half=False,  # use FP16 half-precision inference
              dnn=False,  # use OpenCV DNN for ONNX inference
-
-             FRAME_PER_SECOND=1,  # 改这里！！！一秒几帧
-             window_size=4  # 改这里！！！滑动窗口大小
+             FRAME_GROUP=1,  # frame group
              ):
     source = str(source)
     # save_img = not nosave and not source.endswith('.txt')  # save inference images
@@ -279,15 +242,11 @@ def yolo_run(weights=ROOT / 'yolov5n_best_openvino_model/yolov5n_best.xml',  # m
     model.warmup(imgsz=(1 if pt else bs, 3, *imgsz), half=half)  # warmup
     dt, seen = [0.0, 0.0, 0.0], 0
     fps = dataset.cap.get(cv2.CAP_PROP_FPS)
-<<<<<<< HEAD
+
+    rate = fps
     frame_num = int(dataset.cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    video_len = dataset.cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps
-    FRAME_GROUP = int(fps / FRAME_PER_SECOND)
-    fps = FRAME_PER_SECOND
-=======
-    FRAME_GROUP = int(fps / 3)
-    fps = 3
->>>>>>> parent of 69b857a (FPS = 1)
+    FRAME_GROUP = int(fps / 1)
+    fps = 1
 
     cntt = 0
     tot_status = []
@@ -338,23 +297,21 @@ def yolo_run(weights=ROOT / 'yolov5n_best_openvino_model/yolov5n_best.xml',  # m
                 # print(det.numpy())
                 cur_status = YOLO_determin.determin(im0, det.numpy())
                 tot_status.append(cur_status)
-            else:# 没有检测到任何东西，当前的状态为4
-                cur_status = 4
-                tot_status.append(cur_status)
 
                 # print(cur_status)
 
         # LOGGER.info(f'{s}Done. ({t3 - t2:.3f}s)')
 
+    # Print results
+    t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
+    LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *imgsz)}' % t)
+
     # -------------------一定注意，这里得到的是tot_status，be like [0, 0, 2, ...]，数字！--------------------------
-<<<<<<< HEAD
     for i in range(5):  # 防止视频时间不够，补0
         tot_status.append(0)
-=======
->>>>>>> parent of 69b857a (FPS = 1)
 
-    category = Sliding_Window(tot_status, fps, window_size)
-    print(tot_status)
+    category = Sliding_Window(tot_status, fps)
+    # print(tot_status)
     cnt3 = 0
     for i in tot_status:
         if i == 3:
@@ -367,9 +324,6 @@ def yolo_run(weights=ROOT / 'yolov5n_best_openvino_model/yolov5n_best.xml',  # m
 
     result = {"result": {"category": 0, "duration": 6000}}
     result['result']['category'] = category
-<<<<<<< HEAD
-
-    score = sigmoid(video_len / duration)
 
     # result['result']['duration'] = int(np.round((duration) * 1000))
     result['result']['duration'] = int(duration * 1000)
@@ -378,15 +332,3 @@ def yolo_run(weights=ROOT / 'yolov5n_best_openvino_model/yolov5n_best.xml',  # m
 
 def sigmoid(x):
     return 1 / (1 + math.exp(-x))
-
-# if __name__ == '__main__':
-#     print(yolo_run(source='night_man_002_30_3.mp4'))
-=======
-    result['result']['duration'] = int(np.round((duration) * 1000))
-    return result
-
-
-# if __name__ == "__main__":
-#     result = yolo_run(source='day_man_001_10_1.mp4')
-#     print(result)
->>>>>>> parent of 69b857a (FPS = 1)
