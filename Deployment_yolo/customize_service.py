@@ -300,8 +300,8 @@ class PTVisionService(PTServingBaseService):
         self.model = model()
 
     def _inference(self, data):
-        result = yolo_run(source = self.capture)
-        # result = nanodet_run(source = self.capture)
+        # result = yolo_run(source = self.capture)
+        result = nanodet_run(source = self.capture)
         return result
 
     def _preprocess(self, data):

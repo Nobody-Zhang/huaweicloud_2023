@@ -234,7 +234,7 @@ def Sliding_Window(total_status, fps, window_size):
 def nanodet_run(source,
                 FRAME_PER_SECOND = 1,  # 改这里！！！一秒几帧):
                 window_size = 4,  # 改这里！！！滑动窗口大小
-                model_path = "nanodet_openvino_model/nanodet.xml"
+                model_path = ROOT / 'nanodet_openvino_model/nanodet.xml' # 更改为绝对路径
                 ):
 
     cap = cv2.VideoCapture(source)
