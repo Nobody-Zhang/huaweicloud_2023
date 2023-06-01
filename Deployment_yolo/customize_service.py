@@ -24,7 +24,7 @@ from MT_helpers.My_Transformer import *
 import svm.svmdetect as svmdetect
 
 from yolo.yolo import *
-
+from nanodet_gen import *
 # fps = 30
 # 抽帧
 FRAME_GROUP = 6
@@ -301,8 +301,7 @@ class PTVisionService(PTServingBaseService):
 
     def _inference(self, data):
         result = yolo_run(source = self.capture)
-        # cap = cv2.VideoCapture(self.capture)
-        # result = self.model.inference(cap)
+        # result = nanodet_run(source = self.capture)
         return result
 
     def _preprocess(self, data):
