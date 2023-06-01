@@ -274,73 +274,7 @@ def nanodet_run(source,
     result = {"result": {"category": 0, "duration": 6000}}
     result['result']['category'] = category
     result['result']['duration'] = int(np.round((duration) * 1000))
-    score = sigmoid(video_len / duration)
-    return fps, tot_status, category, score
+    # score = sigmoid(video_len / duration)
+    return result
 
 
-def sigmoid(x):
-    return 1 / (1 + math.exp(-x))
-
-
-def calculating_score(vidio_dir,save_dir):
-    i = 0
-    loscnt = 0
-    mixed = [[0, 0, 0, 0, 0] for i in range(5)]
-    score_tot_time = 0
-    print(mixed)
-    for fn in os.listdir(vidio_dir):
-        i += 1
-        print("cnt: " + str(i))
-        print(fn)
-        fn1 = vidio_dir + fn
-        # 如果要跑别的模型替换这里就行
-        fps, tot_status, res, time_score = nanodet_run(source=fn1) 
-        score_tot_time += time_score
-        print("time, score, avg : " + str(score_tot_time / i))
-        print("result: " + str(res))
-        j = -1
-
-        while (True):
-            if fn1[j] == '_' or fn[j] == '-':
-                break
-            j -= 1
-        right = fn1[j - 1]
-        label = fn1[j - 2]
-        if right == '1':  # 负样本
-            label = str(0)
-        fp = open(save_dir+f"{label}.txt", 'a')
-        mixed[int(label)][res] += 1
-
-        fp.write(fn + '\n' + str(fps) + ' ' + str(tot_status) + '\n')
-        fp.close()
-        if str(res) != str(label):
-            fpf = open(save_dir + f"failed.txt", 'a')
-            fpf.write("file_name: " + fn + '\n' + "right_status: " + label + '\n' + "predic_status:" + str(
-                res) + '\n' + "FPS and failed tot_status:\n" + str(fps) + ' ' + str(tot_status) + '\n')
-            loscnt += 1
-        print("tot: " + str(i))
-        print("loss_cnt: " + str(loscnt))
-        print("percent: " + str(loscnt / i))
-        for w in range(5):
-            print(mixed[w])
-
-    score_accu = 0
-    for i in range(5):
-        p = 0
-        q = 0
-        for j in range(5):
-            p += mixed[i][j]
-            q += mixed[j][i]
-        p = mixed[i][i] / p
-        q = mixed[i][i] / q
-        score_accu += 2 * p * q / (p + q)
-    score_accu /= 5
-    print("score_accuracy : " + str(score_accu))
-    total_score = 0.7*score_accu + 0.3*(score_tot_time / i)
-    print("total_score:",total_score)
-
-
-if __name__ == "__main__":
-    vidio_dir = "/home/hzkd/gsm/DATA_PRE/"
-    save_dir = "/home/hzkd/gsm/Combine_video_image/Transformer_data/"
-    calculating_score(vidio_dir,save_dir)

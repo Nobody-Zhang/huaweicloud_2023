@@ -24,7 +24,7 @@ from MT_helpers.My_Transformer import *
 import svm.svmdetect as svmdetect
 
 from yolo.yolo import *
-from nanodet_gen import *
+from nanodet_run import *
 # fps = 30
 # 抽帧
 FRAME_GROUP = 6
