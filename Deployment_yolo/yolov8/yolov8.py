@@ -21,6 +21,7 @@ from utils.plots import *
 from utils.torch_utils import select_device, time_sync
 
 
+
 # write by llr
 # transform xyxy loacationn to xywh loacation, scale in (0, 1)
 def xyxy2xywh(xmin: int, ymin: int, xmax: int, ymax: int, wide: int, height: int) -> tuple:
@@ -42,28 +43,20 @@ def xyxy2xywh(xmin: int, ymin: int, xmax: int, ymax: int, wide: int, height: int
     return x, y, w, h
 
 
-def Sliding_Window(total_status, fps, thres=8 / 9):
+def Sliding_Window(total_status, fps, window_size):
     single_window_cnt = [0, 0, 0, 0, 0]
-    tmp = [0, 0, 0, 0, 0]
-    for i in range(len(total_status)):
-        tmp[int(total_status[i])] += 1
 
-    if tmp[3] >= int(thres * fps * 2):
-        return 3
-    threshold = int(thres * fps * 3)
-    for i in range(len(total_status) - int(3 * fps)):
+    threshold = 3  # 大于3s就认为是这个状态
+    for i in range(len(total_status) - int(window_size * fps)):
         if i == 0:
-            for j in range(int(3 * fps)):
-                # print(i + j)
-                # print(tot_status[i + j])
-                # print(type(tot_status[i + j]))
+            for j in range(int(window_size * fps)):
                 single_window_cnt[int(total_status[i + j])] += 1
         else:
-            single_window_cnt[int(total_status[i + int(3 * fps) - 1])] += 1
+            single_window_cnt[int(total_status[i + int(window_size * fps) - 1])] += 1
             single_window_cnt[int(total_status[i - 1])] -= 1
-        for i in range(1, 5):
-            if single_window_cnt[i] >= threshold:
-                return i
+        for j in range(1, 5):
+            if single_window_cnt[j] >= threshold * fps:
+                return j
     return 0
 
 
@@ -71,9 +64,8 @@ class YOLO_Status:
     def __init__(self):
         self.cls_ = {"close_eye": 0, "close_mouth": 1, "face": 2, "open_eye": 3, "open_mouth": 4, "phone": 5,
                      "sideface": 6}
-        self.status_prior = {"normal": 0, "closeeye": 1, "yawn": 2, "calling": 4, "turning": 3}
-        self.condition = [0, 1, 2, 4, 3]
-        pass
+        self.status_prior = {"normal": 0, "closeeye": 1, "yawn": 3, "calling": 4, "turning": 2}
+        self.condition = [0, 1, 4, 2, 3]
 
     def determin(self, img, dets) -> int:
         """
@@ -91,16 +83,24 @@ class YOLO_Status:
         wide, height = img.shape[1], img.shape[0]  # 输入图片宽、高
         status = 0  # 最终状态，默认为0
         driver = (0, 0, 0, 0)  # 司机正脸xywh坐标
+        driver_xyxy = (0, 0, 0, 0)  # 司机正脸xyxy坐标
         driver_conf = 0  # 正脸可信度
         sideface = (0, 0, 0, 0)  # 司机侧脸xywh坐标
+        sideface_xyxy = (0, 0, 0, 0)  # 侧脸xyxy坐标
         sideface_conf = 0  # 侧脸可信度
+        face = (0, 0, 0, 0)  # 司机的脸，不管正侧
+        face_xyxy = (0, 0, 0, 0)  # 司机的脸xyxy坐标
         phone = (0, 0, 0, 0)  # 手机xywh坐标
         openeye = (0, 0, 0, 0)  # 睁眼xywh坐标
         closeeye = (0, 0, 0, 0)  # 闭眼xywh坐标， 以防两只眼睛识别不一样
         openeye_score = 0  # 睁眼可信度
         closeeye_score = 0  # 闭眼可信度
+        eyes = []  # 第一遍扫描眼睛列表
         mouth = (0, 0, 0, 0)  # 嘴xywh坐标
         mouth_status = 0  # 嘴状态，0 为闭， 1为张
+        mouths = []  # 第一遍扫描嘴列表
+        phone_flag = False
+        face_flag = False
 
         # 处理boxes
         bboxes = dets
@@ -110,50 +110,81 @@ class YOLO_Status:
             conf = box[4]  # 可信度
             cls = box[5]  # 类别
             if cls == self.cls_["face"]:  # 正脸
-                if .5 < xywh[0] and xywh[1] > driver[1] and xyxy[3] / height > .25:
-                    # box中心在右侧0.5 并且 在司机下侧 并且 右下角在y轴0.25以下
+                if .5 < xywh[0] and xywh[1] > driver[1]:
+                    # box中心在右侧0.5 并且 在司机下侧
                     driver = xywh  # 替换司机
+                    driver_xyxy = xyxy
                     driver_conf = conf
+                    face_flag = True
             elif cls == self.cls_["sideface"]:  # 侧脸
-                if .5 < xywh[0] and xywh[1] > sideface[1] and xyxy[3] / height > .25:  # box位置，与face一致
+                if .5 < xywh[0] and xywh[1] > sideface[1]:  # box位置，与face一致
                     sideface = xywh  # 替换侧脸
+                    sideface_xyxy = xyxy
                     sideface_conf = conf
+                    face_flag = True
             elif cls == self.cls_["phone"]:  # 手机
                 if .4 < xywh[0] and .2 < xywh[1] and xywh[1] > phone[1] and xywh[0] > phone[0]:
                     # box位置在右0.4, 下0.2, 原手机右下
                     phone = xywh  # 替换手机
-            elif cls == self.cls_["open_eye"]:  # 睁眼
-                if xywh[0] > openeye[0]:  # 找最右边的，下面的同理
-                    openeye = xywh
-                    openeye_score = conf
-            elif cls == self.cls_["close_eye"]:  # 闭眼
-                if xywh[0] > closeeye[0]:
-                    closeeye = xywh
-                    closeeye_score = conf
-            elif cls == self.cls_["open_mouth"]:  # 张嘴
-                if xywh[0] > mouth[0]:
-                    mouth = xywh
-                    mouth_status = 1
-            elif cls == self.cls_["close_mouth"]:  # 闭嘴
-                if xywh[0] > mouth[0]:
-                    mouth = xywh
-                    mouth_status = 0
+                    phone_flag = True  # 表示当前其实有手机
+            elif cls == self.cls_["open_eye"] or cls == self.cls_["close_eye"]:  # 眼睛，先存着
+                eyes.append((cls, xywh, conf))
+            elif cls == self.cls_["open_mouth"] or cls == self.cls_["close_mouth"]:  # 嘴，先存着
+                mouths.append((cls, xywh))
+
+        if not face_flag:  # 没有检测到脸
+            return 4 # 4 -> turning around
+
+
 
         # 判断状态
-        if driver[0] > sideface[0] and 0 < abs(driver[0] - phone[0]) < .3 and 0 < abs(
-                driver[1] - phone[1]) < .3:  # 正脸打电话，手机与正脸相对0～0.3之内
-            status = max(status, self.status_prior["calling"])  # 判断状态为打电话
-        elif driver[0] < sideface[0] and 0 < abs(sideface[0] - phone[0]) < .3 and 0 < abs(
-                sideface[1] - phone[1]) < .3:  # 侧脸打电话，同正脸判断
-            status = max(status, self.status_prior["calling"])
-
+        face = driver
+        face_xyxy = driver_xyxy
         if abs(driver[0] - sideface[0]) < .1 and abs(driver[1] - sideface[1]) < .1:  # 正脸与侧脸很接近，说明同时检测出了正脸和侧脸
             if driver_conf > sideface_conf:  # 正脸可信度更高
                 status = max(status, self.status_prior["normal"])
+                face = driver
+                face_xyxy = driver_xyxy
             else:  # 侧脸可信度更高
                 status = max(status, self.status_prior["turning"])
+                face = sideface
+                face_xyxy = sideface_xyxy
         elif sideface[0] > driver[0]:  # 正侧脸不重合，并且侧脸在正脸右侧，说明司机是侧脸
             status = max(status, self.status_prior["turning"])
+            face = sideface
+            face_xyxy = sideface_xyxy
+
+        if face[2] == 0:  # 司机躲猫猫捏
+            status = max(status, self.status_prior["turning"])
+
+        if abs(face[0] - phone[0]) < .3 and abs(face[1] - phone[1]) < .3 and phone_flag:
+            status = max(status, self.status_prior["calling"])  # 判断状态为打电话
+
+        for eye_i in eyes:
+            if eye_i[1][0] < face_xyxy[0] / wide or eye_i[1][0] > face_xyxy[2] / wide or eye_i[1][1] < face_xyxy[
+                1] / height or eye_i[1][1] > face_xyxy[3] / height:
+                continue
+            if eye_i[0] == self.cls_["open_eye"]:  # 睁眼
+                if eye_i[1][0] > openeye[0]:  # 找最右边的，下面的同理
+                    openeye = eye_i[1]
+                    openeye_score = eye_i[2]
+            elif eye_i[0] == self.cls_["close_eye"]:  # 睁眼
+                if eye_i[1][0] > closeeye[0]:  # 找最右边的，下面的同理
+                    closeeye = eye_i[1]
+                    closeeye_score = eye_i[2]
+
+        for mouth_i in mouths:
+            if mouth_i[1][0] < face_xyxy[0] / wide or mouth_i[1][0] > face_xyxy[2] / wide or mouth_i[1][1] < face_xyxy[
+                1] / height or mouth_i[1][1] > face_xyxy[3] / height:
+                continue
+            if mouth_i[0] == self.cls_["open_mouth"]:  # 张嘴
+                if mouth_i[1][0] > mouth[0]:
+                    mouth = mouth_i[1]
+                    mouth_status = 1
+            elif mouth_i[0] == self.cls_["close_mouth"]:  # 闭嘴
+                if mouth_i[1][0] > mouth[0]:
+                    mouth = mouth_i[1]
+                    mouth_status = 0
 
         if mouth_status == 1:  # 嘴是张着的
             status = max(status, self.status_prior["yawn"])
@@ -171,15 +202,14 @@ class YOLO_Status:
 
         return self.condition[status]
 
-
 @torch.no_grad()
-def yolo_run(weights=ROOT / "INT8_openvino_model/yolov8n/v8s.onnx",  # model.pt path(s)
+def yolo_run(weights=ROOT / "yolov8n_openvino_model",  # model.pt path(s) 传入yolov8量化压缩后的目录
              source='',  # file/dir/URL/glob, 0 for webcam
              data=ROOT / 'one_stage.yaml',  # dataset.yaml path
              imgsz=(640, 640),  # inference size (height, width)
              conf_thres=0.25,  # confidence threshold
              iou_thres=0.45,  # NMS IOU threshold
-             max_det=1000,  # maximum detections per image
+             max_det=10,  # maximum detections per image
              device='cpu',  # cuda device, i.e. 0 or 0,1,2,3 or cpu
              view_img=False,  # show results
              save_txt=False,  # save results to *.txt
@@ -200,7 +230,9 @@ def yolo_run(weights=ROOT / "INT8_openvino_model/yolov8n/v8s.onnx",  # model.pt 
              half=False,  # use FP16 half-precision inference
              dnn=False,  # use OpenCV DNN for ONNX inference
              vid_stride=1,  # video frame-rate stride
-             FRAME_GROUP=1,  # frame group
+
+             FRAME_PER_SECOND=1,  # 改这里！！！一秒几帧
+             window_size=4  # 改这里！！！滑动窗口大小
              ):
     source = str(source)
     # save_img = not nosave and not source.endswith('.txt')  # save inference images
@@ -210,7 +242,7 @@ def yolo_run(weights=ROOT / "INT8_openvino_model/yolov8n/v8s.onnx",  # model.pt 
     device = select_device(device)
     model = DetectMultiBackend(weights, device=device, dnn=dnn, data=data)
     stride, names, pt, jit, onnx, engine = model.stride, model.names, model.pt, model.jit, model.onnx, model.engine
-    imgsz = check_img_size(imgsz, s=stride)  # check image size
+    # imgsz = check_img_size(imgsz, s=stride)  # check image size
 
     # Half
     half &= (pt or jit or onnx or engine) and device.type != 'cpu'  # FP16 supported on limited backends with CUDA
@@ -226,8 +258,10 @@ def yolo_run(weights=ROOT / "INT8_openvino_model/yolov8n/v8s.onnx",  # model.pt 
     model.warmup(imgsz=(1 if pt or model.triton else bs, 3, *imgsz))  # warmup
     dt, seen = [0.0, 0.0, 0.0], 0
     fps = dataset.cap.get(cv2.CAP_PROP_FPS)
-    FRAME_GROUP = int(fps / 3)
-    fps = 3
+    frame_num = int(dataset.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    video_len = dataset.cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps
+    FRAME_GROUP = int(fps / FRAME_PER_SECOND)
+    fps = FRAME_PER_SECOND
 
     cntt = 0
     tot_status = []
@@ -278,19 +312,30 @@ def yolo_run(weights=ROOT / "INT8_openvino_model/yolov8n/v8s.onnx",  # model.pt 
                 # print(det.numpy())
                 cur_status = YOLO_determin.determin(im0, det.numpy())
                 tot_status.append(cur_status)
+            else:# 没有检测到任何东西，当前的状态为4
+                cur_status = 4
+                tot_status.append(cur_status)
 
                 # print(cur_status)
 
         # LOGGER.info(f'{s}Done. ({t3 - t2:.3f}s)')
 
     # Print results
-    t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
-    LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *imgsz)}' % t)
+    # t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
+    # LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *imgsz)}' % t)
 
     # -------------------一定注意，这里得到的是tot_status，be like [0, 0, 2, ...]，数字！--------------------------
+    for i in range(5):  # 防止视频时间不够，补0
+        tot_status.append(0)
 
-    category = Sliding_Window(tot_status, fps)
-
+    category = Sliding_Window(tot_status, fps, window_size)
+    cnt3 = 0
+    for i in tot_status:
+        if i == 3:
+            cnt3 += 1
+    if cnt3 >= 1.5 * fps and category != 3:
+        category = 0
+    
     # --------------------最后的返回！！！！！！-------------------------
     t_end = time_sync()  # end_time
     duration = t_end - t_start
