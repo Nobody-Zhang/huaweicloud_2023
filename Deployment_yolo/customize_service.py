@@ -23,7 +23,7 @@ from MT_helpers.My_Transformer import *
 # import SVM-image classfication
 import svm.svmdetect as svmdetect
 
-from yolo.yolo import *
+from yolov8.yolov8 import *
 from nanodet_run import *
 # fps = 30
 # 抽帧
@@ -300,8 +300,8 @@ class PTVisionService(PTServingBaseService):
         self.model = model()
 
     def _inference(self, data):
-        # result = yolo_run(source = self.capture)
-        result = nanodet_run(source = self.capture)
+        result = yolo_run(source = self.capture)
+        # result = nanodet_run(source = self.capture)
         return result
 
     def _preprocess(self, data):
