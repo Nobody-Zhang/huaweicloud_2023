@@ -100,8 +100,6 @@ class YOLO_Status:
         closeeye = (0, 0, 0, 0)  # 闭眼xywh坐标， 以防两只眼睛识别不一样
         openeye_score = 0  # 睁眼可信度
         closeeye_score = 0  # 闭眼可信度
-        openmouth_score = 0  # 张嘴可信度
-        closemouth_score = 0  # 闭嘴可信度
         eyes = []  # 第一遍扫描眼睛列表
         mouth = (0, 0, 0, 0)  # 嘴xywh坐标
         mouth_status = 0  # 嘴状态，0 为闭， 1为张
@@ -136,41 +134,16 @@ class YOLO_Status:
                     phone = xywh  # 替换手机
                     phone_conf = conf
                     phone_flag = True  # 表示当前其实有手机
-            elif cls == self.cls_["open_eye"]:  # 睁眼
-                if conf > openeye_score:
-                    openeye_score = conf
-            elif cls == self.cls_["close_eye"]: # 闭眼
-                if conf > closeeye_score:
-                    closeeye_score = conf
-            elif cls == self.cls_["open_mouth"]: # 张嘴
-                if conf > mouth_status:
-                    openmouth_score = conf
-            elif cls == self.cls_["close_mouth"]: # 闭嘴
-                if conf > mouth_status:
-                    closemouth_score = conf
-            # elif cls == self.cls_["open_eye"] or cls == self.cls_["close_eye"]:  # 眼睛，先存着
-            #     eyes.append((cls, xywh, conf))
-            # elif cls == self.cls_["open_mouth"] or cls == self.cls_["close_mouth"]:  # 嘴，先存着
-            #     mouths.append((cls, xywh))
-        if phone_conf != 0:
-            return 3 # 3 -> calling
-        if openmouth_score > closemouth_score:
-            return 2
-        if openeye_score < closeeye_score:
-            return 1
-        if not face_flag:  # 没有检测到脸
-            return 4 # 4 -> turning around
-        if sideface_conf > driver_conf:
-            return 4
-        return 0
+            elif cls == self.cls_["open_eye"] or cls == self.cls_["close_eye"]:  # 眼睛，先存着
+                eyes.append((cls, xywh, conf))
+            elif cls == self.cls_["open_mouth"] or cls == self.cls_["close_mouth"]:  # 嘴，先存着
+                mouths.append((cls, xywh))
 
-
-        """
         if not face_flag:  # 没有检测到脸
             return 4 # 4 -> turning around
 
 
-        
+
         # 判断状态
         face = driver
         face_xyxy = driver_xyxy
@@ -235,7 +208,6 @@ class YOLO_Status:
                 status = max(status, self.status_prior["normal"])
 
         return self.condition[status]
-        """
 
 
 @torch.no_grad()
