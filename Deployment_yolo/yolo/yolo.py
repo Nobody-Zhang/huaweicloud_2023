@@ -95,7 +95,6 @@ class YOLO_Status:
         face = (0, 0, 0, 0)  # 司机的脸，不管正侧
         face_xyxy = (0, 0, 0, 0)  # 司机的脸xyxy坐标
         phone = (0, 0, 0, 0)  # 手机xywh坐标
-        phone_conf = 0  # 手机可信度
         openeye = (0, 0, 0, 0)  # 睁眼xywh坐标
         closeeye = (0, 0, 0, 0)  # 闭眼xywh坐标， 以防两只眼睛识别不一样
         openeye_score = 0  # 睁眼可信度
@@ -115,24 +114,22 @@ class YOLO_Status:
             conf = box[4]  # 可信度
             cls = box[5]  # 类别
             if cls == self.cls_["face"]:  # 正脸
-                if conf > driver_conf:
-                    #  可信度更高
+                if .5 < xywh[0] and xywh[1] > driver[1]:
+                    # box中心在右侧0.5 并且 在司机下侧
                     driver = xywh  # 替换司机
                     driver_xyxy = xyxy
                     driver_conf = conf
                     face_flag = True
             elif cls == self.cls_["sideface"]:  # 侧脸
-                if conf > sideface_conf:
-                    #  可信度更高
+                if .5 < xywh[0] and xywh[1] > sideface[1]:  # box位置，与face一致
                     sideface = xywh  # 替换侧脸
                     sideface_xyxy = xyxy
                     sideface_conf = conf
                     face_flag = True
             elif cls == self.cls_["phone"]:  # 手机
-                if conf > phone_conf:
-                    # 可信度更高
+                if .4 < xywh[0] and .2 < xywh[1] and xywh[1] > phone[1] and xywh[0] > phone[0]:
+                    # box位置在右0.4, 下0.2, 原手机右下
                     phone = xywh  # 替换手机
-                    phone_conf = conf
                     phone_flag = True  # 表示当前其实有手机
             elif cls == self.cls_["open_eye"] or cls == self.cls_["close_eye"]:  # 眼睛，先存着
                 eyes.append((cls, xywh, conf))
@@ -211,9 +208,9 @@ class YOLO_Status:
 
 
 @torch.no_grad()
-def yolo_run(weights=ROOT / 'best_openvino_model/best.xml',  # model.pt path(s)
+def yolo_run(weights=ROOT / 'yolov5s_best_openvino_model_cleaned/best.xml',  # model.pt path(s)
              source='',  # file/dir/URL/glob, 0 for webcam
-             data=ROOT / 'best_openvino_model/best.yaml',  # dataset.yaml path
+             data=ROOT / 'yolov5s_best_openvino_model_cleaned/best.yaml',  # dataset.yaml path
              imgsz=(640, 640),  # inference size (height, width)
              conf_thres=0.20,  # confidence threshold
              iou_thres=0.40,  # NMS IOU threshold

@@ -23,7 +23,7 @@ from MT_helpers.My_Transformer import *
 # import SVM-image classfication
 import svm.svmdetect as svmdetect
 
-from yolov8.yolov8 import *
+from yolo.yolo import *
 from nanodet_run import *
 # fps = 30
 # 抽帧
