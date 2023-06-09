@@ -208,9 +208,9 @@ class YOLO_Status:
 
 
 @torch.no_grad()
-def yolo_run(weights=ROOT / 'yolov5s_best_openvino_model_cleaned/best.xml',  # model.pt path(s)
+def yolo_run(weights=ROOT / 'best_openvino_model/best.xml',  # model.pt path(s)
              source='',  # file/dir/URL/glob, 0 for webcam
-             data=ROOT / 'yolov5s_best_openvino_model_cleaned/best.yaml',  # dataset.yaml path
+             data=ROOT / 'best_openvino_model/best.yaml',  # dataset.yaml path
              imgsz=(640, 640),  # inference size (height, width)
              conf_thres=0.20,  # confidence threshold
              iou_thres=0.40,  # NMS IOU threshold
