@@ -624,7 +624,7 @@ class PTVisionService(PTServingBaseService):
         self.model = yolo_model(source = self.capture)
 
     def _inference(self, data):
-        result = model.inference()
+        result = self.model.inference()
         # result = nanodet_run(source = self.capture)
         return result
 
