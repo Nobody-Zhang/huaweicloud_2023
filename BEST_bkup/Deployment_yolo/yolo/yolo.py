@@ -45,7 +45,7 @@ def xyxy2xywh(xmin: int, ymin: int, xmax: int, ymax: int, wide: int, height: int
 def Sliding_Window(total_status, fps, window_size):
     single_window_cnt = [0, 0, 0, 0, 0]
     cnt_status = [0, 0, 0, 0, 0]
-    threshold = 3  # 大于3s就认为是这个状态
+    threshold = 3  # More than 3 * fps is considered abnormal
     for i in range(len(total_status) - int(window_size * fps)):
         if i == 0:
             for j in range(int(window_size * fps)):
@@ -61,7 +61,7 @@ def Sliding_Window(total_status, fps, window_size):
     for i in range(1, 5):
         if cnt_status[i] > cnt_status[max_status]:
             max_status = i
-    return max_status
+    return max_status # Find the status with the most occurrences
 
 
 class YOLO_Status:
@@ -208,76 +208,50 @@ class YOLO_Status:
 
 
 @torch.no_grad()
-def yolo_run(weights=ROOT / 'yolov5s_best_openvino_model_supple/best.xml',  # model.pt path(s)
+def yolo_run(weights=ROOT / 'yolov5s_best_openvino_model_supple_quantization_FP16/best.xml',  # model.pt path(s)
              source='',  # file/dir/URL/glob, 0 for webcam
-             data=ROOT / 'yolov5s_best_openvino_model_supple/best.yaml',  # dataset.yaml path
+             data=ROOT / 'yolov5s_best_openvino_model_supple_quantization_FP16/best.yaml',  # dataset.yaml path
              imgsz=(640, 640),  # inference size (height, width)
              conf_thres=0.20,  # confidence threshold
              iou_thres=0.40,  # NMS IOU threshold
              max_det=1000,  # maximum detections per image
              device='cpu',  # cuda device, i.e. 0 or 0,1,2,3 or cpu
-             view_img=False,  # show results
-             save_txt=False,  # save results to *.txt
-             save_conf=False,  # save confidences in --save-txt labels
-             save_crop=False,  # save cropped prediction boxes
-             nosave=False,  # do not save images/videos
              classes=None,  # filter by class: --class 0, or --class 0 2 3
              agnostic_nms=False,  # class-agnostic NMS
              augment=False,  # augmented inference
              visualize=False,  # visualize features
-             update=False,  # update all models
-             project=ROOT / 'runs/detect',  # save results to project/name
-             name='exp',  # save results to project/name
-             exist_ok=False,  # existing project/name ok, do not increment
-             line_thickness=3,  # bounding box thickness (pixels)
-             hide_labels=False,  # hide labels
-             hide_conf=False,  # hide confidences
              half=False,  # use FP16 half-precision inference
              dnn=False,  # use OpenCV DNN for ONNX inference
-
-             FRAME_PER_SECOND=1,  # 改这里！！！一秒几帧
-             window_size=3  # 改这里！！！滑动窗口大小
+             FRAME_PER_SECOND=1,  # goal FPS
+             window_size=3  # sliding window size
              ):
     source = str(source)
-    # save_img = not nosave and not source.endswith('.txt')  # save inference images
-    is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
 
-    # Load model
+    # ------------------------- Init model -------------------------
     device = select_device(device)
     model = DetectMultiBackend(weights, device=device, dnn=dnn, data=data)
     stride, names, pt, jit, onnx, engine = model.stride, model.names, model.pt, model.jit, model.onnx, model.engine
     imgsz = check_img_size(imgsz, s=stride)  # check image size
-
-    # Half
     half &= (pt or jit or onnx or engine) and device.type != 'cpu'  # FP16 supported on limited backends with CUDA
     if pt or jit:
         model.model.half() if half else model.model.float()
     bs = 1  # batch_size
-    # Dataloader
-
     dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt)
-
-    vid_path, vid_writer = [None] * bs, [None] * bs
-
     model.warmup(imgsz=(1 if pt else bs, 3, *imgsz), half=half)  # warmup
     dt, seen = [0.0, 0.0, 0.0], 0
     fps = dataset.cap.get(cv2.CAP_PROP_FPS)
-    frame_num = int(dataset.cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    video_len = dataset.cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps
     FRAME_GROUP = int(fps / FRAME_PER_SECOND)
     fps = FRAME_PER_SECOND
-
     cntt = 0
     tot_status = []
     YOLO_determin = YOLO_Status()
-    # Run inference
-    t_start = time_sync()  # start_time
 
-    # ---------------------------------------------
+    # ------------------------- Run inference -------------------------
+    t_start = time_sync()  # Start_time
     for path, im, im0s, vid_cap, s in dataset:
         cntt += 1
         if cntt % FRAME_GROUP != 0:
-            continue  # skip some frames
+            continue  # Skip some frames
         t1 = time_sync()
         im = torch.from_numpy(im).to(device)
         im = im.half() if half else im.float()  # uint8 to fp16/32
@@ -302,56 +276,39 @@ def yolo_run(weights=ROOT / 'yolov5s_best_openvino_model_supple/best.xml',  # mo
             seen += 1
 
             p, im0, frame = path, im0s.copy(), getattr(dataset, 'frame', 0)
-
-            # p = Path(p)  # to Path
-            # save_path = str(save_dir / p.name)  # im.jpg
-            # txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # im.txt
-            # s += '%gx%g ' % im.shape[2:]  # print string
-            # gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
-            # imc = im0.copy() if save_crop else im0  # for save_crop
-            # annotator = Annotator(im0, line_width=line_thickness, example=str(names))
             if len(det):
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
                 # print(det.numpy())
                 cur_status = YOLO_determin.determin(im0, det.numpy())
                 tot_status.append(cur_status)
-            else:# 没有检测到任何东西，当前的状态为4
+                # cv2.imshow(str(cur_status), im0)
+                # cv2.waitKey(1000)
+            else:
+                # Nothing detected, assume the status if "turning"
                 cur_status = 4
                 tot_status.append(cur_status)
 
-                # print(cur_status)
 
-        # LOGGER.info(f'{s}Done. ({t3 - t2:.3f}s)')
-
-    # -------------------一定注意，这里得到的是tot_status，be like [0, 0, 2, ...]，数字！--------------------------
-    for i in range(5):  # 防止视频时间不够，补0
+    # ------------------- Attention! tot_status be like [0, 0, 2, ...] type: int--------------------------
+    for i in range(5):  # Just in case, time of the vidio isn't enouth, append 0
         tot_status.append(0)
-
+    # Post process, using the sliding window algorithm to judge the final status
     category = Sliding_Window(tot_status, fps, window_size)
     print(tot_status)
+    # If the count of the "phone" is more than 1.5 times of the fps, but the category is not 3, then the category is "normal"
     cnt3 = 0
     for i in tot_status:
         if i == 3:
             cnt3 += 1
     if cnt3 >= 1.5 * fps and category != 3:
         category = 0
-    # --------------------最后的返回！！！！！！-------------------------
-    t_end = time_sync()  # end_time
+    # -------------------- Suit the output format --------------------
+    t_end = time_sync()  # End_time
     duration = t_end - t_start
 
     result = {"result": {"category": 0, "duration": 6000}}
     result['result']['category'] = category
 
-    score = sigmoid(video_len / duration)
-
-    # result['result']['duration'] = int(np.round((duration) * 1000))
     result['result']['duration'] = int(duration * 1000)
     return result
-
-
-def sigmoid(x):
-    return 1 / (1 + math.exp(-x))
-
-# if __name__ == '__main__':
-#     print(yolo_run(source='night_man_002_30_3.mp4'))
