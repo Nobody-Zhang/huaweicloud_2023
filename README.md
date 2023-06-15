@@ -36,13 +36,12 @@
 
 ```json
  {
-    "result":
-        {
-            "category":0,
-            "duration":6000
-        }
+    "result":
+        {
+            "category":0,
+            "duration":6000
+        }
  }
-
 ```
 
 ## 测试说明
