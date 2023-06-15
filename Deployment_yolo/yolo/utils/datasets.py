@@ -220,6 +220,8 @@ class LoadImages:
             assert img0 is not None, f'Image Not Found {path}'
             s = f'image {self.count}/{self.nf} {path}: '
 
+        # crop_width = int(img0.shape[1] / 3)
+        # img0 = img0[:, crop_width:]
         # Padded resize
         img = letterbox(img0, self.img_size, stride=self.stride, auto=self.auto)[0]
 

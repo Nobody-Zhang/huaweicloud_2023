@@ -44,8 +44,8 @@ def xyxy2xywh(xmin: int, ymin: int, xmax: int, ymax: int, wide: int, height: int
 
 def Sliding_Window(total_status, fps, window_size):
     single_window_cnt = [0, 0, 0, 0, 0]
-
-    threshold = 3  # 大于3帧就认为是这个状态
+    cnt_status = [0, 0, 0, 0, 0]
+    threshold = 3  # 大于3s就认为是这个状态
     for i in range(len(total_status) - int(window_size * fps)):
         if i == 0:
             for j in range(int(window_size * fps)):
@@ -55,8 +55,13 @@ def Sliding_Window(total_status, fps, window_size):
             single_window_cnt[int(total_status[i - 1])] -= 1
         for j in range(1, 5):
             if single_window_cnt[j] >= threshold * fps:
-                return j
-    return 0
+                cnt_status[j] += 1
+    cnt_status[0] = 0
+    max_status = 0
+    for i in range(1, 5):
+        if cnt_status[i] > cnt_status[max_status]:
+            max_status = i
+    return max_status
 
 
 class YOLO_Status:
@@ -203,9 +208,9 @@ class YOLO_Status:
 
 
 @torch.no_grad()
-def yolo_run(weights=ROOT / 'yolov5n_best_openvino_model/yolov5n_best.xml',  # model.pt path(s)
+def yolo_run(weights=ROOT / 'best_openvino_model/best.xml',  # model.pt path(s)
              source='',  # file/dir/URL/glob, 0 for webcam
-             data=ROOT / 'yolov5n_best_openvino_model/yolov5n_best.yaml',  # dataset.yaml path
+             data=ROOT / 'best_openvino_model/best.yaml',  # dataset.yaml path
              imgsz=(640, 640),  # inference size (height, width)
              conf_thres=0.20,  # confidence threshold
              iou_thres=0.40,  # NMS IOU threshold
@@ -231,7 +236,7 @@ def yolo_run(weights=ROOT / 'yolov5n_best_openvino_model/yolov5n_best.xml',  # m
              dnn=False,  # use OpenCV DNN for ONNX inference
 
              FRAME_PER_SECOND=1,  # 改这里！！！一秒几帧
-             window_size=3  # 改这里！！！滑动窗口大小
+             window_size=4  # 改这里！！！滑动窗口大小
              ):
     source = str(source)
     # save_img = not nosave and not source.endswith('.txt')  # save inference images
@@ -262,7 +267,7 @@ def yolo_run(weights=ROOT / 'yolov5n_best_openvino_model/yolov5n_best.xml',  # m
     FRAME_GROUP = int(fps / FRAME_PER_SECOND)
     fps = FRAME_PER_SECOND
 
-    cntt = 0
+    cntt = -1
     tot_status = []
     YOLO_determin = YOLO_Status()
     # Run inference
@@ -347,3 +352,6 @@ def yolo_run(weights=ROOT / 'yolov5n_best_openvino_model/yolov5n_best.xml',  # m
 
 def sigmoid(x):
     return 1 / (1 + math.exp(-x))
+
+# if __name__ == '__main__':
+#     print(yolo_run(source='night_man_002_30_3.mp4'))
