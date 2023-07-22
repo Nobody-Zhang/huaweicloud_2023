@@ -227,13 +227,17 @@ def infer_image(image_path):
     im = cv2.imread(image_path)
     # 调用第一个模型预测
     boxes_c = detect_pnet(im,20,0.79,0.9)
+    if(boxes_c is None):
+        return None, None
     # 筛选在图像右半边的人脸，即boxes_c[:,0]>im.shape[1]/2
     boxes_c = boxes_c[boxes_c[:, 0] > im.shape[1] / 2]
     if boxes_c is None:
         return None, None
     # 调用第二个模型预测
-    boxes_c = detect_rnet(im, boxes_c, 0.6)
+    boxes_c = detect_rnet(im, boxes_c, 0.0)
     # 筛选在图像右半边的人脸，即boxes_c[:,0]>im.shape[1]/2
+    if(boxes_c is None):
+        return None,None
     boxes_c = boxes_c[boxes_c[:, 0] > im.shape[1] / 2]
     if boxes_c is None:
         return None, None
@@ -278,12 +282,12 @@ def detect_video(video_path,output_path):
         ret, frame = cap.read() # 读取视频帧
         if ret:
             # 调用第一个模型预测
-            boxes_c = detect_pnet(frame,20,0.79, 0.9)
+            boxes_c = detect_pnet(im=frame,min_face_size=20,scale_factor=0.79, thresh=0.9)
             if boxes_c is None:
                 out.write(frame)
                 continue
             # 调用第二个模型预测
-            boxes_c = detect_rnet(frame, boxes_c, 0.5)
+            boxes_c = detect_rnet(im=frame, dets=boxes_c, thresh=0.5)
             if boxes_c is None:
                 out.write(frame)
                 continue
@@ -293,29 +297,30 @@ def detect_video(video_path,output_path):
             if(boxes_c is None):
                 out.write(frame)
                 continue
-            boxes_c, landmark = detect_onet(frame, boxes_c, 0.5)
+            boxes_c, landmark = detect_onet(im=frame, dets=boxes_c, thresh=0.5)
             if boxes_c is None:
                 out.write(frame)
                 continue
+            boxes_c = boxes_c[0:1,:]
+            landmark = landmark[0:1,:]
             # 画出人脸框和关键点
             draw_face_video(frame, boxes_c, landmark)
             # 计算欧拉角
-            for i in range(boxes_c.shape[0]):
-                points = landmark[i]
-                # 将关键点坐标0-4为x,5-9为y
-                points_x_y = np.array([points[0], points[2], points[4], points[6], points[8],
-                                   points[1], points[3], points[5], points[7], points[9]])
-                roll, yaw, pitch = cal_euler_angles(points_x_y)
-                if(c_roll is None):
-                    c_roll=roll
-                    c_yaw=yaw
-                    c_pitch=pitch
-                roll = roll - c_roll
-                yaw = yaw - c_yaw
-                pitch = pitch - c_pitch
-                euler_angles = [roll, yaw, pitch]
+            points = landmark[0]
+            # 将关键点坐标0-4为x,5-9为y
+            points_x_y = np.array([points[0], points[2], points[4], points[6], points[8],
+                               points[1], points[3], points[5], points[7], points[9]])
+            roll, yaw, pitch = cal_euler_angles(points_x_y)
+            if(c_roll is None):
+                c_roll=roll
+                c_yaw=yaw
+                c_pitch=pitch
+            roll = roll - c_roll
+            yaw = yaw - c_yaw
+            pitch = pitch - c_pitch
+            euler_angles = [roll, yaw, pitch]
                 # 标出欧拉角
-                draw_euler_angles(frame, euler_angles,axis_length=70,points=points)
+            draw_euler_angles(frame, euler_angles,axis_length=70,points=points)
             out.write(frame)
         else:
             break
