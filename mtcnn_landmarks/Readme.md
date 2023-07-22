@@ -8,13 +8,7 @@
 
 |-- infer_examples.py：调用接口示例
 
-|-- infer_models
-
-​		|-- PNet.pth：P卷积网络模型
-
-​		|-- RNet.pth：R卷积网络模型
-
-​		|-- ONet.pth：O卷积网络模型
+|-- infer_models：保存模型的目录
 
 |-- models：网络模型代码
 
