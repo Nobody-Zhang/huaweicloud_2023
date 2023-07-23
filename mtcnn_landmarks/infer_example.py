@@ -4,7 +4,7 @@ import torch
 if __name__ == '__main__':
     # 0. 加载模型
     model_path = './infer_models'
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cpu")
     load_models(model_path,device)
 
     # 1. 图片推理
