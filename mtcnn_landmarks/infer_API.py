@@ -3,6 +3,7 @@ import os
 import cv2
 import numpy as np
 import torch
+import time
 
 from utils.utils import generate_bbox, py_nms, convert_to_square
 from utils.utils import pad, calibrate_box, processed_image
@@ -239,6 +240,7 @@ def infer_image(image_path ,device):
         roll,yaw,pitch: 欧拉角
     '''
     im = cv2.imread(image_path)
+    start = time.time()
     # 调用PNet模型预测
     boxes_c = detect_pnet(im=im,min_face_size=20,scale_factor=0.79,thresh=0.9,device=device)
     # 筛选在图像右半边的人脸，即boxes_c[:,0]>im.shape[1]/2
@@ -264,7 +266,18 @@ def infer_image(image_path ,device):
     points_x_y = np.array([points[0], points[2], points[4], points[6], points[8],
                         points[1], points[3], points[5], points[7], points[9]])
     roll, yaw, pitch = cal_euler_angles(points_x_y)
-    return roll,yaw,pitch
+    
+    result = {"result": {"Roll": 0.0, "Yaw": 0.0, "Pitch": 0.0, "duration": 6000}}
+
+    result['result']['Roll'] = roll
+    result['result']['Yaw'] = yaw
+    result['result']['Pitch'] = pitch
+    result['result']['duration'] = int((time.time() - start) * 1000)
+    return result
+
+def get_column(matrix, column_number):
+    column = [row[column_number] for row in matrix]
+    return column
 
 def infer_video(video_path,device,fps=None):
     '''
@@ -278,7 +291,7 @@ def infer_video(video_path,device,fps=None):
         euler_angles_per_frame: 每一帧的欧拉角,若该帧没有检测到人脸，则返回[-1,-1,-1]
 
     '''
-
+    start = time.time()
     cap = cv2.VideoCapture(video_path)  # 读取视频
     if fps is None:
         fps = cap.get(cv2.CAP_PROP_FPS)  # 获取视频帧率
@@ -334,7 +347,15 @@ def infer_video(video_path,device,fps=None):
             euler_angles_per_frame.append(euler_angles)
         else:
             break
-    return euler_angles_per_frame
+    
+    result = {"result": {"Roll": [], "Yaw": [], "Pitch": [], "duration": 6000}}
+
+    result['result']['Roll'] = get_column(euler_angles_per_frame, 0)
+    result['result']['Yaw'] = get_column(euler_angles_per_frame, 1)
+    result['result']['Pitch'] = get_column(euler_angles_per_frame, 2)
+    result['result']['duration'] = int((time.time() - start) * 1000)
+    
+    return result
 
 
 def infer_image_with_Onet(image_path,boxes_c=None,device=None):
