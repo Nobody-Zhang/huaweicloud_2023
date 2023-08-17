@@ -312,3 +312,7 @@ def yolo_run(weights=ROOT / 'yolov5s_best_openvino_model_supple_quantization_FP1
 
     result['result']['duration'] = int(duration * 1000)
     return result
+
+# if __name__ == "__main__":
+#       list = yolo_run(source=ROOT / 'night_woman_005_31_4.mp4')
+#       print(list[0])
