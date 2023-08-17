@@ -42,7 +42,11 @@ def xyxy2xywh(xmin: int, ymin: int, xmax: int, ymax: int, wide: int, height: int
     return x, y, w, h
 
 
-def Sliding_Window(total_status, fps, window_size):
+
+def Sliding_Window(total_status, fps, im_lis):
+    # fps: real fps
+    pass
+    """
     single_window_cnt = [0, 0, 0, 0, 0]
     cnt_status = [0, 0, 0, 0, 0]
     threshold = 3  # More than 3 * fps is considered abnormal
@@ -62,6 +66,7 @@ def Sliding_Window(total_status, fps, window_size):
         if cnt_status[i] > cnt_status[max_status]:
             max_status = i
     return max_status # Find the status with the most occurrences
+    """
 
 
 class YOLO_Status:
@@ -207,6 +212,8 @@ class YOLO_Status:
         return self.condition[status]
 
 
+
+
 @torch.no_grad()
 def yolo_run(weights=ROOT / 'yolov5s_best_openvino_model_supple_quantization_FP16/best.xml',  # model.pt path(s)
              source='',  # file/dir/URL/glob, 0 for webcam
@@ -241,23 +248,27 @@ def yolo_run(weights=ROOT / 'yolov5s_best_openvino_model_supple_quantization_FP1
     dt, seen = [0.0, 0.0, 0.0], 0
     fps = dataset.cap.get(cv2.CAP_PROP_FPS)
     FRAME_GROUP = int(fps / FRAME_PER_SECOND)
-    fps = FRAME_PER_SECOND
-    cntt = 0
+    # fps = FRAME_PER_SECOND
+    cntt = -1
     tot_status = []
+    im_lis = [] # save every frame
     YOLO_determin = YOLO_Status()
 
     # ------------------------- Run inference -------------------------
     t_start = time_sync()  # Start_time
-    for path, im, im0s, vid_cap, s in dataset:
+    for path, im, im0s, vid_cap, s in dataset: #
         cntt += 1
-        if cntt % FRAME_GROUP != 0:
-            continue  # Skip some frames
         t1 = time_sync()
         im = torch.from_numpy(im).to(device)
         im = im.half() if half else im.float()  # uint8 to fp16/32
         im /= 255  # 0 - 255 to 0.0 - 1.0
         if len(im.shape) == 3:
             im = im[None]  # expand for batch dim
+
+        im_lis.append((im, im0s)) # save every frame
+
+        if cntt % FRAME_GROUP != 0:
+            continue  # Skip some frames
         t2 = time_sync()
         dt[0] += t2 - t1
 
@@ -291,28 +302,100 @@ def yolo_run(weights=ROOT / 'yolov5s_best_openvino_model_supple_quantization_FP1
 
 
     # ------------------- Attention! tot_status be like [0, 0, 2, ...] type: int--------------------------
-    for i in range(5):  # Just in case, time of the vidio isn't enouth, append 0
-        tot_status.append(0)
-    # Post process, using the sliding window algorithm to judge the final status
-    category = Sliding_Window(tot_status, fps, window_size)
+    # for i in range(5):  # Just in case, time of the vidio isn't enouth, append 0
+    #     tot_status.append(0)
     print(tot_status)
-    # If the count of the "phone" is more than 1.5 times of the fps, but the category is not 3, then the category is "normal"
-    cnt3 = 0
-    for i in tot_status:
-        if i == 3:
-            cnt3 += 1
-    if cnt3 >= 1.5 * fps and category != 3:
-        category = 0
+    # Post process, using the sliding window algorithm to judge the final status
+
+    def f(probe_im_0):
+        # ----------------
+        im = probe_im_0[0]
+        im0s = probe_im_0[1]
+
+        pred = model(im, augment=augment, visualize=visualize)
+
+        # NMS
+        pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
+        sta = 0
+        # Process predictions
+        for i, det in enumerate(pred):  # per image
+            im0 = im0s.copy()
+            if len(det):
+                # Rescale boxes from img_size to im0 size
+                det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
+                # print(det.numpy())
+                sta = YOLO_determin.determin(im0, det.numpy())
+            else:
+                # Nothing detected, assume the status if "turning"
+                sta = 4
+        return sta
+
+        # ----------------
+    res = []
+    pre_status = 0  # 上个状态
+    pre_i = 0  # 上个状态的起始位置
+    pre_las = 0  # 上个状态的采样成功次数
+    # 一秒遍历
+    for i in range(len(tot_status)):
+        if tot_status[i] == pre_status:
+            pre_las += 1
+        else:
+            # 目前有跳变存在
+            if pre_las >= 3 and pre_status != 0:
+                probe_im_1 = im_lis[int(fps * max(pre_i - 0.5, 0))]
+                probe_im_2 = im_lis[int(fps * (i - 0.5))]
+                status_fir = f(probe_im_1)
+                status_las = f(probe_im_2)
+                if status_fir == status_las:
+                    if status_fir == pre_status:# 1 1
+                        res.append({"periods": [pre_i - 0.75, i - 0.25], "status": pre_status})
+                    elif pre_las > 3: # 0 0
+                        res.append({"periods": [pre_i - 0.25, i - 0.75], "status": pre_status})
+
+                else: # 需要进行0.25s 抽样
+                    if status_fir == pre_status: # 1 0
+                        if pre_las > 3:
+                            res.append({"periods": [pre_i - 0.75, i - 0.75], "status": pre_status})
+                        else:
+                            status_025 = f(im_lis[int(fps * (pre_i - 0.75))])
+                            status_075 = f(im_lis[int(fps * (i - 0.75))])
+
+                            if status_025 == status_075 and status_025 == pre_status: # 有
+                                res.append({"periods": [pre_i - 0.875, i - 0.625], "status": pre_status})
+                            else:
+                                pass
+
+                    else: # 0 1
+                        if pre_las > 3:
+                            res.append({"periods": [pre_i - 0.25, i - 0.25], "status": pre_status})
+                        else:
+                            status_111 = f(im_lis[int(fps * (pre_i - 0.25))])
+                            status_222 = f(im_lis[int(fps * (i - 0.25))])
+
+                            if status_111 == status_222 and status_111 == pre_status: # 有
+                                res.append({"periods": [pre_i - 0.375, i - 0.125], "status": pre_status})
+                            else:
+                                pass
+            pre_i = i
+            pre_las = 1
+            pre_status = tot_status[i]
+    # # If the count of the "phone" is more than 1.5 times of the fps, but the category is not 3, then the category is "normal"
+    # cnt3 = 0
+    # for i in tot_status:
+    #     if i == 3:
+    #         cnt3 += 1
+    # if cnt3 >= 1.5 * fps and category != 3:
+    #     category = 0
     # -------------------- Suit the output format --------------------
     t_end = time_sync()  # End_time
     duration = t_end - t_start
 
-    result = {"result": {"category": 0, "duration": 6000}}
-    result['result']['category'] = category
+    result = {"result": {"drowsy": 0, "duration": 6000}}
+    result['result']['drowsy'] = res
 
     result['result']['duration'] = int(duration * 1000)
     return result
 
-# if __name__ == "__main__":
-#       list = yolo_run(source=ROOT / 'night_woman_005_31_4.mp4')
-#       print(list[0])
+if __name__ == "__main__":
+      list = yolo_run(source=ROOT / 'day_woman_072_30_2.mp4')
+      print(list)
