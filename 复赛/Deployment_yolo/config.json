@@ -22,7 +22,7 @@
                 "data": {
                     "type": "object",
                     "properties": {
-                        "result": {"type": "number", "type": "number"}
+                        "result": {"type": "number", "type": "array"}
                     },
                     "required": ["result"]
                 }
