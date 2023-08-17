@@ -328,6 +328,8 @@ def yolo_run(weights=ROOT / 'yolov5s_best_openvino_model_supple_quantization_FP1
             else:
                 # Nothing detected, assume the status if "turning"
                 sta = 4
+            # cv2.imshow(f"{sta}", im0)
+            # cv2.waitKey(5000)
         return sta
 
         # ----------------
@@ -348,37 +350,50 @@ def yolo_run(weights=ROOT / 'yolov5s_best_openvino_model_supple_quantization_FP1
                 status_las = f(probe_im_2)
                 if status_fir == status_las:
                     if status_fir == pre_status:# 1 1
-                        res.append({"periods": [pre_i - 0.75, i - 0.25], "status": pre_status})
+                        res.append({"periods": [pre_i - 0.75, i - 0.25], "category": pre_status})
                     elif pre_las > 3: # 0 0
-                        res.append({"periods": [pre_i - 0.25, i - 0.75], "status": pre_status})
+                        res.append({"periods": [pre_i - 0.25, i - 0.75], "category": pre_status})
 
                 else: # 需要进行0.25s 抽样
                     if status_fir == pre_status: # 1 0
                         if pre_las > 3:
-                            res.append({"periods": [pre_i - 0.75, i - 0.75], "status": pre_status})
+                            res.append({"periods": [pre_i - 0.75, i - 0.75], "category": pre_status})
                         else:
                             status_025 = f(im_lis[int(fps * (pre_i - 0.75))])
                             status_075 = f(im_lis[int(fps * (i - 0.75))])
 
                             if status_025 == status_075 and status_025 == pre_status: # 有
-                                res.append({"periods": [pre_i - 0.875, i - 0.625], "status": pre_status})
+                                res.append({"periods": [pre_i - 0.875, i - 0.625], "category": pre_status})
                             else:
                                 pass
 
-                    else: # 0 1
+                    elif status_las == pre_status: # 0 1
                         if pre_las > 3:
-                            res.append({"periods": [pre_i - 0.25, i - 0.25], "status": pre_status})
+                            # cv2.imshow("0", probe_im_1[1])
+                            # cv2.imshow("1", probe_im_2[1])
+                            # cv2.waitKey(10000)
+                            res.append({"periods": [pre_i - 0.25, i - 0.25], "category": pre_status})
                         else:
                             status_111 = f(im_lis[int(fps * (pre_i - 0.25))])
                             status_222 = f(im_lis[int(fps * (i - 0.25))])
 
                             if status_111 == status_222 and status_111 == pre_status: # 有
-                                res.append({"periods": [pre_i - 0.375, i - 0.125], "status": pre_status})
+                                res.append({"periods": [pre_i - 0.375, i - 0.125], "category": pre_status})
                             else:
                                 pass
+                    else: # 0 0
+                        if pre_las > 3:
+                            res.append({"periods": [pre_i - 0.25, i - 0.75], "category": pre_status})
             pre_i = i
             pre_las = 1
             pre_status = tot_status[i]
+    if res[0]["periods"][0] < 0:
+        res[0]["periods"][0] = 0
+        if res[0]["periods"][1] - 0 < 3:
+            del res[0] # 防止第一个状态为0
+    for i in range(len(res)):
+        res[i]["periods"][0] = int(res[i]["periods"][0] * 1000)
+        res[i]["periods"][1] = int(res[i]["periods"][1] * 1000)
     # # If the count of the "phone" is more than 1.5 times of the fps, but the category is not 3, then the category is "normal"
     # cnt3 = 0
     # for i in tot_status:
@@ -397,5 +412,5 @@ def yolo_run(weights=ROOT / 'yolov5s_best_openvino_model_supple_quantization_FP1
     return result
 
 if __name__ == "__main__":
-      list = yolo_run(source=ROOT / 'day_woman_072_30_2.mp4')
+      list = yolo_run(source=ROOT / '30_30.mp4')
       print(list)
