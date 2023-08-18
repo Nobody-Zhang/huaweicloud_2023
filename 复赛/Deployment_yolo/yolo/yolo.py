@@ -361,11 +361,19 @@ def yolo_run(weights=ROOT / 'yolov5s_best_openvino_model_supple_quantization_FP1
                         else:
                             status_025 = f(im_lis[int(fps * (pre_i - 0.75))])
                             status_075 = f(im_lis[int(fps * (i - 0.75))])
-
-                            if status_025 == status_075 and status_025 == pre_status: # 有
-                                res.append({"periods": [pre_i - 0.875, i - 0.625], "category": pre_status})
-                            else:
+                            if pre_status == status_075 and status_025 != pre_status: # 0 0
                                 pass
+                            else:
+                                per = []
+                                if status_025 == pre_status:
+                                    per.append(pre_i - 0.875)
+                                else:
+                                    per.append(pre_i - 0.625)
+                                if status_075 == pre_status:
+                                    per.append(i - 0.625)
+                                else:
+                                    per.append(i - 0.875)
+                                res.append({"periods": per, "category": pre_status})
 
                     elif status_las == pre_status: # 0 1
                         if pre_las > 3:
@@ -376,11 +384,23 @@ def yolo_run(weights=ROOT / 'yolov5s_best_openvino_model_supple_quantization_FP1
                         else:
                             status_111 = f(im_lis[int(fps * (pre_i - 0.25))])
                             status_222 = f(im_lis[int(fps * (i - 0.25))])
-
-                            if status_111 == status_222 and status_111 == pre_status: # 有
-                                res.append({"periods": [pre_i - 0.375, i - 0.125], "category": pre_status})
-                            else:
+                            if status_111 != status_222 and status_111 != pre_status: # 无
                                 pass
+                            else:
+                                per = []
+                                if status_111 == pre_status:
+                                    per.append(pre_i - 0.375)
+                                else:
+                                    per.append(pre_i - 0.125)
+                                if status_222 == pre_status:
+                                    per.append(i - 0.125)
+                                else:
+                                    per.append(i - 0.375)
+                                res.append({"periods": per, "category": pre_status})
+                            # if status_111 == status_222 and status_111 == pre_status: # 有
+                            #     res.append({"periods": [pre_i - 0.375, i - 0.125], "category": pre_status})
+                            # else:
+                            #     pass
                     else: # 0 0
                         if pre_las > 3:
                             res.append({"periods": [pre_i - 0.25, i - 0.75], "category": pre_status})
@@ -405,12 +425,12 @@ def yolo_run(weights=ROOT / 'yolov5s_best_openvino_model_supple_quantization_FP1
     t_end = time_sync()  # End_time
     duration = t_end - t_start
 
-    result = {"result": {"drowsy": 0, "duration": 6000}}
+    result = {"result": {"duration": 6000, "drowsy": 0}}
     result['result']['drowsy'] = res
 
     result['result']['duration'] = int(duration * 1000)
     return result
 
 if __name__ == "__main__":
-      list = yolo_run(source=ROOT / '30_30.mp4')
+      list = yolo_run(source=ROOT / '3432412.mp4')
       print(list)
