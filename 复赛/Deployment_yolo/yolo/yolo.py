@@ -230,7 +230,8 @@ def yolo_run(weights=ROOT / 'yolov5s_best_openvino_model_supple_quantization_FP1
              half=False,  # use FP16 half-precision inference
              dnn=False,  # use OpenCV DNN for ONNX inference
              FRAME_PER_SECOND=1,  # goal FPS
-             window_size=3  # sliding window size
+             window_size=3,  # sliding window size
+             iou_presice_b_search = 0.05  # 二分时间误差系数
              ):
     source = str(source)
 
@@ -254,63 +255,11 @@ def yolo_run(weights=ROOT / 'yolov5s_best_openvino_model_supple_quantization_FP1
     im_lis = [] # save every frame
     YOLO_determin = YOLO_Status()
 
-    # ------------------------- Run inference -------------------------
-    t_start = time_sync()  # Start_time
-    for path, im, im0s, vid_cap, s in dataset: #
-        cntt += 1
-        t1 = time_sync()
-        im = torch.from_numpy(im).to(device)
-        im = im.half() if half else im.float()  # uint8 to fp16/32
-        im /= 255  # 0 - 255 to 0.0 - 1.0
-        if len(im.shape) == 3:
-            im = im[None]  # expand for batch dim
-
-        im_lis.append((im, im0s)) # save every frame
-
-        if cntt % FRAME_GROUP != 0:
-            continue  # Skip some frames
-        t2 = time_sync()
-        dt[0] += t2 - t1
-
-        # Inference
-        # visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
-        pred = model(im, augment=augment, visualize=visualize)
-        t3 = time_sync()
-        dt[1] += t3 - t2
-
-        # NMS
-        pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
-        dt[2] += time_sync() - t3
-
-        # Process predictions
-        for i, det in enumerate(pred):  # per image
-            seen += 1
-
-            p, im0, frame = path, im0s.copy(), getattr(dataset, 'frame', 0)
-            if len(det):
-                # Rescale boxes from img_size to im0 size
-                det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
-                # print(det.numpy())
-                cur_status = YOLO_determin.determin(im0, det.numpy())
-                tot_status.append(cur_status)
-                # cv2.imshow(str(cur_status), im0)
-                # cv2.waitKey(1000)
-            else:
-                # Nothing detected, assume the status if "turning"
-                cur_status = 4
-                tot_status.append(cur_status)
-
-
-    # ------------------- Attention! tot_status be like [0, 0, 2, ...] type: int--------------------------
-    # for i in range(5):  # Just in case, time of the vidio isn't enouth, append 0
-    #     tot_status.append(0)
-    print(tot_status)
-    # Post process, using the sliding window algorithm to judge the final status
 
     def f(probe_im_0):
         # ----------------
-        im = probe_im_0[0]
-        im0s = probe_im_0[1]
+        im = im_lis[probe_im_0][0]
+        im0s = im_lis[probe_im_0][1]
 
         pred = model(im, augment=augment, visualize=visualize)
 
@@ -332,95 +281,118 @@ def yolo_run(weights=ROOT / 'yolov5s_best_openvino_model_supple_quantization_FP1
             # cv2.waitKey(5000)
         return sta
 
-        # ----------------
+    def b_search(l1, r1, l2, r2, n, goal_n, k, is_3 = False):
+        """
+        l1: left bound1 左区间的左边界
+        r1: right bound1 左区间的右边界
+        l2: left bound2 右区间的左边界
+        r2: right bound2 右区间的右边界
+        n: 现有可能产生的误差之和
+        goal_n: 目标可能产生的误差之和
+        k: the target status to find 目标状态
+        """
+        if n <= goal_n:
+            # if is_3: # 递归到这个地方，一直都是01, 10, 10, 01这样的，无法更加精确的判断结果到底的状态，一律返回真
+            if (l2 + r2) / 2 - (l1 + r1) / 2 < 3:
+                print(f"False(out of range): status: {k}\n l1: {l1}, r1: {r1}, l2: {l2}, r2: {r2}")
+                return [False] # 可能出现的边界条件的判断
+            print(f"True: status: {k}\n l1: {l1}, r1: {r1}, l2: {l2}, r2: {r2}")
+            return [True, (l1 + r1) / 2, (l2 + r2) / 2] # 表示可行，并且返回边界的值
+
+        mid1 = (l1 + r1) / 2
+        mid2 = (l2 + r2) / 2
+        sta1 = 0 if mid1 * fps < 0 else f(int(mid1 * fps))
+        sta2 = 0 if mid2 * fps > len(im_lis) else f(int(mid2 * fps))
+
+        # 1 1
+        if sta1 == k and sta2 == k:
+            return b_search(l1, mid1, mid2, r2, n / 2, iou_presice_b_search * (mid2 - mid1), k) # 就算是需要判断的3s，无论如何都是可行的
+
+        # 0 0
+        if sta1 != k and sta2 != k:
+            if is_3:
+                print(f"False(0, 0): status: {k}\n l1: {l1}, r1: {r1}, l2: {l2}, r2: {r2}")
+                return [False] # 如果是需要判断的3s，则无论如何都是不可行的
+            return b_search(mid1, r1, l2, mid2, n / 2, iou_presice_b_search * (l2 - r1), k) # 继续搜索边界，提升精度
+
+        # 1 0
+        if sta1 == k and sta2 != k:
+            if is_3:
+                return b_search(l1, mid1, l2, mid2, n / 2, iou_presice_b_search * 3, k, True)
+            return b_search(l1, mid1, l2, mid2, n / 2, iou_presice_b_search * (l2 - mid1), k)
+
+        # 0 1
+        if sta1 != k and sta2 == k:
+            if is_3:
+                return b_search(mid1, r1, mid2, r2, n / 2, iou_presice_b_search * 3, k, True)
+            return b_search(mid1, r1, mid2, r2, n / 2, iou_presice_b_search * (mid2 - r1), k)
+
+
+    # ------------------------- Run inference -------------------------
+    t_start = time_sync()  # Start_time
+    for path, im, im0s, vid_cap, s in dataset:
+        cntt += 1
+        t1 = time_sync()
+        im = torch.from_numpy(im).to(device)
+        im = im.half() if half else im.float()  # uint8 to fp16/32
+        im /= 255  # 0 - 255 to 0.0 - 1.0
+        if len(im.shape) == 3:
+            im = im[None]  # expand for batch dim
+
+        im_lis.append((im, im0s)) # save every frame
+
+        if cntt % FRAME_GROUP != 0:
+            continue  # Skip some frames
+        t2 = time_sync()
+        dt[0] += t2 - t1
+        # Inference
+        # visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
+        pred = model(im, augment=augment, visualize=visualize)
+        t3 = time_sync()
+        dt[1] += t3 - t2
+
+        # NMS
+        pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
+        dt[2] += time_sync() - t3
+        # print(cntt)
+        # Process predictions
+        for i, det in enumerate(pred):  # per image
+            seen += 1
+            # print(seen)
+            # print("i : ", i)
+            p, im0, frame = path, im0s.copy(), getattr(dataset, 'frame', 0)
+            if len(det):
+                # Rescale boxes from img_size to im0 size
+                det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
+                # print(det.numpy())
+                cur_status = YOLO_determin.determin(im0, det.numpy())
+                tot_status.append(cur_status)
+                # cv2.imshow(str(cur_status), im0)
+                # cv2.waitKey(1000)
+            else:
+                # Nothing detected, assume the status if "turning"
+                cur_status = 4
+                tot_status.append(cur_status)
+    # ------------------- Attention! tot_status be like [0, 0, 2, ...] type: int--------------------------
+    # for i in range(5):  # Just in case, time of the vidio isn't enouth, append 0
+    #     tot_status.append(0)
+    tot_status.append(0) # 为了最后一个状态的判断，需要多加一个0
+    print(tot_status)
+    # Post process, using the sliding window algorithm to judge the final status
     res = []
-    pre_status = 0  # 上个状态
     pre_i = 0  # 上个状态的起始位置
-    pre_las = 0  # 上个状态的采样成功次数
     # 一秒遍历
     for i in range(len(tot_status)):
-        if tot_status[i] == pre_status:
-            pre_las += 1
-        else:
-            # 目前有跳变存在
-            if pre_las >= 3 and pre_status != 0:
-                probe_im_1 = im_lis[int(fps * max(pre_i - 0.5, 0))]
-                probe_im_2 = im_lis[int(fps * (i - 0.5))]
-                status_fir = f(probe_im_1)
-                status_las = f(probe_im_2)
-                if status_fir == status_las:
-                    if status_fir == pre_status:# 1 1
-                        res.append({"periods": [pre_i - 0.75, i - 0.25], "category": pre_status})
-                    elif pre_las > 3: # 0 0
-                        res.append({"periods": [pre_i - 0.25, i - 0.75], "category": pre_status})
-
-                else: # 需要进行0.25s 抽样
-                    if status_fir == pre_status: # 1 0
-                        if pre_las > 3:
-                            res.append({"periods": [pre_i - 0.75, i - 0.75], "category": pre_status})
-                        else:
-                            status_025 = f(im_lis[int(fps * (pre_i - 0.75))])
-                            status_075 = f(im_lis[int(fps * (i - 0.75))])
-                            if pre_status == status_075 and status_025 != pre_status: # 0 0
-                                pass
-                            else:
-                                per = []
-                                if status_025 == pre_status:
-                                    per.append(pre_i - 0.875)
-                                else:
-                                    per.append(pre_i - 0.625)
-                                if status_075 == pre_status:
-                                    per.append(i - 0.625)
-                                else:
-                                    per.append(i - 0.875)
-                                res.append({"periods": per, "category": pre_status})
-
-                    elif status_las == pre_status: # 0 1
-                        if pre_las > 3:
-                            # cv2.imshow("0", probe_im_1[1])
-                            # cv2.imshow("1", probe_im_2[1])
-                            # cv2.waitKey(10000)
-                            res.append({"periods": [pre_i - 0.25, i - 0.25], "category": pre_status})
-                        else:
-                            status_111 = f(im_lis[int(fps * (pre_i - 0.25))])
-                            status_222 = f(im_lis[int(fps * (i - 0.25))])
-                            if status_111 != status_222 and status_111 != pre_status: # 无
-                                pass
-                            else:
-                                per = []
-                                if status_111 == pre_status:
-                                    per.append(pre_i - 0.375)
-                                else:
-                                    per.append(pre_i - 0.125)
-                                if status_222 == pre_status:
-                                    per.append(i - 0.125)
-                                else:
-                                    per.append(i - 0.375)
-                                res.append({"periods": per, "category": pre_status})
-                            # if status_111 == status_222 and status_111 == pre_status: # 有
-                            #     res.append({"periods": [pre_i - 0.375, i - 0.125], "category": pre_status})
-                            # else:
-                            #     pass
-                    else: # 0 0
-                        if pre_las > 3:
-                            res.append({"periods": [pre_i - 0.25, i - 0.75], "category": pre_status})
+        if tot_status[i] != tot_status[pre_i]: # 如果状态发生了变化
+            if tot_status[pre_i] != 0:
+                _ = [False]
+                if i - pre_i == 3:
+                    _ = b_search(pre_i - 1, pre_i, i - 1, i, 1, iou_presice_b_search * 3, tot_status[pre_i], True)
+                elif i - pre_i > 3: # 可能出现的最小长度
+                    _ = b_search(pre_i - 1, pre_i, i - 1, i, 1, iou_presice_b_search * (i - pre_i - 1), tot_status[pre_i])
+                if _[0]: # 表示当前出现了大于3s的
+                    res.append({"periods": [int(_[1] * 1000), int(_[2] * 1000)], "category": tot_status[pre_i]})
             pre_i = i
-            pre_las = 1
-            pre_status = tot_status[i]
-    if res[0]["periods"][0] < 0:
-        res[0]["periods"][0] = 0
-        if res[0]["periods"][1] - 0 < 3:
-            del res[0] # 防止第一个状态为0
-    for i in range(len(res)):
-        res[i]["periods"][0] = int(res[i]["periods"][0] * 1000)
-        res[i]["periods"][1] = int(res[i]["periods"][1] * 1000)
-    # # If the count of the "phone" is more than 1.5 times of the fps, but the category is not 3, then the category is "normal"
-    # cnt3 = 0
-    # for i in tot_status:
-    #     if i == 3:
-    #         cnt3 += 1
-    # if cnt3 >= 1.5 * fps and category != 3:
-    #     category = 0
     # -------------------- Suit the output format --------------------
     t_end = time_sync()  # End_time
     duration = t_end - t_start
