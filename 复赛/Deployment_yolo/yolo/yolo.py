@@ -109,6 +109,7 @@ class YOLO_Status:
                     # box位置在右0.4, 下0.2, 原手机右下
                     phone = xywh  # 替换手机
                     phone_flag = True  # 表示当前其实有手机
+                    # print("phone and config: ", phone, conf)
             elif cls == self.cls_["open_eye"] or cls == self.cls_["close_eye"]:  # 眼睛，先存着
                 eyes.append((cls, xywh, conf))
             elif cls == self.cls_["open_mouth"] or cls == self.cls_["close_mouth"]:  # 嘴，先存着
@@ -276,6 +277,8 @@ def yolo_run(weights=ROOT / 'yolov5s_best_openvino_model_supple_quantization_FP1
         mid2 = (l2 + r2) / 2
         sta1 = 0 if mid1 * fps < 0 else f(int(mid1 * fps))
         sta2 = 0 if mid2 * fps > len(im_lis) else f(int(mid2 * fps))
+        print("\n l1: {l1} r1: {r1} l2: {l2} r2: {r2}")
+        print(f"mid1: {mid1}, mid2: {mid2}, sta1: {sta1}, sta2: {sta2}, goal:{k}")
 
         # 1 1
         if sta1 == k and sta2 == k:
@@ -341,6 +344,8 @@ def yolo_run(weights=ROOT / 'yolov5s_best_openvino_model_supple_quantization_FP1
                 cur_status = YOLO_determin.determin(im0, det.numpy())
                 tot_status.append(cur_status)
                 # cv2.imshow(str(cur_status), im0)
+                # if cur_status == 3:
+                    # cv2.imwrite(f"{cntt}_3.jpg", im0)
                 # cv2.waitKey(1000)
             else:
                 # Nothing detected, assume the status if "turning"
@@ -377,5 +382,5 @@ def yolo_run(weights=ROOT / 'yolov5s_best_openvino_model_supple_quantization_FP1
     return result
 
 if __name__ == "__main__":
-      list = yolo_run(source=ROOT / 'night_man_002_10_1.mp4')
+      list = yolo_run(source=ROOT / 'day_man_001_40_2.mp4')
       print(list)
