@@ -42,33 +42,6 @@ def xyxy2xywh(xmin: int, ymin: int, xmax: int, ymax: int, wide: int, height: int
     return x, y, w, h
 
 
-
-def Sliding_Window(total_status, fps, im_lis):
-    # fps: real fps
-    pass
-    """
-    single_window_cnt = [0, 0, 0, 0, 0]
-    cnt_status = [0, 0, 0, 0, 0]
-    threshold = 3  # More than 3 * fps is considered abnormal
-    for i in range(len(total_status) - int(window_size * fps)):
-        if i == 0:
-            for j in range(int(window_size * fps)):
-                single_window_cnt[int(total_status[i + j])] += 1
-        else:
-            single_window_cnt[int(total_status[i + int(window_size * fps) - 1])] += 1
-            single_window_cnt[int(total_status[i - 1])] -= 1
-        for j in range(1, 5):
-            if single_window_cnt[j] >= threshold * fps:
-                cnt_status[j] += 1
-    cnt_status[0] = 0
-    max_status = 0
-    for i in range(1, 5):
-        if cnt_status[i] > cnt_status[max_status]:
-            max_status = i
-    return max_status # Find the status with the most occurrences
-    """
-
-
 class YOLO_Status:
     def __init__(self):
         self.cls_ = {"close_eye": 0, "close_mouth": 1, "face": 2, "open_eye": 3, "open_mouth": 4, "phone": 5,
@@ -86,7 +59,7 @@ class YOLO_Status:
         4 -> turning around\n
 
         :param img: input image, format the same as detect function
-        :param dets: the detect boxes
+        :param dets: to detect boxes
         :returns: an int status symbol
         """
         wide, height = img.shape[1], img.shape[0]  # 输入图片宽、高
@@ -231,7 +204,7 @@ def yolo_run(weights=ROOT / 'yolov5s_best_openvino_model_supple_quantization_FP1
              dnn=False,  # use OpenCV DNN for ONNX inference
              FRAME_PER_SECOND=1,  # goal FPS
              window_size=3,  # sliding window size
-             iou_presice_b_search = 0.05  # 二分时间误差系数
+             iou_presice_b_search = 0.05  # 二分时间误差系数，准确率优先，给到0.05
              ):
     source = str(source)
 
@@ -404,5 +377,5 @@ def yolo_run(weights=ROOT / 'yolov5s_best_openvino_model_supple_quantization_FP1
     return result
 
 if __name__ == "__main__":
-      list = yolo_run(source=ROOT / '3432412.mp4')
+      list = yolo_run(source=ROOT / 'night_man_002_10_1.mp4')
       print(list)
