@@ -1,0 +1,41 @@
+name: /home/master/zhoujian/Documents/zgb/videos_10/9_40_41_00_00_10_10_11_11_20_21.mp4
+infer_data: [{'kind': 4, 'begin_time': 0.125, 'end_time': 7.875}, {'kind': 1, 'begin_time': 43.375, 'end_time': 49.625}, {'kind': 1, 'begin_time': 54.375, 'end_time': 62.875}, {'kind': 2, 'begin_time': 86.375, 'end_time': 92.875}]
+name: /home/master/zhoujian/Documents/zgb/videos_10/8_41_41_10_10_30_30_31_40_40_40.mp4
+infer_data: [{'kind': 1, 'begin_time': 21.125, 'end_time': 27.875}, {'kind': 1, 'begin_time': 32.125, 'end_time': 39.375}, {'kind': 3, 'begin_time': 39.875, 'end_time': 47.625}, {'kind': 3, 'begin_time': 49.875, 'end_time': 57.875}, {'kind': 4, 'begin_time': 66.375, 'end_time': 72.875}, {'kind': 4, 'begin_time': 74.375, 'end_time': 81.125}, {'kind': 4, 'begin_time': 82.625, 'end_time': 90.375}]
+name: /home/master/zhoujian/Documents/zgb/videos_10/7_21_30_30_31_31_40_40_40_41_41.mp4
+infer_data: [{'kind': 3, 'begin_time': 13.312, 'end_time': 17.187}, {'kind': 3, 'begin_time': 26.062, 'end_time': 30.437}, {'kind': 4, 'begin_time': 54.062, 'end_time': 57.187}, {'kind': 4, 'begin_time': 66.687, 'end_time': 71.187}, {'kind': 4, 'begin_time': 97.125, 'end_time': 103.125}]
+name: /home/master/zhoujian/Documents/zgb/videos_10/6_40_41_41_41_41_41_00_10_11_20.mp4
+infer_data: [{'kind': 4, 'begin_time': 0.625, 'end_time': 8.125}, {'kind': 1, 'begin_time': 81.437, 'end_time': 85.687}, {'kind': 2, 'begin_time': 101.812, 'end_time': 106.812}]
+name: /home/master/zhoujian/Documents/zgb/videos_10/5_31_31_31_40_40_40_40_40_40_40.mp4
+infer_data: [{'kind': 4, 'begin_time': 34.625, 'end_time': 40.625}, {'kind': 4, 'begin_time': 46.125, 'end_time': 52.125}, {'kind': 4, 'begin_time': 57.375, 'end_time': 63.625}, {'kind': 4, 'begin_time': 70.125, 'end_time': 76.625}, {'kind': 4, 'begin_time': 83.625, 'end_time': 90.875}, {'kind': 4, 'begin_time': 95.375, 'end_time': 104.625}, {'kind': 4, 'begin_time': 110.125, 'end_time': 119.125}]
+name: /home/master/zhoujian/Documents/zgb/videos_10/4_11_11_20_20_21_21_30_30_30_31.mp4
+infer_data: [{'kind': 2, 'begin_time': 21.875, 'end_time': 29.875}, {'kind': 2, 'begin_time': 32.875, 'end_time': 39.125}, {'kind': 3, 'begin_time': 68.937, 'end_time': 73.812}, {'kind': 3, 'begin_time': 82.125, 'end_time': 87.375}, {'kind': 3, 'begin_time': 93.125, 'end_time': 101.375}]
+name: /home/master/zhoujian/Documents/zgb/videos_10/3_41_41_41_41_41_41_00_00_10_10.mp4
+infer_data: [{'kind': 1, 'begin_time': 77.625, 'end_time': 85.125}, {'kind': 1, 'begin_time': 86.375, 'end_time': 93.375}]
+name: /home/master/zhoujian/Documents/zgb/videos_10/2_30_30_40_40_40_40_40_40_40_41.mp4
+infer_data: [{'kind': 3, 'begin_time': 1.625, 'end_time': 7.875}, {'kind': 3, 'begin_time': 14.937, 'end_time': 19.937}, {'kind': 4, 'begin_time': 22.875, 'end_time': 29.625}, {'kind': 4, 'begin_time': 35.125, 'end_time': 41.625}, {'kind': 4, 'begin_time': 45.625, 'end_time': 51.625}, {'kind': 4, 'begin_time': 56.125, 'end_time': 61.875}, {'kind': 4, 'begin_time': 65.125, 'end_time': 70.625}, {'kind': 4, 'begin_time': 75.625, 'end_time': 82.625}, {'kind': 4, 'begin_time': 86.875, 'end_time': 92.375}]
+
+
+
+!!!
+name: /home/master/zhoujian/Documents/zgb/videos_10/1_30_21_21_20_20_11_10_10_00_00.mp4
+infer_data: [{'kind': 3, 'begin_time': 1.125, 'end_time': 7.875}, {'kind': 2, 'begin_time': 29.687, 'end_time': 33.437}, {'kind': 2, 'begin_time': 36.875, 'end_time': 42.875}, {'kind': 1, 'begin_time': 48.093, 'end_time': 51.093}, {'kind': 1, 'begin_time': 60.437, 'end_time': 65.187}, {'kind': 1, 'begin_time': 68.625, 'end_time': 73.875}]
+
+name: /home/master/zhoujian/Documents/zgb/videos_10/14_40_40_40_40_41_41_41_41_41_41_41_41.mp4
+infer_data: [{'kind': 4, 'begin_time': 0.687, 'end_time': 5.312}, {'kind': 4, 'begin_time': 11.125, 'end_time': 17.125}, {'kind': 4, 'begin_time': 22.625, 'end_time': 29.125}, {'kind': 4, 'begin_time': 33.125, 'end_time': 40.625}]
+
+
+
+
+!!!
+name: /home/master/zhoujian/Documents/zgb/videos_10/13_30_30_31_31_31_31_40_40_40_40.mp4
+infer_data: [{'kind': 3, 'begin_time': 2.625, 'end_time': 10.125}, {'kind': 3, 'begin_time': 13.125, 'end_time': 21.875}, {'kind': 4, 'begin_time': 70.062, 'end_time': 73.687}, {'kind': 4, 'begin_time': 76.375, 'end_time': 81.875}, {'kind': 4, 'begin_time': 83.062, 'end_time': 86.937}, {'kind': 4, 'begin_time': 88.875, 'end_time': 94.875}, {'kind': 4, 'begin_time': 96.437, 'end_time': 100.937}, {'kind': 4, 'begin_time': 102.375, 'end_time': 108.125}, {'kind': 4, 'begin_time': 109.125, 'end_time': 114.625}]
+
+name: /home/master/zhoujian/Documents/zgb/videos_10/12_10_10_11_11_20_20_21_21_30_30.mp4
+infer_data: [{'kind': 1, 'begin_time': -0.062, 'end_time': 4.937}, {'kind': 1, 'begin_time': 10.875, 'end_time': 16.375}, {'kind': 2, 'begin_time': 45.687, 'end_time': 50.187}, {'kind': 2, 'begin_time': 57.375, 'end_time': 62.875}, {'kind': 3, 'begin_time': 91.375, 'end_time': 96.625}, {'kind': 3, 'begin_time': 101.625, 'end_time': 109.625}]
+name: /home/master/zhoujian/Documents/zgb/videos_10/11_40_40_40_40_41_41_41_41_00_00.mp4
+infer_data: [{'kind': 4, 'begin_time': 0.375, 'end_time': 7.875}, {'kind': 4, 'begin_time': 12.125, 'end_time': 21.125}, {'kind': 4, 'begin_time': 24.125, 'end_time': 31.375}, {'kind': 4, 'begin_time': 35.125, 'end_time': 40.375}]
+
+!!!!
+name: /home/master/zhoujian/Documents/zgb/videos_10/10_21_30_30_30_30_31_31_31_40_40.mp4
+infer_data: [{'kind': 3, 'begin_time': 12.625, 'end_time': 19.875}, {'kind': 3, 'begin_time': 25.625, 'end_time': 31.375}, {'kind': 3, 'begin_time': 45.125, 'end_time': 54.375}, {'kind': 4, 'begin_time': 87.375, 'end_time': 94.125}, {'kind': 4, 'begin_time': 99.125, 'end_time': 104.375}]
