@@ -1,4 +1,5 @@
 # import argparse
+import psutil
 import os
 import sys
 import time
@@ -22,6 +23,10 @@ from utils.general import (LOGGER, check_file, check_img_size, check_imshow, che
 from utils.plots import *
 from utils.torch_utils import select_device, time_sync
 
+
+# 将字节转换为GB
+def bytes_to_gigabytes(bytes_value):
+    return bytes_value / (1024 * 1024 * 1024)
 
 # write by llr
 # transform xyxy loacationn to xywh loacation, scale in (0, 1)
@@ -111,7 +116,7 @@ class YOLO_Status:
                     # box位置在右0.4, 下0.2, 原手机右下
                     phone = xywh  # 替换手机
                     phone_flag = True  # 表示当前其实有手机
-                    print("phone and config: ", phone, conf)
+                    # print("phone and config: ", phone, conf)
             elif cls == self.cls_["open_eye"] or cls == self.cls_["close_eye"]:  # 眼睛，先存着
                 eyes.append((cls, xywh, conf))
             elif cls == self.cls_["open_mouth"] or cls == self.cls_["close_mouth"]:  # 嘴，先存着
@@ -192,9 +197,9 @@ class YOLO_Status:
 
 
 @torch.no_grad()
-def yolo_run(weights=ROOT / 'new_openvino_model/best.xml',  # model.pt path(s)
+def yolo_run(weights=ROOT / 'yolov5s_best_openvino_model_supple_quantization_FP16/best.xml',  # model.pt path(s)
              source='',  # file/dir/URL/glob, 0 for webcam
-             data=ROOT / 'new_openvino_model/best.yaml',  # dataset.yaml path
+             data=ROOT / 'yolov5s_best_openvino_model_supple_quantization_FP16/best.yaml',  # dataset.yaml path
              imgsz=(640, 640),  # inference size (height, width)
              conf_thres=0.20,  # confidence threshold
              iou_thres=0.40,  # NMS IOU threshold
@@ -224,9 +229,9 @@ def yolo_run(weights=ROOT / 'new_openvino_model/best.xml',  # model.pt path(s)
     model.warmup(imgsz=(1 if pt else bs, 3, *imgsz), half=half)  # warmup
     dt, seen = [0.0, 0.0, 0.0], 0
     fps = dataset.cap.get(cv2.CAP_PROP_FPS)
-    print("fps: ", fps)
+    # print("fps: ", fps)
     FRAME_GROUP = int(fps / frame_per_second)
-    print("FRAME_GROUP: ", FRAME_GROUP)
+    # print("FRAME_GROUP: ", FRAME_GROUP)
     # fps = FRAME_PER_SECOND
     cntt = -1
     tot_status = []
@@ -234,6 +239,7 @@ def yolo_run(weights=ROOT / 'new_openvino_model/best.xml',  # model.pt path(s)
     YOLO_determin = YOLO_Status()
 
     def f(probe_im_0):
+        # memory_occupied()
         # gc.collect()
         # ----------------
         im = im_lis[probe_im_0][0]
@@ -260,6 +266,7 @@ def yolo_run(weights=ROOT / 'new_openvino_model/best.xml',  # model.pt path(s)
             #     cv2.waitKey(1000)
         return sta
 
+
     def b_search(l1, r1, l2, r2, n, goal_n, k, is_3=False):
         """
         注意：输入的所有的单位为时间！
@@ -273,18 +280,21 @@ def yolo_run(weights=ROOT / 'new_openvino_model/best.xml',  # model.pt path(s)
         """
         if n <= goal_n:
             # if is_3: # 递归到这个地方，一直都是01, 10, 10, 01这样的，无法更加精确的判断结果到底的状态，一律返回真
-            if (l2 + r2) / 2 - (l1 + r1) / 2 < 3:
+            lef_ans = max((l1 + r1) / 2, 0)
+            rig_ans = (l2 + r2) / 2
+
+            if rig_ans - (l1 + r1) / 2 < 3:
                 # print(f"False(out of range): status: {k}\n l1: {l1}, r1: {r1}, l2: {l2}, r2: {r2}")
                 return [False]  # 可能出现的边界条件的判断
             # print(f"True: status: {k}\n l1: {l1}, r1: {r1}, l2: {l2}, r2: {r2}")
-            return [True, (l1 + r1) / 2, (l2 + r2) / 2]  # 表示可行，并且返回边界的值
+            return [True, lef_ans, rig_ans]  # 表示可行，并且返回边界的值
 
         mid1 = (l1 + r1) / 2
         mid2 = (l2 + r2) / 2
         sta1 = 0 if mid1 * fps < 0 else f(int(mid1 * fps))
         sta2 = 0 if mid2 * fps > len(im_lis) else f(int(mid2 * fps))
-        print(f"\n l1: {l1} r1: {r1} l2: {l2} r2: {r2}")
-        print(f"mid1: {mid1}, mid2: {mid2}, sta1: {sta1}, sta2: {sta2}, goal:{k}")
+        # print(f"\n l1: {l1} r1: {r1} l2: {l2} r2: {r2}")
+        # print(f"mid1: {mid1}, mid2: {mid2}, sta1: {sta1}, sta2: {sta2}, goal:{k}")
 
         # 1 1
         if sta1 == k and sta2 == k:
@@ -293,7 +303,7 @@ def yolo_run(weights=ROOT / 'new_openvino_model/best.xml',  # model.pt path(s)
         # 0 0
         if sta1 != k and sta2 != k:
             if is_3:
-                print(f"False(0, 0): status: {k}\n l1: {l1}, r1: {r1}, l2: {l2}, r2: {r2}")
+                # print(f"False(0, 0): status: {k}\n l1: {l1}, r1: {r1}, l2: {l2}, r2: {r2}")
                 return [False]  # 如果是需要判断的3s，则无论如何都是不可行的
             return b_search(mid1, r1, l2, mid2, n / 2, iou_presice_b_search * (l2 - r1), k)  # 继续搜索边界，提升精度
 
@@ -310,9 +320,10 @@ def yolo_run(weights=ROOT / 'new_openvino_model/best.xml',  # model.pt path(s)
             return b_search(mid1, r1, mid2, r2, n / 2, iou_presice_b_search * (mid2 - r1), k)
 
     # ------------------------- Run inference -------------------------
-    t_start = time_sync()  # Start_time
+
     for path, im, im0s, vid_cap, s in dataset:
-        cntt += 1
+        # memory_occupied()
+        # cntt += 1
         t1 = time_sync()
         im = torch.from_numpy(im).to(device)
         im = im.half() if half else im.float()  # uint8 to fp16/32
@@ -321,6 +332,13 @@ def yolo_run(weights=ROOT / 'new_openvino_model/best.xml',  # model.pt path(s)
             im = im[None]  # expand for batch dim
 
         im_lis.append((im, im0s))  # save every frame
+
+    t_start = time_sync()  # Start_time
+    for _ in im_lis:
+        # memory_occupied()
+        cntt += 1
+        im = _[0]
+        im0s = _[1]
 
         if cntt % FRAME_GROUP != 0:
             continue  # Skip some frames
@@ -339,8 +357,10 @@ def yolo_run(weights=ROOT / 'new_openvino_model/best.xml',  # model.pt path(s)
         # print(cntt)
         # Process predictions
         for i, det in enumerate(pred):  # per image
+            # 获取当前Python进程的内存占用
+
             seen += 1
-            print(seen)
+            # print(seen)
             # print("i : ", i)
             p, im0, frame = path, im0s.copy(), getattr(dataset, 'frame', 0)
             if len(det):
@@ -360,7 +380,7 @@ def yolo_run(weights=ROOT / 'new_openvino_model/best.xml',  # model.pt path(s)
     # for i in range(5):  # Just in case, time of the vidio isn't enouth, append 0
     #     tot_status.append(0)
     tot_status.append(0)  # 为了最后一个状态的判断，需要多加一个0
-    print(tot_status)
+    # print(tot_status)
     # Post process, using the sliding window algorithm to judge the final status
     res = []
     pre_i = 0  # 上个状态的起始帧（抽帧之后的 -----> FRAME_PER_SECOND）
@@ -370,12 +390,12 @@ def yolo_run(weights=ROOT / 'new_openvino_model/best.xml',  # model.pt path(s)
             if tot_status[pre_i] != 0:
                 _ = [False]
                 if i - pre_i == 3 * frame_per_second:
-                    print("3s", pre_i, i)
+                    # print("3s", pre_i, i)
                     _ = b_search((pre_i - 1) / frame_per_second, pre_i / frame_per_second, (i - 1) / frame_per_second,
                                  i / frame_per_second, 1 / frame_per_second,
                                  iou_presice_b_search * 3 * 0.25, tot_status[pre_i], True)
                 elif i - pre_i > 3 * frame_per_second:  # 可能出现的最小长度
-                    print("3s+", pre_i, i)
+                    # print("3s+", pre_i, i)
                     _ = b_search((pre_i - 1) / frame_per_second, pre_i / frame_per_second, (i - 1) / frame_per_second,
                                  i / frame_per_second, 1 / frame_per_second,
                                  iou_presice_b_search * (i - pre_i - 1), tot_status[pre_i])

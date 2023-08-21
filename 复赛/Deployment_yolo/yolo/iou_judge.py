@@ -1,9 +1,11 @@
+import os
+import time
+
 import yolo
 import gc
-import os
-
-
-def read_file_contents(file_name):
+import argparse
+import yolo_divide_and_conquer
+def read_txt(file_name):
     try:
         # 打开文件并读取内容
         with open(file_name, "r") as file:
@@ -27,96 +29,144 @@ def read_file_contents(file_name):
         return None
 
 
-def judge(txt_name, infe_data, fps):
-    data_read = read_file_contents(txt_name)
-    data_true = []
-    iou_range = [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
-    F1_scores = []
-    for dict in data_read:
-        kind = dict.get('kind')
-        begin_time = float(dict.get('begin_time')) / 1000
-        end_time = float(dict.get('end_time')) / 1000
-        data_true.append({
-            'kind': kind,
-            'begin_time': begin_time,
-            'end_time': end_time
-        })
-    if len(infe_data) == len(data_true):  # 说明至少从数量上来说推断是没大问题的，接下来就直接使用索引依次比较了
-        for k in iou_range:  # 逐渐上升iou合格的标准
-            correct = 0
-            for i in range(len(infe_data)):
-                if infe_data[i].get('kind') == data_true[i].get('kind'):  # 说明至少种类也推断正确了
-                    true_begin_time = data_true[i].get('begin_time')
-                    true_end_time = data_true[i].get('end_time')
-                    infe_begin_time = infe_data[i].get('begin_time')
-                    infe_end_time = infe_data[i].get('end_time')
-                    i_begin_time = max(true_begin_time, infe_begin_time)
-                    i_end_time = min(true_end_time, infe_end_time)
-                    u_begin_time = min(true_begin_time, infe_begin_time)
-                    u_end_time = max(true_end_time, infe_end_time)
-                    cur_iou = (i_end_time - i_begin_time) / (u_end_time - u_begin_time)
-                    if cur_iou >= k:
-                        correct += 1
-            P = correct / len(infe_data)
-            R = correct / len(data_true)
-            if P == 0 and R == 0:
-                f1_score = 0
-            else:
-                f1_score = 2 * P * R / (P + R)
-            F1_scores.append(f1_score)
-        print(F1_scores)
-        F1_score_avrage = sum(F1_scores) / 10
-        return F1_score_avrage
+def iou_cal(infe_data, true_datas):
+    if len(true_datas) == 0:  # 说明是一个负样本，空列表
+        return 0, None
+    infe_begin = infe_data.get('begin_time')
+    infe_end = infe_data.get('end_time')
+    iou = 0
+    index = 0
+    for i, true_data in enumerate(true_datas):
+        true_begin = true_data.get('begin_time')
+        true_end = true_data.get('end_time')
+        i_begin = max(true_begin, infe_begin)
+        i_end = min(true_end, infe_end)
+        u_begin = min(true_begin, infe_begin)
+        u_end = max(true_end, infe_end)
+        cur_iou = (i_end - i_begin) / (u_end - u_begin)
+        if cur_iou > iou:
+            index = i
+            iou = cur_iou
+    infe_kind = infe_data.get('kind')
+    true_kind = true_datas[index].get('kind')
+    if infe_kind == true_kind:
+        return iou, None
     else:
-        print('没有找全所有的错误行为，恐怕只能得0分了')
-        return 0
+        return iou, true_kind
 
 
-def main():
-    folder_path = '/home/master/zhoujian/Documents/zgb/videos_10'
+def judge(txt_name, infe_datas):
+    iou_range = [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+    if os.path.getsize(txt_name) == 0:  # 说明这是一个负样本/空文件
+        true_datas = []
+    else:
+        true_datas = read_txt(txt_name)
+    print('\n================validation=================')
+    print(true_datas)
+    print("==========================================")
+    # 把单位统一变成毫秒,如果单位是秒的话就需要，将注释去掉即可
+    # if len(true_datas) != 0 and true_datas[len(true_datas) - 1]['begin_time'] // 1000 <= 0:
+    #     for i in range(len(true_datas)):
+    #         true_datas[i]['begin_time'] *= 1000
+    #         true_datas[i]['end_time'] *= 1000
 
-    # 存储所有.mp4文件的绝对路径的列表
-    mp4_files = []
+    # if len(infe_datas) != 0 and infe_datas[len(infe_datas) - 1]['begin_time'] // 1000 <= 0:
+    #     for i in range(len(infe_datas)):
+    #         infe_datas[i]['begin_time'] *= 1000
+    #         infe_datas[i]['end_time'] *= 1000
+    # 考虑到可能是一个负样本的情况
+    if len(true_datas) == 0:
+        if len(infe_datas) == 0:
+            return 100  # 成功判断出是负样本，满分！
+        else:  # 明明是负样本缺还给出了一些推理结果，死定了
+            return 0
+    correct = 0
+    f1_scores = []
+    # 正常样本的情况
+    for k in iou_range:
+        correct = 0
+        for infe_data in infe_datas:
+            cur_iou, true_kind = iou_cal(infe_data, true_datas)
+            if true_kind is None and cur_iou != 0:  # 说明至少类型推断正确了
+                if cur_iou > k:
+                    correct += 1
+        P = correct / len(infe_datas)
+        R = correct / len(true_datas)
+        if P == 0 or R == 0:
+            f1_score = 0
+        else:
+            # print(P, R)
+            f1_score = 2 * P * R / (P + R)
+        f1_scores.append(f1_score)
+    print("\n================f1_scores=================")
+    print("0.5: " + str(f1_scores[0])+ ", 0.55: " + str(f1_scores[1])
+          + ", 0.6: " + str(f1_scores[2])+ ", 0.65: " + str(f1_scores[3])
+          + ", 0.7: " + str(f1_scores[4])+ ", 0.75: " + str(f1_scores[5])
+          + ", 0.8: " + str(f1_scores[6])+ ", 0.85: " + str(f1_scores[7])
+          + ", 0.9: " + str(f1_scores[8])+ ", 0.95: " + str(f1_scores[9]))
+    f1_scores_average = sum(f1_scores) / 10
+    return f1_scores_average
 
-    # 遍历文件夹中的文件
-    for root, dirs, files in os.walk(folder_path):
-        for file in files:
-            if file.endswith('.mp4'):
-                mp4_files.append(os.path.join(root, file))
 
-    tot = []
-    # 0.2 - 0.5, 0.05
+def cal_f1score_single(video_name, txt_name):
+    infer_data = yolo.yolo_run(source=video_name,device=0)
+    infer_data = infer_data['result']['drowsy']
+    res = []
+    for _ in infer_data:
+        res.append(
+            {'kind': _["category"], 'begin_time': _["periods"][0], 'end_time': _["periods"][1]})
+    print("\n================inference=================")
+    print(res)
+    print("==========================================")
+    f1_score = judge(txt_name, res)
+    print(f1_score)
 
 
-    with open("output_frame_per_second=1.txt", "a") as file:
-        for i in range(0, 10):
-            thre = 0.2 + i * 0.05
-            print("thre: ", thre)
-            # 添加换行符以分隔不同的输出
-            file.write("=============================================================\n")
-            file.write("thre: " + str(thre) + "\n\n\n\n\n\n\n\n")
 
-            for mp4_file in mp4_files:
-                file.write("name: " + mp4_file + "\n")
-                print(mp4_file)
-                txt_name = mp4_file[:-4] + '.txt'
-                infe_data = yolo.yolo_run(source=mp4_file, thre=thre, frame_per_second = 1)
-                print("infe_data: ", infe_data)
-                res = []
-                for _ in infe_data['result']['drowsy']:
-                    res.append(
-                        {'kind': _["category"], 'begin_time': _["periods"][0] / 1000, 'end_time': _["periods"][1] / 1000})
-                print(res)
-                file.write("infer_data: " + str(res) + "\n")
-                F1_score = judge(txt_name, res, 30)
-                gc.collect()
-                file.write("F1_score: " + str(F1_score) + "\n")
-                print(F1_score)
-                tot.append(F1_score)
-                print("\n\n\n\n")
-            tot_aver = sum(tot) / len(tot)
-            file.write("tot_aver: " + str(tot_aver) + "\n\n\n\n")
+# 会炸内存
+def cal_f1score_dir(video_dir,txt_dir):
+    F1_scores = []
+    time_tot = 0
+    for video in os.listdir(video_dir):
+        if video.endswith('.mp4'):
+            txt_name = txt_dir + video[:-4] + '.txt'
+            # print(txt_name)
+            if not os.path.exists(txt_name):
+                print(video+' , valid txt file not exist!')
+                continue
+            gc.collect()
+            infer_data = yolo_divide_and_conquer.yolo_run(source=video_dir + video,device=0)
+            res = []
+            time_tot += infer_data['result']['duration']
+            for _ in infer_data['result']['drowsy']:
+                res.append(
+                    {'kind': _["category"], 'begin_time': _["periods"][0], 'end_time': _["periods"][1]})
+            print("\n================inference=================")
+            print(res)
+            print("==========================================")
+            print("\n================time_used and total=================")
+            print(infer_data['result']['duration'], time_tot)
+
+
+            f1_score = judge(txt_name, res)
+            print(video+' , f1_score: '+str(f1_score))
+            F1_scores.append(f1_score)
+    print("\n======================================\n")
+    print("F1_scores_all: "+str(F1_scores))
+    print("F1_scores_average: "+str(sum(F1_scores)/len(F1_scores)))
+    print("time_use_total: "+str(time_tot))
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--video_source', type=str, default='/home/master/zhoujian/Documents/zgb/videos_10/')
+    parser.add_argument('--txt_source', type=str, default='/home/master/zhoujian/Documents/zgb/videos_10/')
+    opt = parser.parse_args()
+    video = opt.video_source
+    txt = opt.txt_source
+    # 如果video是一个文件夹
+    if os.path.isdir(video) and os.path.isdir(txt):
+        cal_f1score_dir(video, txt)
+    elif not os.path.isdir(video) and not os.path.isdir(txt):
+        cal_f1score_single(video, txt)
+
