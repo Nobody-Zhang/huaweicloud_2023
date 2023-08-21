@@ -3,20 +3,21 @@ import time
 from PIL import Image
 import cv2
 import argparse
+import gc
 import torch
 import json
 from torchvision import transforms
 from torch import nn
 from PIL import Image
 from skimage.transform import resize
+import yolo.yolo_divide_and_conquer
 from model_service.pytorch_model_service import PTServingBaseService
 import numpy as np
 import warnings
+
 warnings.filterwarnings("ignore")
 
-
-from yolo.yolo import *
-
+# from yolo.yolo import *
 
 
 class PTVisionService(PTServingBaseService):
@@ -27,7 +28,8 @@ class PTVisionService(PTServingBaseService):
         self.model_path = model_path
 
     def _inference(self, data):
-        result = yolo_run(source = self.capture)
+        gc.collect()
+        result = yolo.yolo_divide_and_conquer.yolo_run(source=self.capture)
         return result
 
     def _preprocess(self, data):
