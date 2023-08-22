@@ -20,7 +20,7 @@ def read_txt(file_name):
             for line in lines:
                 key, value = line.split(":")
                 key = key.strip()
-                value = int(value.strip())
+                value = int(float(value.strip()))
                 data[key] = value
             datas.append(data)
             # print(data)
@@ -77,9 +77,21 @@ def judge(txt_name, infe_datas):
     # 考虑到可能是一个负样本的情况
     if len(true_datas) == 0:
         if len(infe_datas) == 0:
-            return 100  # 成功判断出是负样本，满分！
+            return 1.0  # 成功判断出是负样本，满分！
         else:  # 明明是负样本缺还给出了一些推理结果，死定了
             return 0
+
+    for i in range(len(true_datas)):
+    # 剔除间隔小于3秒的情况
+        if true_datas[i]['end_time'] - true_datas[i]['begin_time'] < 3000:
+            true_datas.pop(i)
+    if len(true_datas) == 0:
+        return -1 # 标注错误
+
+    # 正样本但是没识别出来
+    if len(infe_datas) == 0:
+        return 0
+
     correct = 0
     f1_scores = []
     # 正常样本的情况
@@ -105,6 +117,18 @@ def judge(txt_name, infe_datas):
           + ", 0.8: " + str(f1_scores[6])+ ", 0.85: " + str(f1_scores[7])
           + ", 0.9: " + str(f1_scores[8])+ ", 0.95: " + str(f1_scores[9]))
     f1_scores_average = sum(f1_scores) / 10
+
+    if f1_scores_average <= 0.9:
+        with open(save_path, "a") as file:
+            file.write(f"video_name: {txt_name[:-4]}.mp4" + "\n")
+            file.write(f"f1_scores_average: {f1_scores_average}" + "\n")
+            file.write("infe_datas:" + "\n")
+            for item in infe_datas:
+                file.write(str(item) + "\n")
+            file.write("true_datas:" + "\n")
+            for item in true_datas:
+                file.write(str(item) + "\n")
+            file.write("==========================================" + "\n\n")
     return f1_scores_average
 
 
@@ -124,18 +148,20 @@ def cal_f1score_single(video_name, txt_name):
 
 
 # 会炸内存
-def cal_f1score_dir(video_dir,txt_dir):
+def cal_f1score_dir(video_dir,txt_dir,save_path):
     F1_scores = []
     time_tot = 0
+    label_wrong_cnt = 0
     for video in os.listdir(video_dir):
         if video.endswith('.mp4'):
+            print(video)
             txt_name = txt_dir + video[:-4] + '.txt'
             # print(txt_name)
             if not os.path.exists(txt_name):
                 print(video+' , valid txt file not exist!')
                 continue
             gc.collect()
-            infer_data = yolo_divide_and_conquer.yolo_run(source=video_dir + video,device=0)
+            infer_data = yolo_divide_and_conquer.yolo_run(source=video_dir + video)
             res = []
             time_tot += infer_data['result']['duration']
             for _ in infer_data['result']['drowsy']:
@@ -149,24 +175,32 @@ def cal_f1score_dir(video_dir,txt_dir):
 
 
             f1_score = judge(txt_name, res)
+            if f1_score == -1:
+                label_wrong_cnt += 1
+                print("LABEL WRONG!!!")
+                continue
             print(video+' , f1_score: '+str(f1_score))
+
             F1_scores.append(f1_score)
     print("\n======================================\n")
     print("F1_scores_all: "+str(F1_scores))
     print("F1_scores_average: "+str(sum(F1_scores)/len(F1_scores)))
     print("time_use_total: "+str(time_tot))
+    print("label_wrong_cnt: " + str(label_wrong_cnt))
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--video_source', type=str, default='/home/master/zhoujian/Documents/zgb/videos_10/')
-    parser.add_argument('--txt_source', type=str, default='/home/master/zhoujian/Documents/zgb/videos_10/')
+    parser.add_argument('--video_source', type=str, default='/home/hzkd/DATA/')
+    parser.add_argument('--txt_source', type=str, default='/home/hzkd/DATA/')
+    parser.add_argument('--res_save_path', type=str, default='/home/hzkd/gsm/Deployment_yolo/failed.txt')
     opt = parser.parse_args()
     video = opt.video_source
     txt = opt.txt_source
+    save_path = opt.res_save_path
     # 如果video是一个文件夹
     if os.path.isdir(video) and os.path.isdir(txt):
-        cal_f1score_dir(video, txt)
+        cal_f1score_dir(video, txt, save_path)
     elif not os.path.isdir(video) and not os.path.isdir(txt):
         cal_f1score_single(video, txt)
 
