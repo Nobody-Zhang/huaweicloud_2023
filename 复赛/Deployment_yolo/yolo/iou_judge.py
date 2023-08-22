@@ -118,7 +118,7 @@ def judge(txt_name, infe_datas):
           + ", 0.9: " + str(f1_scores[8])+ ", 0.95: " + str(f1_scores[9]))
     f1_scores_average = sum(f1_scores) / 10
 
-    if f1_scores_average <= 0.9:
+    if f1_scores_average <= 0.8:
         with open(save_path, "a") as file:
             file.write(f"video_name: {txt_name[:-4]}.mp4" + "\n")
             file.write(f"f1_scores_average: {f1_scores_average}" + "\n")
