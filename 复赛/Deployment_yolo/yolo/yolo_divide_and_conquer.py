@@ -67,6 +67,7 @@ class YOLO_Status:
                      "sideface": 6}
         self.status_prior = {"normal": 0, "closeeye": 1, "yawn": 3, "calling": 4, "turning": 2}
         self.condition = [0, 1, 4, 2, 3]
+        self.min_MAR = 0.7372881
 
     def determin(self, img, dets) -> int:
         """
@@ -97,19 +98,23 @@ class YOLO_Status:
         openeye_score = 0  # 睁眼可信度
         closeeye_score = 0  # 闭眼可信度
         eyes = []  # 第一遍扫描眼睛列表
+        mouth_xyxy = (0,0,0,0)
         mouth = (0, 0, 0, 0)  # 嘴xywh坐标
         mouth_status = 0  # 嘴状态，0 为闭， 1为张
         mouths = []  # 第一遍扫描嘴列表
         phone_flag = False
         face_flag = False
 
+        frame_num = 0
         # 处理boxes
         bboxes = dets
         for box in bboxes:  # 遍历每个box
             xyxy = tuple(box[:4])  # xyxy坐标
             xywh = xyxy2xywh(*xyxy, wide, height)  # xywh坐标
+            # print(xyxy)
+            # print(xywh)
             conf = box[4]  # 可信度
-            cls = box[5]  # 类别
+            cls = box[5]   # 类别
             if cls == self.cls_["face"]:  # 正脸
                 if .5 < xywh[0] and xywh[1] > driver[1]:
                     # box中心在右侧0.5 并且 在司机下侧
@@ -132,6 +137,10 @@ class YOLO_Status:
             elif cls == self.cls_["open_eye"] or cls == self.cls_["close_eye"]:  # 眼睛，先存着
                 eyes.append((cls, xywh, conf))
             elif cls == self.cls_["open_mouth"] or cls == self.cls_["close_mouth"]:  # 嘴，先存着
+                # self.min_MAR = max(self.min_MAR, (xyxy[3] - xyxy[1]) / (xyxy[2] - xyxy[0]))
+                mouth_xyxy = xyxy
+                # print(" mouth h/w: " + f"{(xyxy[3] - xyxy[1]) / (xyxy[2] - xyxy[0])}")
+                # print(self.min_MAR)
                 mouths.append((cls, xywh))
 
         if not face_flag:  # 没有检测到脸
@@ -178,7 +187,8 @@ class YOLO_Status:
                 1] / height or mouth_i[1][1] > face_xyxy[3] / height:
                 continue
             if mouth_i[0] == self.cls_["open_mouth"]:  # 张嘴
-                if mouth_i[1][0] > mouth[0]:
+                if mouth_i[1][0] > mouth[0] and (mouth_xyxy[3] - mouth_xyxy[1]) / (mouth_xyxy[2] - mouth_xyxy[0]) > self.min_MAR:
+                    print((mouth_xyxy[3] - mouth_xyxy[1]) / (mouth_xyxy[2] - mouth_xyxy[0]), self.min_MAR)
                     mouth = mouth_i[1]
                     mouth_status = 1
             elif mouth_i[0] == self.cls_["close_mouth"]:  # 闭嘴
@@ -389,5 +399,5 @@ def yolo_run(weights=ROOT / 'mixed_s/best.xml',  # model.pt path(s)
 
 
 if __name__ == "__main__":
-    list = yolo_run(source=ROOT / 'zipped.mp4')
+    list = yolo_run(source=ROOT / 'night_man_001_2.mp4')
     print(list)
