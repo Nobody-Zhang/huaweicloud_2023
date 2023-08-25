@@ -188,11 +188,12 @@ class YOLO_Status:
                 continue
             if mouth_i[0] == self.cls_["open_mouth"]:  # 张嘴
                 if mouth_i[1][0] > mouth[0] and (mouth_xyxy[3] - mouth_xyxy[1]) / (mouth_xyxy[2] - mouth_xyxy[0]) > self.min_MAR:
-                    print((mouth_xyxy[3] - mouth_xyxy[1]) / (mouth_xyxy[2] - mouth_xyxy[0]), self.min_MAR)
+                    print("open",(mouth_xyxy[3] - mouth_xyxy[1]) / (mouth_xyxy[2] - mouth_xyxy[0]), self.min_MAR)
                     mouth = mouth_i[1]
                     mouth_status = 1
             elif mouth_i[0] == self.cls_["close_mouth"]:  # 闭嘴
                 if mouth_i[1][0] > mouth[0]:
+                    print("close",(mouth_xyxy[3] - mouth_xyxy[1]) / (mouth_xyxy[2] - mouth_xyxy[0]), self.min_MAR)
                     mouth = mouth_i[1]
                     mouth_status = 0
 
@@ -219,9 +220,9 @@ class YOLO_Status:
 
 
 @torch.no_grad()
-def yolo_run(weights=ROOT / 'fine_tune_openvino_model/best.xml',  # model.pt path(s)
+def yolo_run(weights=ROOT / 'mixed_s/best.xml',  # model.pt path(s)
              source='',  # file/dir/URL/glob, 0 for webcam
-             data=ROOT / 'fine_tune_openvino_model/best.yaml',  # dataset.yaml path
+             data=ROOT / 'mixed_s/best.yaml',  # dataset.yaml path
              imgsz=(640, 640),  # inference size (height, width)
              conf_thres=0.20,  # confidence threshold
              iou_thres=0.40,  # NMS IOU threshold
@@ -399,5 +400,12 @@ def yolo_run(weights=ROOT / 'fine_tune_openvino_model/best.xml',  # model.pt pat
 
 
 if __name__ == "__main__":
-    list = yolo_run(source=ROOT / 'night_man_001_2.mp4')
+    list = yolo_run(source='day_woman_096_20_2.mp4')
     print(list)
+    # video_dir = "/home/hzkd/gsm/official_test/"
+    # for filename in os.listdir(video_dir):
+    #     if filename[-4:] == '.mp4':
+    #         print(filename)
+    #         filename = video_dir + filename
+    #         list = yolo_run(source=filename)
+    #         print(list)
