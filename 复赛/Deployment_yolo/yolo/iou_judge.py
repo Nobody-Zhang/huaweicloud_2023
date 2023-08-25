@@ -79,6 +79,15 @@ def judge(txt_name, infe_datas):
         if len(infe_datas) == 0:
             return 1.0  # 成功判断出是负样本，满分！
         else:  # 明明是负样本缺还给出了一些推理结果，死定了
+            with open(save_path, "a") as file:
+                file.write(f"video_name: {txt_name[:-4]}.mp4" + "\n")
+                file.write(f"f1_scores_average: 0" + "\n")
+                file.write("infe_datas:" + "\n")
+                for item in infe_datas:
+                    file.write(str(item) + "\n")
+                file.write("true_datas:" + "\n")
+                for item in true_datas:
+                    file.write(str(item) + "\n")
             return 0
 
     for i in range(len(true_datas)):
@@ -90,6 +99,13 @@ def judge(txt_name, infe_datas):
 
     # 正样本但是没识别出来
     if len(infe_datas) == 0:
+        with open(save_path, "a") as file:
+            file.write(f"video_name: {txt_name[:-4]}.mp4" + "\n")
+            file.write(f"f1_scores_average: 0" + "\n")
+            file.write("infe_datas:" + "\n")
+            file.write("true_datas:" + "\n")
+            for item in true_datas:
+                file.write(str(item) + "\n")
         return 0
 
     correct = 0
