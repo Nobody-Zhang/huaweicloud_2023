@@ -188,12 +188,12 @@ class YOLO_Status:
                 continue
             if mouth_i[0] == self.cls_["open_mouth"]:  # 张嘴
                 if mouth_i[1][0] > mouth[0] and (mouth_xyxy[3] - mouth_xyxy[1]) / (mouth_xyxy[2] - mouth_xyxy[0]) > self.min_MAR:
-                    print("open",(mouth_xyxy[3] - mouth_xyxy[1]) / (mouth_xyxy[2] - mouth_xyxy[0]), self.min_MAR)
+                    # print("open",(mouth_xyxy[3] - mouth_xyxy[1]) / (mouth_xyxy[2] - mouth_xyxy[0]), self.min_MAR)
                     mouth = mouth_i[1]
                     mouth_status = 1
             elif mouth_i[0] == self.cls_["close_mouth"]:  # 闭嘴
                 if mouth_i[1][0] > mouth[0]:
-                    print("close",(mouth_xyxy[3] - mouth_xyxy[1]) / (mouth_xyxy[2] - mouth_xyxy[0]), self.min_MAR)
+                    # print("close",(mouth_xyxy[3] - mouth_xyxy[1]) / (mouth_xyxy[2] - mouth_xyxy[0]), self.min_MAR)
                     mouth = mouth_i[1]
                     mouth_status = 0
 
