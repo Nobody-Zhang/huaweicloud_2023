@@ -358,15 +358,15 @@ def yolo_run(weights=ROOT / 'mixed_s/best.xml',  # model.pt path(s)
         i = 1
         j = 1
         if sta_mid != 0:
-            while int(mid - 0.25 * i * fps) >= l and f(int(mid - 0.25 * i * fps)) == sta_mid:
+            while int(mid - 0.125 * i * fps) >= l and f(int(mid - 0.125 * i * fps)) == sta_mid:
                 i += 1
-            while int(mid + 0.25 * j * fps) <= r and f(int(mid + 0.25 * j * fps)) == sta_mid:
+            while int(mid + 0.125 * j * fps) <= r and f(int(mid + 0.125 * j * fps)) == sta_mid:
                 j += 1
-            if i + j >= 13:  # 表示当前已经有2.75s，但是需要更进一步二分判断
+            if i + j >= 25:  # 表示当前已经有2.75s，但是需要更进一步二分判断
                 # 注意保存的是l1，r2的帧，因为这俩都判断是不可行的
-                tmp.append([i + j == 13, int(mid - 0.25 * i * fps), int(mid + 0.25 * j * fps), sta_mid])
-        divide_and_conquer(l, int(mid - fps * i * 0.25))
-        divide_and_conquer(int(mid + fps * j * 0.25), r)
+                tmp.append([i + j == 25, int(mid - 0.125 * i * fps), int(mid + 0.125 * j * fps), sta_mid])
+        divide_and_conquer(l, int(mid - fps * i * 0.125))
+        divide_and_conquer(int(mid + fps * j * 0.125), r)
         return
 
     # ------------------------- Run inference -------------------------
@@ -384,8 +384,8 @@ def yolo_run(weights=ROOT / 'mixed_s/best.xml',  # model.pt path(s)
     tmp.sort(key=lambda x: x[1])
     # print(tmp)
     for i in tmp:
-        min_t = (i[2] - i[1]) / fps - 0.5
-        _ = b_search(i[1], i[1] + fps * 0.25, i[2] - fps * 0.25, i[2], 0.25, min_t * iou_presice_b_search, i[3], is_3=i[0])
+        min_t = (i[2] - i[1]) / fps - 0.25
+        _ = b_search(i[1], i[1] + fps * 0.125, i[2] - fps * 0.125, i[2], 0.125, min_t * iou_presice_b_search, i[3], is_3=i[0])
         if _[0]:  # 表示当前出现了大于3s的
             res.append({"periods": [int(_[1] * 1000), int(_[2] * 1000)], "category": i[3]})
     # -------------------- Suit the output format --------------------

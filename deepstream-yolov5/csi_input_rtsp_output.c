@@ -91,6 +91,7 @@ static gboolean bbox_enabled = TRUE;
 static gint enc_type = 0; // Default: Hardware encoder
 static gint sink_type = 3; // Default: Eglsink
 static guint sr_mode = 1; // Default: Video Only
+static gchar **override_cfg_file = NULL;
 
 GOptionEntry entries[] = {
         {"bbox-enable", 'e', 0, G_OPTION_ARG_INT, &bbox_enabled,
@@ -117,6 +118,12 @@ GOptionEntry entries[] = {
         {NULL}
         ,
 };
+
+typedef struct _OTAInfo
+{
+    gchar *override_cfg_file;
+//    AppCtx *appCtx; // 除去这个信息，用其他的代替
+} OTAInfo;
 
 static GstElement *pipeline = NULL, *tee_pre_decode = NULL;
 static NvDsSRContext *nvdssrCtx = NULL;
@@ -197,6 +204,8 @@ smart_record_event_generator (gpointer data)
     return TRUE;
 }
 
+
+
 int
 main (int argc, char *argv[])
 {
@@ -208,6 +217,7 @@ main (int argc, char *argv[])
 
     GstCaps *caps = NULL, *caps_src = NULL, *caps_sr_dat = NULL;
 
+    OTAInfo *otaInfo = NULL; // OTA info structure
     GstBus *bus = NULL;
     guint bus_watch_id = 0;
     guint i = 0, num_sources = 1;
@@ -468,6 +478,14 @@ main (int argc, char *argv[])
         g_timeout_add (SMART_REC_INTERVAL * 1000, smart_record_event_generator,
                        nvdssrCtx);
     }
+
+    // make the ota module!
+
+    otaInfo = (OTAInfo *) g_malloc0 (sizeof (OTAInfo));
+//      otaInfo->appCtx = appCtx[i];
+    otaInfo->override_cfg_file = "config_infer_primary_yoloV5.txt";
+    ota_thread = g_thread_new ("ota-handler-thread",
+        ota_handler_thread, otaInfo);
 
     /* Set the pipeline to "playing" state */
     g_print ("Now using csi camera as input\n");
