@@ -68,6 +68,9 @@ class YOLO_Status:
         self.status_prior = {"normal": 0, "closeeye": 1, "yawn": 3, "calling": 4, "turning": 2}
         self.condition = [0, 1, 4, 2, 3]
         self.min_MAR = 0.7372881
+        self.standard_close = 0.48134
+        self.close_MAR = 0
+        self.cnt = 0
 
     def determin(self, img, dets) -> int:
         """
@@ -187,13 +190,22 @@ class YOLO_Status:
                 1] / height or mouth_i[1][1] > face_xyxy[3] / height:
                 continue
             if mouth_i[0] == self.cls_["open_mouth"]:  # 张嘴
-                if mouth_i[1][0] > mouth[0] and (mouth_xyxy[3] - mouth_xyxy[1]) / (mouth_xyxy[2] - mouth_xyxy[0]) > self.min_MAR:
-                    # print("open",(mouth_xyxy[3] - mouth_xyxy[1]) / (mouth_xyxy[2] - mouth_xyxy[0]), self.min_MAR)
-                    mouth = mouth_i[1]
-                    mouth_status = 1
+                if self.close_MAR == 0:
+                    if mouth_i[1][0] > mouth[0]:
+                        # print("open",(mouth_xyxy[3] - mouth_xyxy[1]) / (mouth_xyxy[2] - mouth_xyxy[0]), self.min_MAR)
+                        mouth = mouth_i[1]
+                        mouth_status = 1
+                else:
+                    if mouth_i[1][0] > mouth[0] and ((mouth_xyxy[3] - mouth_xyxy[1]) / (mouth_xyxy[2] - mouth_xyxy[0]))/self.close_MAR > self.min_MAR/self.standard_close:
+                        # print("open",(mouth_xyxy[3] - mouth_xyxy[1]) / (mouth_xyxy[2] - mouth_xyxy[0]), self.min_MAR)
+                        mouth = mouth_i[1]
+                        mouth_status = 1
             elif mouth_i[0] == self.cls_["close_mouth"]:  # 闭嘴
                 if mouth_i[1][0] > mouth[0]:
                     # print("close",(mouth_xyxy[3] - mouth_xyxy[1]) / (mouth_xyxy[2] - mouth_xyxy[0]), self.min_MAR)
+                    self.close_MAR = (self.close_MAR * self.cnt + (mouth_xyxy[3] - mouth_xyxy[1]) / (mouth_xyxy[2] - mouth_xyxy[0])) / (self.cnt + 1)
+                    self.cnt += 1
+                    # print("now close MAR:",self.close_MAR)
                     mouth = mouth_i[1]
                     mouth_status = 0
 
@@ -400,12 +412,12 @@ def yolo_run(weights=ROOT / 'mixed_s/best.xml',  # model.pt path(s)
 
 
 if __name__ == "__main__":
-    list = yolo_run(source='day_woman_096_20_2.mp4')
-    print(list)
-    # video_dir = "/home/hzkd/gsm/official_test/"
-    # for filename in os.listdir(video_dir):
-    #     if filename[-4:] == '.mp4':
-    #         print(filename)
-    #         filename = video_dir + filename
-    #         list = yolo_run(source=filename)
-    #         print(list)
+    # list = yolo_run(source='day_woman_096_20_2.mp4')
+    # print(list)
+    video_dir = "/home/hzkd/gsm/official_test/"
+    for filename in os.listdir(video_dir):
+        if filename[-4:] == '.mp4':
+            print(filename)
+            filename = video_dir + filename
+            list = yolo_run(source=filename)
+            print(list)
