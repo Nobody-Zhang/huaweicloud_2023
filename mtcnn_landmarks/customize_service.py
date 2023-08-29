@@ -17,7 +17,9 @@ warnings.filterwarnings("ignore")
 from utils.utils import generate_bbox, py_nms, convert_to_square
 from utils.utils import pad, calibrate_box, processed_image
 from utils.cal import cal_euler_angles
-
+from models.ONet import ONet
+from models.PNet import PNet
+from models.RNet import RNet
 
 pnet = None
 rnet = None
@@ -26,13 +28,21 @@ softmax_p = None
 softmax_r = None
 softmax_o = None
 
-
-def load_model(model_path,device):
-    model = torch.jit.load(model_path)
-    model.to(device)
-    model.eval()
-    print(model_path + ' loaded')
-    return model
+def load_model(model_dir,device):
+    pNet = PNet()
+    pNet.load_state_dict(torch.load(os.path.join(model_dir, 'PNet.pt')))
+    pNet.to(device)
+    pNet.eval()
+    rNet = RNet()
+    rNet.load_state_dict(torch.load(os.path.join(model_dir, 'RNet.pt')))
+    rNet.to(device)
+    rNet.eval()
+    oNet = ONet()
+    oNet.load_state_dict(torch.load(os.path.join(model_dir, 'ONet.pt')))
+    oNet.to(device)
+    oNet.eval()
+    
+    return pNet, rNet, oNet
 
 def load_models(models_dir,device):
     '''
@@ -41,9 +51,8 @@ def load_models(models_dir,device):
         device
     '''
     global pnet,rnet,onet,softmax_p,softmax_r,softmax_o
-    pnet = load_model(os.path.join(models_dir, 'PNet.pth'),device)
-    rnet = load_model(os.path.join(models_dir, 'RNet.pth'),device)
-    onet = load_model(os.path.join(models_dir, 'ONet.pth'),device)
+    pnet, rnet, onet = load_model(models_dir, device)
+    
     softmax_p = torch.nn.Softmax(dim=0)
     softmax_r = torch.nn.Softmax(dim=-1)
     softmax_o = torch.nn.Softmax(dim=-1)
@@ -278,10 +287,10 @@ def infer_image(image_path ,device):
     
     result = {"result": {"Roll": 0.0, "Yaw": 0.0, "Pitch": 0.0, "duration": 6000}}
 
+    result['result']['duration'] = int((time.time() - start) * 1000)
     result['result']['Roll'] = roll
     result['result']['Yaw'] = yaw
     result['result']['Pitch'] = pitch
-    result['result']['duration'] = int((time.time() - start) * 1000)
     return result
 
 def get_column(matrix, column_number):
@@ -359,10 +368,10 @@ def infer_video(video_path,device,fps=None):
     
     result = {"result": {"Roll": [], "Yaw": [], "Pitch": [], "duration": 6000}}
 
+    result['result']['duration'] = int((time.time() - start) * 1000)
     result['result']['Roll'] = get_column(euler_angles_per_frame, 0)
     result['result']['Yaw'] = get_column(euler_angles_per_frame, 1)
     result['result']['Pitch'] = get_column(euler_angles_per_frame, 2)
-    result['result']['duration'] = int((time.time() - start) * 1000)
     
     return result
 
@@ -394,7 +403,7 @@ def infer_image_with_Onet(image_path,boxes_c=None,device=None):
 
 class MTCNN_model:
     def __init__(self):
-        self.device = torch.device("cpu")
+        self.device = torch.device("cuda")
         load_models('/home/ma-user/infer/model/1/infer_models',self.device)
     
     def inference(self, source):
@@ -439,3 +448,10 @@ class PTVisionService(PTServingBaseService):
 
     def _postprocess(self, data):
         return data
+
+# if __name__ == '__main__':
+#     capture = './test/1.mp4'
+#     model = MTCNN_model()
+#     result = model.inference(source = capture)
+    
+#     print(result)
