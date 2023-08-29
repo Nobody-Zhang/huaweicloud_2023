@@ -67,12 +67,8 @@ class YOLO_Status:
                      "sideface": 6}
         self.status_prior = {"normal": 0, "closeeye": 1, "yawn": 3, "calling": 4, "turning": 2}
         self.condition = [0, 1, 4, 2, 3]
-        self.min_MAR = 0.7372881
-        self.standard_close = 0.48134
-        self.close_MAR = 0
-        self.cnt = 0
 
-    def determin(self, img, dets) -> int:
+    def determin(self, img, dets) -> list:
         """
         determin which status this frame belongs to\n
         0 -> normal status\n
@@ -101,23 +97,21 @@ class YOLO_Status:
         openeye_score = 0  # 睁眼可信度
         closeeye_score = 0  # 闭眼可信度
         eyes = []  # 第一遍扫描眼睛列表
-        mouth_xyxy = (0,0,0,0)
         mouth = (0, 0, 0, 0)  # 嘴xywh坐标
         mouth_status = 0  # 嘴状态，0 为闭， 1为张
         mouths = []  # 第一遍扫描嘴列表
         phone_flag = False
         face_flag = False
 
-        frame_num = 0
+        status = [0, 0, 0, 0]  # eye face mouth phone
+
         # 处理boxes
         bboxes = dets
         for box in bboxes:  # 遍历每个box
             xyxy = tuple(box[:4])  # xyxy坐标
             xywh = xyxy2xywh(*xyxy, wide, height)  # xywh坐标
-            # print(xyxy)
-            # print(xywh)
             conf = box[4]  # 可信度
-            cls = box[5]   # 类别
+            cls = box[5]  # 类别
             if cls == self.cls_["face"]:  # 正脸
                 if .5 < xywh[0] and xywh[1] > driver[1]:
                     # box中心在右侧0.5 并且 在司机下侧
@@ -140,41 +134,37 @@ class YOLO_Status:
             elif cls == self.cls_["open_eye"] or cls == self.cls_["close_eye"]:  # 眼睛，先存着
                 eyes.append((cls, xywh, conf))
             elif cls == self.cls_["open_mouth"] or cls == self.cls_["close_mouth"]:  # 嘴，先存着
-                # self.min_MAR = max(self.min_MAR, (xyxy[3] - xyxy[1]) / (xyxy[2] - xyxy[0]))
-                mouth_xyxy = xyxy
-                # print(" mouth h/w: " + f"{(xyxy[3] - xyxy[1]) / (xyxy[2] - xyxy[0])}")
-                # print(self.min_MAR)
                 mouths.append((cls, xywh))
 
         if not face_flag:  # 没有检测到脸
-            return 4  # 4 -> turning around
+            return [0,1,0,0]
 
         # 判断状态
         face = driver
         face_xyxy = driver_xyxy
         if abs(driver[0] - sideface[0]) < .1 and abs(driver[1] - sideface[1]) < .1:  # 正脸与侧脸很接近，说明同时检测出了正脸和侧脸
             if driver_conf > sideface_conf:  # 正脸可信度更高
-                status = max(status, self.status_prior["normal"])
+                # status = max(status, self.status_prior["normal"])
+                status[1] = 1
                 face = driver
                 face_xyxy = driver_xyxy
             else:  # 侧脸可信度更高
-                status = max(status, self.status_prior["turning"])
+                status[1] = 0
                 face = sideface
                 face_xyxy = sideface_xyxy
         elif sideface[0] > driver[0]:  # 正侧脸不重合，并且侧脸在正脸右侧，说明司机是侧脸
-            status = max(status, self.status_prior["turning"])
+            status[1] = 1
             face = sideface
             face_xyxy = sideface_xyxy
 
         if face[2] == 0:  # 司机躲猫猫捏
-            status = max(status, self.status_prior["turning"])
+            status[1] = 1
 
         if abs(face[0] - phone[0]) < .3 and abs(face[1] - phone[1]) < .3 and phone_flag:
-            status = max(status, self.status_prior["calling"])  # 判断状态为打电话
+            status[3] = 1  # 判断状态为打电话
 
         for eye_i in eyes:
-            if eye_i[1][0] < face_xyxy[0] / wide or eye_i[1][0] > face_xyxy[2] / wide or eye_i[1][1] < face_xyxy[
-                1] / height or eye_i[1][1] > face_xyxy[3] / height:
+            if eye_i[1][0] < face_xyxy[0] / wide or eye_i[1][0] > face_xyxy[2] / wide or eye_i[1][1] < face_xyxy[1] / height or eye_i[1][1] > face_xyxy[3] / height:
                 continue
             if eye_i[0] == self.cls_["open_eye"]:  # 睁眼
                 if eye_i[1][0] > openeye[0]:  # 找最右边的，下面的同理
@@ -186,49 +176,37 @@ class YOLO_Status:
                     closeeye_score = eye_i[2]
 
         for mouth_i in mouths:
-            if mouth_i[1][0] < face_xyxy[0] / wide or mouth_i[1][0] > face_xyxy[2] / wide or mouth_i[1][1] < face_xyxy[
-                1] / height or mouth_i[1][1] > face_xyxy[3] / height:
+            if mouth_i[1][0] < face_xyxy[0] / wide or mouth_i[1][0] > face_xyxy[2] / wide or mouth_i[1][1] < face_xyxy[1] / height or mouth_i[1][1] > face_xyxy[3] / height:
                 continue
             if mouth_i[0] == self.cls_["open_mouth"]:  # 张嘴
-                if self.close_MAR == 0:
-                    if mouth_i[1][0] > mouth[0]:
-                        # print("open",(mouth_xyxy[3] - mouth_xyxy[1]) / (mouth_xyxy[2] - mouth_xyxy[0]), self.min_MAR)
-                        mouth = mouth_i[1]
-                        mouth_status = 1
-                else:
-                    if mouth_i[1][0] > mouth[0] and ((mouth_xyxy[3] - mouth_xyxy[1]) / (mouth_xyxy[2] - mouth_xyxy[0]))/self.close_MAR > self.min_MAR/self.standard_close:
-                        # print("open",(mouth_xyxy[3] - mouth_xyxy[1]) / (mouth_xyxy[2] - mouth_xyxy[0]), self.min_MAR)
-                        mouth = mouth_i[1]
-                        mouth_status = 1
+                if mouth_i[1][0] > mouth[0]:
+                    mouth = mouth_i[1]
+                    mouth_status = 1
             elif mouth_i[0] == self.cls_["close_mouth"]:  # 闭嘴
                 if mouth_i[1][0] > mouth[0]:
-                    # print("close",(mouth_xyxy[3] - mouth_xyxy[1]) / (mouth_xyxy[2] - mouth_xyxy[0]), self.min_MAR)
-                    self.close_MAR = (self.close_MAR * self.cnt + (mouth_xyxy[3] - mouth_xyxy[1]) / (mouth_xyxy[2] - mouth_xyxy[0])) / (self.cnt + 1)
-                    self.cnt += 1
-                    # print("now close MAR:",self.close_MAR)
                     mouth = mouth_i[1]
                     mouth_status = 0
 
         if mouth_status == 1:  # 嘴是张着的
-            status = max(status, self.status_prior["yawn"])
+            status[2] = 1
 
         if abs(closeeye[0] - openeye[0]) < .2:  # 睁眼和闭眼离得很近， 说明是同一个人两只眼睛判断得不一样
             if closeeye_score > openeye_score:  # 闭眼可信度比睁眼高
-                status = max(status, self.status_prior["closeeye"])
+                status[0] = 1
             else:
-                status = max(status, self.status_prior["normal"])
+                status[0] = 0
         else:  # 说明是两个人的眼睛，靠右边的是司机的眼睛
             if closeeye[0] > openeye[0]:  # 司机是闭眼
-                status = max(status, self.status_prior["closeeye"])
+                status[0] = 1
             else:  # 司机是睁眼
-                status = max(status, self.status_prior["normal"])
+                status[0] = 0
 
         # if self.condition[status] == 0:
         #     print("status: ", status)
         #     print("openeye: ", openeye_score)
         #     print("closeeye: ", closeeye_score)
 
-        return self.condition[status]
+        return status
 
 
 @torch.no_grad()
@@ -300,7 +278,7 @@ def yolo_run(weights=ROOT / 'mixed_s/best.xml',  # model.pt path(s)
                 sta = YOLO_determin.determin(im0, det.numpy())
             else:
                 # Nothing detected, assume the status if "turning"
-                sta = 4
+                sta = [0,1,0,0]
             # if sta == 1:
             #     cv2.imshow(f"{sta}", im0)
             #     cv2.waitKey(1000)
@@ -337,46 +315,103 @@ def yolo_run(weights=ROOT / 'mixed_s/best.xml',  # model.pt path(s)
         # print(f"mid1: {mid1}, mid2: {mid2}, sta1: {sta1}, sta2: {sta2}, goal:{k}")
 
         # 1 1
-        if sta1 == k and sta2 == k:
+        if sta1[k] == 1 and sta2[k] == 1:
             return b_search(l1, mid1, mid2, r2, n / 2, iou_presice_b_search * (mid2 - mid1) / fps,
                             k)  # 就算是需要判断的3s，无论如何都是可行的
 
         # 0 0
-        if sta1 != k and sta2 != k:
+        if sta1[k] == 0 and sta2[k] == 0:
             if is_3:
                 # print(f"False(0, 0): status: {k}\n l1: {l1}, r1: {r1}, l2: {l2}, r2: {r2}")
                 return [False]  # 如果是需要判断的3s，则无论如何都是不可行的
             return b_search(mid1, r1, l2, mid2, n / 2, iou_presice_b_search * (l2 - r1) / fps, k)  # 继续搜索边界，提升精度
 
         # 1 0
-        if sta1 == k and sta2 != k:
+        if sta1[k] == 1 and sta2[k] == 0:
             if is_3:  # 固定时长，多迭代一轮
                 return b_search(l1, mid1, l2, mid2, n / 2, iou_presice_b_search * 3 * 0.25, k, True)
             return b_search(l1, mid1, l2, mid2, n / 2, iou_presice_b_search * (l2 - mid1) / fps, k)
 
         # 0 1
-        if sta1 != k and sta2 == k:
+        if sta1[k] == 1 and sta2[k] == 0:
             if is_3:
                 return b_search(mid1, r1, mid2, r2, n / 2, iou_presice_b_search * 3 * 0.25, k, True)
             return b_search(mid1, r1, mid2, r2, n / 2, iou_presice_b_search * (mid2 - r1) / fps, k)
 
+    def is_not_0000(sta):
+        if sta[0] != 0 or sta[1] != 0 or sta[2] != 0 or sta[3] != 0:
+            return True
+        return False
+
+    # def is_not_same(sta1, sta2):
+    #     for i in range(4):
+    #         if sta1[i] != sta2[i]:
+    #             return True
+    #     return False
+
+    def bing(sta1, sta2):
+        for i in range(4):
+            sta1[i] = sta1[i] and sta2[i]
+        return sta1
+
     def divide_and_conquer(l, r):
         # 分治算法，l和r表示的是左右的边界, [l, r]，且左右的状态和l - 0.5 * fps, r + 0.5 * fps的状态不一样
-        # print(f"l: {l}, r: {r}")
+        # print(f"l: {l/fps}, r: {r/fps}")
         if r - l < 3 * fps:  # 区间小于3s
             return
         mid = int((l + r) / 2)  # 选中间的帧
         sta_mid = f(mid)
-        i = 1
-        j = 1
-        if sta_mid != 0:
-            while int(mid - 0.25 * i * fps) >= l and f(int(mid - 0.25 * i * fps)) == sta_mid:
+        sta_l = sta_mid.copy()
+        sta_r = sta_mid.copy()
+        i = 0
+        j = 0
+        l_last = [0,0,0,0] # 最后某一个状态为1的步数
+        r_last = [0,0,0,0]
+        if is_not_0000(sta_mid):
+            while int(mid - 0.25 * i * fps) >= l:
                 i += 1
-            while int(mid + 0.25 * j * fps) <= r and f(int(mid + 0.25 * j * fps)) == sta_mid:
+                sta_l = bing(sta_l, f(int(mid - 0.25 * i * fps)))
+                if not is_not_0000(sta_l):
+                    break
+                for t in range(4):
+                    if sta_l[t] == 1:
+                        l_last[t] = i
+            i -= 1
+            while int(mid + 0.25 * j * fps) <= r:
                 j += 1
-            if i + j >= 13:  # 表示当前已经有2.75s，但是需要更进一步二分判断
-                # 注意保存的是l1，r2的帧，因为这俩都判断是不可行的
-                tmp.append([i + j == 13, int(mid - 0.25 * i * fps), int(mid + 0.25 * j * fps), sta_mid])
+                sta_r = bing(sta_r, f(int(mid + 0.25 * j * fps)))
+                if not is_not_0000(sta_r):
+                    break
+                for t in range(4):
+                    if sta_r[t] == 1:
+                        r_last[t] = j
+                # sta_r_backup = sta_r
+            j -= 1
+            l_last_pre = 0
+            r_last_pre = 0
+            for t in range(3,-1,-1): # 默认最多只有两种状态
+                if l_last[t] + r_last[t] >= 13:
+                    if l_last_pre > l_last[t] and r_last_pre > r_last[t]: # 优先级高的包含了优先级小的，全覆盖了
+                        break
+                    elif l_last_pre > l_last[t] and r_last_pre < r_last[t]:
+                        if r_last[t] - r_last_pre >= 13: # 覆盖掉了之后还剩下2.75s
+                            tmp.append([r_last[t] - r_last_pre == 13, int(mid + 0.25 * r_last_pre * fps), int(mid + 0.25 * r_last[t] * fps), t])
+                        break
+                    elif l_last_pre < l_last[t] and r_last_pre > r_last[t]:
+                        if l_last[t] - l_last_pre >= 13:
+                            tmp.append([l_last[t] - l_last_pre == 13, int(mid - 0.25 * l_last[t] * fps), int(mid - 0.25 * l_last_pre * fps), t])
+                        break
+                    else:
+                        if l_last_pre == 0 and r_last_pre == 0: # 第一次判断，即优先级高的状态
+                            l_last_pre = l_last[t]
+                            r_last_pre = r_last[t]
+                            tmp.append([l_last[t] + r_last[t] == 13, int(mid - 0.25 * l_last[t] * fps), int(mid + 0.25 * r_last[t] * fps), t])
+                        else: # 优先级低的包含了优先级高的，剩下两头
+                            if r_last[t] - r_last_pre >= 13:
+                                tmp.append([r_last[t] - r_last_pre == 13, int(mid + 0.25 * r_last_pre * fps), int(mid + 0.25 * r_last[t] * fps), t])
+                            if l_last[t] - l_last_pre >= 13:
+                                tmp.append([l_last[t] - l_last_pre == 13, int(mid - 0.25 * l_last[t] * fps), int(mid - 0.25 * l_last_pre * fps), t])
+                            break
         divide_and_conquer(l, int(mid - fps * i * 0.25))
         divide_and_conquer(int(mid + fps * j * 0.25), r)
         return
@@ -395,11 +430,12 @@ def yolo_run(weights=ROOT / 'mixed_s/best.xml',  # model.pt path(s)
     # 每一帧（抽帧之后的）遍历
     tmp.sort(key=lambda x: x[1])
     # print(tmp)
+    mmap = [1, 4, 2, 3]
     for i in tmp:
         min_t = (i[2] - i[1]) / fps - 0.5
         _ = b_search(i[1], i[1] + fps * 0.25, i[2] - fps * 0.25, i[2], 0.25, min_t * iou_presice_b_search, i[3], is_3=i[0])
         if _[0]:  # 表示当前出现了大于3s的
-            res.append({"periods": [int(_[1] * 1000), int(_[2] * 1000)], "category": i[3]})
+            res.append({"periods": [int(_[1] * 1000), int(_[2] * 1000)], "category": mmap[i[3]]})
     # -------------------- Suit the output format --------------------
     t_end = time_sync()  # End_time
     duration = t_end - t_start
@@ -412,12 +448,5 @@ def yolo_run(weights=ROOT / 'mixed_s/best.xml',  # model.pt path(s)
 
 
 if __name__ == "__main__":
-    # list = yolo_run(source='day_woman_096_20_2.mp4')
-    # print(list)
-    video_dir = "/home/hzkd/gsm/official_test/"
-    for filename in os.listdir(video_dir):
-        if filename[-4:] == '.mp4':
-            print(filename)
-            filename = video_dir + filename
-            list = yolo_run(source=filename)
-            print(list)
+    list = yolo_run(source=ROOT / 'night_woman_002_3.mp4')
+    print(list)
