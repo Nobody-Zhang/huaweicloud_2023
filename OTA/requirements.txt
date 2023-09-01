@@ -1,0 +1,2 @@
+pip install esdk-obs-python
+pip install requests
