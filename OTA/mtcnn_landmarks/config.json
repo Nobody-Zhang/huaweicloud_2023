@@ -1,0 +1,160 @@
+{
+    "model_algorithm": "video_classification",
+    "model_type": "PyTorch",
+    "runtime": "pytorch_1.8.0-cuda_10.2-py_3.7-ubuntu_18.04-x86_64",
+    "apis": [
+        {
+            "procotol": "http",
+            "url": "/",
+            "method": "post",
+            "request": {
+                "Content-type": "multipart/form-data",
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "input_video": {"type": "file"}
+                    },
+                    "required": ["input_video"]
+                }
+            },
+            "response": {
+                "Content-type": "applicaton/json",
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "result": {"type": "number", "type": "number"}
+                    },
+                    "required": ["result"]
+                }
+            }
+        }
+    ],
+    "dependencies": [
+        {
+            "installer": "pip",
+            "packages": [
+                {
+                    "package_name": "onnxruntime",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
+                    "package_name": "numpy",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
+                    "package_name": "scipy",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
+                    "package_name": "pandas",
+                    "package_version": "",
+                    "restraint": ""
+                }
+                ,
+                {
+                    "package_name": "torch",
+                    "package_version": "1.8.0",
+                    "restraint": "ATLEAST"
+                },
+                {
+                    "package_name": "torchvision",
+                    "package_version": "0.9.0",
+                    "restraint": "ATLEAST"
+                },
+                {
+                    "package_name": "tqdm",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
+                    "package_name": "PyYAML",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
+                    "package_name": "Pillow",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
+                    "package_name": "onnx",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
+                    "package_name": "matplotlib",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
+                    "package_name": "seaborn",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
+                    "package_name": "openvino-dev",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
+                    "package_name": "scikit-learn",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
+                    "package_name": "scikit-image",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
+                    "package_name": "thop",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
+                    "package_name": "gsutil",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
+                    "package_name": "progress",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
+                    "package_name": "joblib",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
+                    "package_name": "openvino",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
+                    "package_name": "opencv-python",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
+                    "package_name": "openmodelzoo_modelapi-2022.3.0-py3-none-any.whl",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
+                    "package_name": "scikit_image-0.19.3-cp37-cp37m-manylinux_2_12_x86_64.manylinux2010_x86_64.whl",
+                    "package_version": "",
+                    "restraint": ""
+                },
+                {
+                    "package_name": "scikit_learn-1.0.2-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+                    "package_version": "",
+                    "restraint": ""
+                }
+            ]
+        }
+    ]
+}
