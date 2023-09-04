@@ -36,6 +36,11 @@ upload_dir = 'yoloV5/input/'
 local_file_path = './auto-train/test.png'
 obs_file_name = 'atest.png'
 
+# 视频文件的log日志
+log_dir = "../ota_test/smart_record.log"
+# 触发在线训练的阈值
+MP4_threshold = 3
+
 #设置训练代码在obs中的目录和启动代码
 code_dir = "/auto-train-jyf/yoloV5/yolov5/" 
 boot_file = "/auto-train-jyf/yoloV5/yolov5/train.py"
@@ -90,8 +95,22 @@ def create_training_job():
     job_id = resp_json["metadata"]["id"]
     status_code = resp.status_code 
     return status_code,job_id
-    
+
+def get_mp4_num(log_dir, MP4_threshold):
+    """
+    读取日志文件中的视频文件个数
+    """
+    MP4_count = 0
+    while count < MP4_threshold:
+        with open(log_dir) as f:
+            count = len(f.readlines())
+            print("The num of MP4 need to upload is" + str(count))
+            time.sleep(30)
+
 def ota():
+    # 读取文件
+    get_mp4_num(log_dir, MP4_threshold)
+    print("start online training")
     obs_client.putContent(bucket_name, upload_dir, '')
     print("start upload weight...")
     upload_file_to_obs(bucket_name,"./yolov5s.pt","yoloV5/yolov5/yolov5s.pt") 
