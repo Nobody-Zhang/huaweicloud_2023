@@ -1,0 +1,2 @@
+esdk-obs-python
+requests
