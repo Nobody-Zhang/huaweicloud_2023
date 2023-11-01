@@ -1,7 +1,0 @@
-README.md
-setup.py
-nanodet.egg-info/PKG-INFO
-nanodet.egg-info/SOURCES.txt
-nanodet.egg-info/dependency_links.txt
-nanodet.egg-info/not-zip-safe
-nanodet.egg-info/top_level.txt
