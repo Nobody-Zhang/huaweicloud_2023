@@ -1,0 +1,8 @@
+ERROR from element udpsink: Could not get/set settings from/on resource.
+Error details: gstmultiudpsink.c(1278): gst_multiudpsink_configure_client (): /GstPipeline:dstest-sr-pipeline/GstUDPSink:udpsink:
+Could not join multicast group: Error joining multicast group: No such device
+Returned, stopping playback
+Deleting pipeline
+*** stack smashing detected ***: <unknown> terminated
+Aborted (core dumped)
+

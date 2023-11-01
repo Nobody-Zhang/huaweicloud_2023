@@ -1,0 +1,6 @@
+** ERROR: <parse_gie:1329>: Config file not provided for group 'primary-gie'
+** ERROR: <parse_gie:1342>: parse_gie failed
+** ERROR: <parse_config_file:542>: parse_config_file failed
+** ERROR: <ota_handler_thread:397>: Failed to parse config file 'ota_override_config.txt'
+Error: ota_handler_thread: Failed to parse config file 'ota_override_config.txt'Recording started..
+

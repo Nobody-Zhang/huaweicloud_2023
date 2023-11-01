@@ -1,0 +1,7 @@
+close_eye
+close_mouth
+face
+open_eye
+open_mouth
+phone
+side_face
