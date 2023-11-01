@@ -114,10 +114,10 @@ class VoiceInteraction:
     """
 
     def __init__(self,
-                 ak='WAT9CMSRTF126WI93VAL',  # 用户的ak
-                 sk='sADYWZRs46xg8ka6nynj7ul0Y9J4ky9T4bLSrAH7',  # 用户的sk
+                 ak='WAT9FGDFGDF6WI93VAL',  # 用户的ak
+                 sk='sADYWZRs46xgSDFGHGBGFDSJ4ky9T4bLSrAH7',  # 用户的sk
                  region='cn-north-4',  # region，如cn-north-4
-                 project_id='61ed29a1dbea43509f860d8e7ecb0942',
+                 project_id='61ed29a1dASDFXCFDSVXCVSD7ecb0942',
                  # 同region一一对应，参考https://support.huaweicloud.com/api-sis/sis_03_0008.html
                  local_port=19327,
                  server_port=19327):
