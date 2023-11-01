@@ -1,4 +1,4 @@
-# 生产队的大萝卜(BEST SCORE: 0.9741)
+# 生产队的大萝卜 复赛刷榜代码(BEST SCORE: 0.8807)
 
 ## 简介
 
@@ -35,13 +35,13 @@
 4. 输出参数格式如下，其中，category为驾驶行为类别编号，duration为算法推理耗时(ms)
 
 ```json
- {
-    "result":
-        {
-            "category":0,
-            "duration":6000
-        }
- }
+{
+  "result":
+    {
+      "category":0,
+      "duration":6000
+    }
+}
 
 ```
 
