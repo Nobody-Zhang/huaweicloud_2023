@@ -71,8 +71,5 @@ e01ba0f9-9670-4d9f-bc2b-e5fbb76b3ca3
 
 如果有任何疑问，请联系：
 
-张恭博
-
-Phone : 19828635619
 
 Email : 2841295907@qq.com/minecraftzhanggongbo@outlook.com
