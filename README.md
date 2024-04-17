@@ -1,6 +1,14 @@
 # 18th Challenge Cup National College Students' Extracurricular Academic Science and Technology Works Competition - "Revealing the List and Taking Command" Special Competition · Huawei Cloud Track Second Prize
 
-## [Competition Homepage](https://competition.huaweicloud.com/information/1000041855/introduction)
+## Competition Homepage
+
+[Competition Homepage](https://competition.huaweicloud.com/information/1000041855/introduction)
+
+## Certificate
+
+![Certificate](./Certificate.png)
+
+[Certificate Website](https://www.tiaozhanbei.net/ca/CA959D2C14234439A9FA60E65EF93862/)
 
 ### Project Overview:
 
