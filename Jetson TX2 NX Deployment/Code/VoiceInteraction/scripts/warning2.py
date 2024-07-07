@@ -1,3 +1,6 @@
+""" 
+this is the very file that connect to the server and receive the warning type and finnaly give an answer to the user
+"""
 import socket
 import threading
 from recognize_generate4 import VoiceInteraction,establish_record_connection

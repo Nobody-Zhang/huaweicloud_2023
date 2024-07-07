@@ -1,3 +1,11 @@
+""" 
+this file is intended to recieve the audio from the user and then generate the response according to the audio
+there are to options for generating the answer, one is using the self_deployed llama model, the other is using the api proveide by ali 通义千问
+note that if the answer generated is not likely to be correct or even not generated, the program will inform the user its incapability
+
+in consideration of time, we intend to response specific answer with pre_prepared audio, and the general answer with llama or 通义千问
+"""
+
 import os
 import subprocess
 import time
@@ -101,6 +109,33 @@ def close_websocket(client):
     except Exception as e:
         print('Error closing websocket:', e)
 
+def generate_random_uint64():
+    # 生成一个无符号64位整数
+    random_uint64 = random.getrandbits(64)
+    return int(random_uint64)
+
+
+def qianwen(input_question: str):
+    """ add another option for"""
+    dashscope.api_key = 'your_api_key'
+    resp = Generation.call(
+        model='qwen-v1',
+        prompt=input_question,
+        top_k=88.0,
+        top_p=0.8,
+        seed=int(generate_random_uint64() % 9223372036854775807)
+    )
+    # The response status_code is HTTPStatus.OK indicate success,
+    # otherwise indicate request is failed, you can get error code
+    # and message from code and message.
+    if resp.status_code == HTTPStatus.OK:
+        print(resp.output)  # The output text
+        print(resp.usage)  # The usage information
+        return resp.output.get("text")
+    else:
+        print(resp.code)  # The error code.
+        print(resp.message)  # The error message.
+        return None
 
 class VoiceInteraction:
     """
