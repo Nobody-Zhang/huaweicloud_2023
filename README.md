@@ -38,7 +38,6 @@ Acknowledgments: Minhan Tang, Yongye Lai, Haoyu Deng, Shiyu Zhang
 
 [🙌🙌🙌Check it out!](https://github.com/HUSTMiracle/BLBDGCD_huawei2024)
 
-![](https://github.com/HUSTMiracle/BLBDGCD_huawei2024/blob/master/structure.png)
 
 ## *License*
 
