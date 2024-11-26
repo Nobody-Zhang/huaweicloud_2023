@@ -32,6 +32,14 @@ Teammates: Shuming Guo, Luran Lv, Aolin Zhang, Xingyu Chen, Jintian Wu, Yufan Ji
 Acknowledgments: Minhan Tang, Yongye Lai, Haoyu Deng, Shiyu Zhang
 ```
 
+## News
+
+🔥***Nov 26 2024:*** Congratulations to Yongye Lai, Xuejia Chen et al for winning the ***Grand Prize*** in the 19th Challenge Cup National College Students' Extracurricular Academic Science and Technology Works Competition - "Revealing the List and Taking Command" Special Competition · Huawei Track!
+
+[🙌🙌🙌Check it out!](https://github.com/HUSTMiracle/BLBDGCD_huawei2024)
+
+![](https://github.com/HUSTMiracle/BLBDGCD_huawei2024/blob/master/structure.png)
+
 ## *License*
 
 This project is released under the [Apache 2.0 license](LICENSE).
