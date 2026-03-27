@@ -93,6 +93,12 @@ logs/
 *.fatbin
 *.ptx
 
+# ===== Data Files =====
+*.npy
+
+# ===== Source Maps =====
+*.js.map
+
 # ===== YOLOv5 Runtime =====
 runs/
 wandb/
