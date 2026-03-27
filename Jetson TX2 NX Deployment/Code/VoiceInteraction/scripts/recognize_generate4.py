@@ -117,7 +117,7 @@ def generate_random_uint64():
 
 def qianwen(input_question: str):
     """ add another option for"""
-    dashscope.api_key = 'your_api_key'
+    dashscope.api_key = os.environ.get("DASHSCOPE_API_KEY")
     resp = Generation.call(
         model='qwen-v1',
         prompt=input_question,
@@ -149,17 +149,17 @@ class VoiceInteraction:
     """
 
     def __init__(self,
-                 ak='WAT9FGDFGDF6WI93VAL',  # 用户的ak
-                 sk='***REDACTED_SK_2_PARTIAL***',  # 用户的sk
+                 ak=None,  # 用户的ak, 通过环境变量 HUAWEICLOUD_AK 配置
+                 sk=None,  # 用户的sk, 通过环境变量 HUAWEICLOUD_SK 配置
                  region='cn-north-4',  # region，如cn-north-4
-                 project_id='61ed29a1dASDFXCFDSVXCVSD7ecb0942',
+                 project_id=None,
                  # 同region一一对应，参考https://support.huaweicloud.com/api-sis/sis_03_0008.html
                  local_port=19327,
                  server_port=19327):
-        self.ak = ak
-        self.sk = sk
+        self.ak = ak or os.environ.get("HUAWEICLOUD_AK")
+        self.sk = sk or os.environ.get("HUAWEICLOUD_SK")
         self.region = region
-        self.project_id = project_id
+        self.project_id = project_id or os.environ.get("HUAWEICLOUD_PROJECT_ID")
 
 
         self.local_port = local_port

@@ -1,11 +1,12 @@
 # coding=utf-8
 
+import os
 import requests
 
 if __name__ == '__main__':
     # Config url, token and file path.
-    url = "***REDACTED_MTCNN_URL***"
-    token = "***REDACTED_IAM_TOKEN***"
+    url = os.environ.get("HUAWEICLOUD_MTCNN_URL", "")
+    token = os.environ.get("HUAWEICLOUD_TOKEN", "")
     file_path = "../yolo/1.mp4"
 
     # Send request.

@@ -1,11 +1,12 @@
+import os
 import requests
 from apig_sdk import signer
 
 def cloud_infer(file_path = "tmp.mp4"):
     # Config url, ak, sk and file path.
-    url = "***REDACTED_CLOUDINFER_URL***"
-    ak = "***REDACTED_AK_3***"
-    sk = "***REDACTED_SK_3***"
+    url = os.environ.get("HUAWEICLOUD_CLOUDINFER_URL", "")
+    ak = os.environ.get("HUAWEICLOUD_AK")
+    sk = os.environ.get("HUAWEICLOUD_SK")
 
     # Create request, set method, url, headers and body.
     method = 'POST'

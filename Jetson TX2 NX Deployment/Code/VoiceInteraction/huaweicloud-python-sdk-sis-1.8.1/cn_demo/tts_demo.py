@@ -6,14 +6,15 @@ from huaweicloud_sis.bean.sis_config import SisConfig
 from huaweicloud_sis.exception.exceptions import ClientException
 from huaweicloud_sis.exception.exceptions import ServerException
 import json
+import os
 
 
 def ttsc_example():
     """ 语音合成demo """
-    ak = '***REDACTED_AK_2***'             # 参考https://support.huaweicloud.com/sdkreference-sis/sis_05_0003.html
-    sk = '***REDACTED_SK_2***'             # 参考https://support.huaweicloud.com/sdkreference-sis/sis_05_0003.html
-    region = 'cn-north-4'         # region，如cn-north-4
-    project_id = '***REDACTED_PROJECT_ID***'     # 同region一一对应，参考https://support.huaweicloud.com/api-sis/sis_03_0008.html
+    ak = os.environ.get("HUAWEICLOUD_AK")             # 参考https://support.huaweicloud.com/sdkreference-sis/sis_05_0003.html
+    sk = os.environ.get("HUAWEICLOUD_SK")             # 参考https://support.huaweicloud.com/sdkreference-sis/sis_05_0003.html
+    region = os.environ.get("HUAWEICLOUD_REGION", "cn-north-4")         # region，如cn-north-4
+    project_id = os.environ.get("HUAWEICLOUD_PROJECT_ID")     # 同region一一对应，参考https://support.huaweicloud.com/api-sis/sis_03_0008.html
     text = ''           # 待合成文本，不超过500字
     path = ''           # 保存路径，如D:/test.wav。 可在设置中选择不保存本地
 

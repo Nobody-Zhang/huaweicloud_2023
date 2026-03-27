@@ -1,0 +1,12 @@
+# Environment variables
+.env
+.env.local
+
+# Credentials
+credentials.csv
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.pyc

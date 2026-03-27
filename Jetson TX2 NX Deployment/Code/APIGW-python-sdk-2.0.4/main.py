@@ -12,11 +12,11 @@ from obs import DeleteObjectsRequest, Object
 
 sig = signer.Signer()
 # Set the AK/SK to sign and authenticate the request.
-access_key = '***REDACTED_AK_1***'
-secret_key = '***REDACTED_SK_1***'
+access_key = os.environ.get("HUAWEICLOUD_AK")
+secret_key = os.environ.get("HUAWEICLOUD_SK")
 sig.Key = access_key
 sig.Secret = secret_key
-ima_id = "***REDACTED_IMA_ID***"
+ima_id = os.environ.get("HUAWEICLOUD_IMA_ID", "")
 #训练作业URL
 train_job_url = "https://modelarts.cn-north-4.myhuaweicloud.com/v2/"+ima_id+"/training-jobs"
 
