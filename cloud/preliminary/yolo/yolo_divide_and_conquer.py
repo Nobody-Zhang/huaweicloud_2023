@@ -1,15 +1,12 @@
 # import argparse
-import psutil
+import logging
 import os
 import sys
-import time
 from pathlib import Path
+
 # import gc
-import math
 import cv2
 import torch
-import torch.backends.cudnn as cudnn
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +17,12 @@ if str(ROOT) not in sys.path:
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
 from models.common import DetectMultiBackend
-from utils.datasets import IMG_FORMATS, VID_FORMATS, LoadImages, LoadStreams
-from utils.general import (LOGGER, check_file, check_img_size, check_imshow, check_requirements, colorstr,
-                           increment_path, non_max_suppression, print_args, scale_coords, strip_optimizer, xyxy2xywh)
+from utils.datasets import LoadImages
+from utils.general import (
+    check_img_size,
+    non_max_suppression,
+    scale_coords,
+)
 from utils.plots import *
 from utils.torch_utils import select_device, time_sync
 
@@ -30,6 +30,7 @@ from utils.torch_utils import select_device, time_sync
 # 将字节转换为GB
 def bytes_to_gigabytes(bytes_value):
     return bytes_value / (1024 * 1024 * 1024)
+
 
 def load_imgs(dataset, half, device):
     il = []
@@ -45,7 +46,9 @@ def load_imgs(dataset, half, device):
 
 # write by llr
 # transform xyxy loacationn to xywh loacation, scale in (0, 1)
-def xyxy2xywh_normalized(xmin: int, ymin: int, xmax: int, ymax: int, wide: int, height: int) -> tuple:  # Fixed: renamed to avoid shadowing utils.general.xyxy2xywh
+def xyxy2xywh_normalized(
+    xmin: int, ymin: int, xmax: int, ymax: int, wide: int, height: int
+) -> tuple:  # Fixed: renamed to avoid shadowing utils.general.xyxy2xywh
     """
     tranform xyxy location to xywh location
 
@@ -66,8 +69,15 @@ def xyxy2xywh_normalized(xmin: int, ymin: int, xmax: int, ymax: int, wide: int, 
 
 class YOLO_Status:
     def __init__(self):
-        self.cls_ = {"close_eye": 0, "close_mouth": 1, "face": 2, "open_eye": 3, "open_mouth": 4, "phone": 5,
-                     "sideface": 6}
+        self.cls_ = {
+            "close_eye": 0,
+            "close_mouth": 1,
+            "face": 2,
+            "open_eye": 3,
+            "open_mouth": 4,
+            "phone": 5,
+            "sideface": 6,
+        }
         self.status_prior = {"normal": 0, "closeeye": 1, "yawn": 3, "calling": 4, "turning": 2}
         self.condition = [0, 1, 4, 2, 3]
 
@@ -114,20 +124,20 @@ class YOLO_Status:
             conf = box[4]  # 可信度
             cls = box[5]  # 类别
             if cls == self.cls_["face"]:  # 正脸
-                if .5 < xywh[0] and xywh[1] > driver[1] and conf > 0.4:
+                if 0.5 < xywh[0] and xywh[1] > driver[1] and conf > 0.4:
                     # box中心在右侧0.5 并且 在司机下侧
                     driver = xywh  # 替换司机
                     driver_xyxy = xyxy
                     driver_conf = conf
                     face_flag = True
             elif cls == self.cls_["sideface"]:  # 侧脸
-                if .5 < xywh[0] and xywh[1] > sideface[1] and conf > 0.4:  # box位置，与face一致
+                if 0.5 < xywh[0] and xywh[1] > sideface[1] and conf > 0.4:  # box位置，与face一致
                     sideface = xywh  # 替换侧脸
                     sideface_xyxy = xyxy
                     sideface_conf = conf
                     face_flag = True
             elif cls == self.cls_["phone"]:  # 手机
-                if .4 < xywh[0] and .2 < xywh[1] and xywh[1] > phone[1] and xywh[0] > phone[0]:
+                if 0.4 < xywh[0] and 0.2 < xywh[1] and xywh[1] > phone[1] and xywh[0] > phone[0]:
                     # box位置在右0.4, 下0.2, 原手机右下
                     phone = xywh  # 替换手机
                     phone_flag = True  # 表示当前其实有手机
@@ -144,7 +154,9 @@ class YOLO_Status:
         # 判断状态
         face = driver
         face_xyxy = driver_xyxy
-        if abs(driver[0] - sideface[0]) < .1 and abs(driver[1] - sideface[1]) < .1:  # 正脸与侧脸很接近，说明同时检测出了正脸和侧脸
+        if (
+            abs(driver[0] - sideface[0]) < 0.1 and abs(driver[1] - sideface[1]) < 0.1
+        ):  # 正脸与侧脸很接近，说明同时检测出了正脸和侧脸
             if driver_conf > sideface_conf:  # 正脸可信度更高
                 status = max(status, self.status_prior["normal"])
                 face = driver
@@ -161,12 +173,16 @@ class YOLO_Status:
         if face[2] == 0:  # 司机躲猫猫捏
             status = max(status, self.status_prior["turning"])
 
-        if abs(face[0] - phone[0]) < .3 and abs(face[1] - phone[1]) < .3 and phone_flag:
+        if abs(face[0] - phone[0]) < 0.3 and abs(face[1] - phone[1]) < 0.3 and phone_flag:
             status = max(status, self.status_prior["calling"])  # 判断状态为打电话
 
         for eye_i in eyes:
-            if eye_i[1][0] < face_xyxy[0] / wide or eye_i[1][0] > face_xyxy[2] / wide or eye_i[1][1] < face_xyxy[
-                1] / height or eye_i[1][1] > face_xyxy[3] / height:
+            if (
+                eye_i[1][0] < face_xyxy[0] / wide
+                or eye_i[1][0] > face_xyxy[2] / wide
+                or eye_i[1][1] < face_xyxy[1] / height
+                or eye_i[1][1] > face_xyxy[3] / height
+            ):
                 continue
             if eye_i[0] == self.cls_["open_eye"]:  # 睁眼
                 if eye_i[1][0] > openeye[0]:  # 找最右边的，下面的同理
@@ -178,8 +194,12 @@ class YOLO_Status:
                     closeeye_score = eye_i[2]
 
         for mouth_i in mouths:
-            if mouth_i[1][0] < face_xyxy[0] / wide or mouth_i[1][0] > face_xyxy[2] / wide or mouth_i[1][1] < face_xyxy[
-                1] / height or mouth_i[1][1] > face_xyxy[3] / height:
+            if (
+                mouth_i[1][0] < face_xyxy[0] / wide
+                or mouth_i[1][0] > face_xyxy[2] / wide
+                or mouth_i[1][1] < face_xyxy[1] / height
+                or mouth_i[1][1] > face_xyxy[3] / height
+            ):
                 continue
             if mouth_i[0] == self.cls_["open_mouth"]:  # 张嘴
                 if mouth_i[1][0] > mouth[0]:
@@ -193,7 +213,7 @@ class YOLO_Status:
         if mouth_status == 1:  # 嘴是张着的
             status = max(status, self.status_prior["yawn"])
 
-        if abs(closeeye[0] - openeye[0]) < .2:  # 睁眼和闭眼离得很近， 说明是同一个人两只眼睛判断得不一样
+        if abs(closeeye[0] - openeye[0]) < 0.2:  # 睁眼和闭眼离得很近， 说明是同一个人两只眼睛判断得不一样
             if closeeye_score > openeye_score:  # 闭眼可信度比睁眼高
                 status = max(status, self.status_prior["closeeye"])
             else:
@@ -208,30 +228,31 @@ class YOLO_Status:
 
 
 @torch.no_grad()
-def yolo_run(weights=ROOT / 'fine_tune_openvino_model/best.xml',  # model.pt path(s)
-             source='',  # file/dir/URL/glob, 0 for webcam
-             data=ROOT / 'fine_tune_openvino_model/best.yaml',  # dataset.yaml path
-             imgsz=(640, 640),  # inference size (height, width)
-             conf_thres=0.20,  # confidence threshold
-             iou_thres=0.40,  # NMS IOU threshold
-             max_det=1000,  # maximum detections per image
-             device='cpu',  # cuda device, i.e. 0 or 0,1,2,3 or cpu
-             classes=None,  # filter by class: --class 0, or --class 0 2 3
-             agnostic_nms=False,  # class-agnostic NMS
-             augment=False,  # augmented inference
-             visualize=False,  # visualize features
-             half=False,  # use FP16 half-precision inference
-             dnn=False,  # use OpenCV DNN for ONNX inference
-             frame_per_second=2,  # 分治的中间向左右的帧率
-             iou_presice_b_search=0.05  # 二分时间误差系数，准确率优先，给到0.05
-             ):
+def yolo_run(
+    weights=ROOT / "fine_tune_openvino_model/best.xml",  # model.pt path(s)
+    source="",  # file/dir/URL/glob, 0 for webcam
+    data=ROOT / "fine_tune_openvino_model/best.yaml",  # dataset.yaml path
+    imgsz=(640, 640),  # inference size (height, width)
+    conf_thres=0.20,  # confidence threshold
+    iou_thres=0.40,  # NMS IOU threshold
+    max_det=1000,  # maximum detections per image
+    device="cpu",  # cuda device, i.e. 0 or 0,1,2,3 or cpu
+    classes=None,  # filter by class: --class 0, or --class 0 2 3
+    agnostic_nms=False,  # class-agnostic NMS
+    augment=False,  # augmented inference
+    visualize=False,  # visualize features
+    half=False,  # use FP16 half-precision inference
+    dnn=False,  # use OpenCV DNN for ONNX inference
+    frame_per_second=2,  # 分治的中间向左右的帧率
+    iou_presice_b_search=0.05,  # 二分时间误差系数，准确率优先，给到0.05
+):
     source = str(source)
     # ------------------------- Init model -------------------------
     device = select_device(device)
     model = DetectMultiBackend(weights, device=device, dnn=dnn, data=data)
     stride, names, pt, jit, onnx, engine = model.stride, model.names, model.pt, model.jit, model.onnx, model.engine
     imgsz = check_img_size(imgsz, s=stride)  # check image size
-    half &= (pt or jit or onnx or engine) and device.type != 'cpu'  # FP16 supported on limited backends with CUDA
+    half &= (pt or jit or onnx or engine) and device.type != "cpu"  # FP16 supported on limited backends with CUDA
     if pt or jit:
         model.model.half() if half else model.model.float()
     bs = 1  # batch_size
@@ -305,14 +326,17 @@ def yolo_run(weights=ROOT / 'fine_tune_openvino_model/best.xml',  # model.pt pat
 
         # 1 1
         if sta1 == k and sta2 == k:
-            return b_search(l1, mid1, mid2, r2, n / 2, iou_presice_b_search * (mid2 - mid1) / fps,
-                            k)  # 就算是需要判断的3s，无论如何都是可行的
+            return b_search(
+                l1, mid1, mid2, r2, n / 2, iou_presice_b_search * (mid2 - mid1) / fps, k
+            )  # 就算是需要判断的3s，无论如何都是可行的
 
         # 0 0
         if sta1 != k and sta2 != k:
             if is_3:
                 return [False]  # 如果是需要判断的3s，则无论如何都是不可行的
-            return b_search(mid1, r1, l2, mid2, n / 2, iou_presice_b_search * (l2 - r1) / fps, k)  # 继续搜索边界，提升精度
+            return b_search(
+                mid1, r1, l2, mid2, n / 2, iou_presice_b_search * (l2 - r1) / fps, k
+            )  # 继续搜索边界，提升精度
 
         # 1 0
         if sta1 == k and sta2 != k:
@@ -362,7 +386,9 @@ def yolo_run(weights=ROOT / 'fine_tune_openvino_model/best.xml',  # model.pt pat
     tmp.sort(key=lambda x: x[1])
     for i in tmp:
         min_t = (i[2] - i[1]) / fps - 0.75
-        _ = b_search(i[1], i[1] + fps * 0.375, i[2] - fps * 0.375, i[2], 0.375, min_t * iou_presice_b_search, i[3], is_3=i[0])
+        _ = b_search(
+            i[1], i[1] + fps * 0.375, i[2] - fps * 0.375, i[2], 0.375, min_t * iou_presice_b_search, i[3], is_3=i[0]
+        )
         if _[0]:  # 表示当前出现了大于3s的
             res.append({"periods": [int(_[1] * 1000), int(_[2] * 1000)], "category": i[3]})
     # -------------------- Suit the output format --------------------
@@ -370,16 +396,13 @@ def yolo_run(weights=ROOT / 'fine_tune_openvino_model/best.xml',  # model.pt pat
     duration = t_end - t_start
 
     result = {"result": {"duration": 6000, "drowsy": 0}}
-    result['result']['drowsy'] = res
+    result["result"]["drowsy"] = res
 
-    result['result']['duration'] = int(duration * 1000)
+    result["result"]["duration"] = int(duration * 1000)
     return result
 
 
 if __name__ == "__main__":
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    list = yolo_run(source=ROOT / 'zipped.mp4')
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    list = yolo_run(source=ROOT / "zipped.mp4")
     logger.info(list)

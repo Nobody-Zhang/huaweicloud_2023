@@ -1,8 +1,10 @@
 import asyncio
+import logging
+import time
+
 import cv2
 import websockets
-import time
-import logging
+
 logger = logging.getLogger(__name__)
 
 logging.basicConfig(level=logging.INFO)
@@ -15,7 +17,7 @@ async def video_stream(websocket, path):
     frame_duration = 0
     width = 0
     height = 0
-    
+
     # Check if the camera can be accessed or if a video file can be read
     try:
         gst_pipeline = (
@@ -39,7 +41,7 @@ async def video_stream(websocket, path):
         frame_duration = 1.0 / fps
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        
+
     except Exception as e:
         logging.error(f"Exception during video capture initialization: {e}")
         return
@@ -51,8 +53,8 @@ async def video_stream(websocket, path):
         while True:
             if flag == 0:
                 command = await websocket.recv()
-            
-            if command == 'start' or flag == 1:
+
+            if command == "start" or flag == 1:
                 # Synchronize with the video's FPS
                 expected_time = start_time + (cap.get(cv2.CAP_PROP_POS_FRAMES) * frame_duration)
                 delay = expected_time - time.time()
@@ -70,10 +72,10 @@ async def video_stream(websocket, path):
                     flag = 0
 
                 resized_frame = cv2.resize(frame, (480, 320))
-                _, buffer = cv2.imencode('.jpg', resized_frame)
+                _, buffer = cv2.imencode(".jpg", resized_frame)
                 await websocket.send(buffer.tobytes())
 
-            elif command == 'stop':
+            elif command == "stop":
                 break
 
     except websockets.exceptions.ConnectionClosedOK:
@@ -86,14 +88,12 @@ async def video_stream(websocket, path):
         if cap and cap.isOpened():
             cap.release()
 
-if __name__ == '__main__':
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     logging.info("Starting WebSocket server")
     start_server = websockets.serve(video_stream, "0.0.0.0", 7979)
-    
+
     # Run the WebSocket server indefinitely
     asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_forever()

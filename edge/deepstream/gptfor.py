@@ -1,9 +1,13 @@
 import gi
-gi.require_version('Gst', '1.0')
-from gi.repository import Gst, GLib
 
+gi.require_version("Gst", "1.0")
 import logging
+
+from gi.repository import GLib, Gst
+
 logger = logging.getLogger(__name__)
+
+
 def on_gst_message(bus, message, loop):
     mtype = message.type
     if mtype == Gst.MessageType.ERROR:
@@ -15,10 +19,11 @@ def on_gst_message(bus, message, loop):
         loop.quit()
     elif mtype == Gst.MessageType.ELEMENT:
         struct = message.get_structure()
-        if struct.get_name() == 'splitmuxsink':
-            filename = struct.get_string('location')
-            logger.info('New File: %s', filename)
+        if struct.get_name() == "splitmuxsink":
+            filename = struct.get_string("location")
+            logger.info("New File: %s", filename)
     return True
+
 
 def main():
     Gst.init(None)
@@ -27,18 +32,18 @@ def main():
     # Create GStreamer elements
     pipeline = Gst.Pipeline()
 
-    src = Gst.ElementFactory.make('filesrc', 'filesrc')
-    src.set_property('location', 'in.mp4')
+    src = Gst.ElementFactory.make("filesrc", "filesrc")
+    src.set_property("location", "in.mp4")
 
-    demux = Gst.ElementFactory.make('qtdemux', 'demux')
+    demux = Gst.ElementFactory.make("qtdemux", "demux")
 
-    parse = Gst.ElementFactory.make('h264parse', 'parse')
+    parse = Gst.ElementFactory.make("h264parse", "parse")
 
-    mux = Gst.ElementFactory.make('mp4mux', 'mux')
+    mux = Gst.ElementFactory.make("mp4mux", "mux")
 
-    sink = Gst.ElementFactory.make('splitmuxsink', 'sink')
-    sink.set_property('location', "%02d.mp4")
-    sink.set_property('max-size-time', 1000000000)
+    sink = Gst.ElementFactory.make("splitmuxsink", "sink")
+    sink.set_property("location", "%02d.mp4")
+    sink.set_property("max-size-time", 1000000000)
 
     pipeline.add(src)
     pipeline.add(demux)
@@ -66,13 +71,8 @@ def main():
     finally:
         pipeline.set_state(Gst.State.NULL)
 
-if __name__ == '__main__':
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     main()

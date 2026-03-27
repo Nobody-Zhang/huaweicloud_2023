@@ -7,6 +7,7 @@ Usage::
     setup_logging()           # INFO level, console output
     setup_logging("DEBUG")    # DEBUG level for verbose output
 """
+
 from __future__ import annotations
 
 import logging
@@ -33,8 +34,6 @@ def setup_logging(level: str = "INFO") -> None:
         return
 
     handler = logging.StreamHandler(sys.stderr)
-    handler.setFormatter(
-        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    )
+    handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
     root.setLevel(numeric_level)
     root.addHandler(handler)

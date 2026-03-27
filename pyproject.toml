@@ -1,0 +1,23 @@
+[tool.ruff]
+line-length = 120
+target-version = "py38"
+exclude = [
+    "**/yolo/utils/",
+    "**/yolo/models/",
+    "edge/cloud_finetune/yolov5/",
+    "edge/voice/huaweicloud-python-sdk-sis-1.8.1/",
+    "edge/deepstream/utils/",
+    "edge/deepstream/apig_sdk/",
+    "edge/apigw/apig_sdk/",
+    "edge/ota/apig_sdk/",
+    "edge/mtcnn/utils/",
+    "edge/ota/mtcnn_landmarks/utils/",
+    "edge/frontend/",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/yolo/utils/**" = ["ALL"]
+"**/yolo/models/**" = ["ALL"]

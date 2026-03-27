@@ -1,5 +1,4 @@
 import torch.nn as nn
-import torch
 
 
 class RNet(nn.Module):
@@ -21,7 +20,7 @@ class RNet(nn.Module):
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.kaiming_normal(m.weight, mode="fan_out", nonlinearity="relu")
 
     def forward(self, x):
         x = self.prelu1(self.conv1(x))

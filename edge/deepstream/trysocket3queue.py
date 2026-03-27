@@ -1,14 +1,17 @@
+import asyncio
+import collections
+import logging
 import socket
 import threading
-import collections
-import asyncio
+
 import websockets
-import logging
+
 logger = logging.getLogger(__name__)
-import time
 import struct
-import numpy as np
+import time
+
 import cv2
+import numpy as np
 
 logging.basicConfig(level=logging.INFO)
 
@@ -39,7 +42,9 @@ class ThreadSafeQueue:
         with self.lock:
             return len(self.queue)
 
+
 img_queue = ThreadSafeQueue()
+
 
 def receiver(conn):
     while True:
@@ -47,9 +52,9 @@ def receiver(conn):
         size_data = conn.recv(4)
         if not size_data:
             break
-        size = struct.unpack('!I', size_data)[0]
+        size = struct.unpack("!I", size_data)[0]
 
-        img_data = b''
+        img_data = b""
         while len(img_data) < size:
             part = conn.recv(size - len(img_data))
             if not part:
@@ -66,6 +71,7 @@ def receiver(conn):
 
         logger.info(f"Received and added to queue. Current queue size: {img_queue.qsize()}")
 
+
 async def video_stream(websocket, path):
     try:
         start_time = time.time()
@@ -77,7 +83,7 @@ async def video_stream(websocket, path):
             if flag == 0:
                 command = await websocket.recv()
 
-            if command == 'start' or flag == 1:
+            if command == "start" or flag == 1:
                 expected_time = start_time + (k * frame_duration)
                 k += 1
                 delay = expected_time - time.time()
@@ -85,7 +91,7 @@ async def video_stream(websocket, path):
                 frame = img_queue.get()
                 if frame is None:
                     logging.error("The queue is empty, skipping this frame.")
-                    #await asyncio.sleep(0.1)
+                    # await asyncio.sleep(0.1)
                     continue
 
                 if delay < 0:
@@ -96,22 +102,20 @@ async def video_stream(websocket, path):
                     flag = 0
 
                 resized_frame = cv2.resize(frame, (480, 320))
-                _, buffer = cv2.imencode('.jpg', resized_frame)
+                _, buffer = cv2.imencode(".jpg", resized_frame)
                 await websocket.send(buffer.tobytes())
 
-            elif command == 'stop':
+            elif command == "stop":
                 break
 
     except Exception as e:
         logging.error(f"An unexpected error occurred: {e}")
 
-if __name__ == '__main__':
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     s = socket.socket()
-    host = 'localhost'
+    host = "localhost"
     port = 8765
     s.bind((host, port))
 

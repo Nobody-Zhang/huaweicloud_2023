@@ -1,28 +1,28 @@
-import time
-import ctypes
-import numpy as np
-import cv2
-import os
-import pyds
-import pathlib
-import sys
-import platform
 import io
-from queue import Queue
-import threading
 import logging
+import platform
+import sys
+import time
+
+import cv2
+import numpy as np
+import pyds
+
 logger = logging.getLogger(__name__)
-from cloudinfer import cloud_infer
+
 sys.path.append("../")
 import gi
 
 gi.require_version("Gst", "1.0")
-gi.require_version('GstRtspServer', '1.0')
+gi.require_version("GstRtspServer", "1.0")
 from gi.repository import GObject, Gst, GstRtspServer
+
 video_writer = None
 
+
 def is_aarch64():
-    return platform.uname()[4] == 'aarch64'
+    return platform.uname()[4] == "aarch64"
+
 
 def bus_call(bus, message, loop):
     t = message.type
@@ -39,11 +39,11 @@ def bus_call(bus, message, loop):
     return True
 
 
-sys.path.append('/opt/nvidia/deepstream/deepstream/lib')
+sys.path.append("/opt/nvidia/deepstream/deepstream/lib")
 
 CLASS_NB = 7
 ACCURACY_ALL_CLASS = 0.5
-UNTRACKED_OBJECT_ID = 0xffffffffffffffff
+UNTRACKED_OBJECT_ID = 0xFFFFFFFFFFFFFFFF
 IMAGE_HEIGHT = 720
 IMAGE_WIDTH = 1280
 OUTPUT_VIDEO_NAME = "./out.mp4"
@@ -54,7 +54,7 @@ INPUT_WIDTH = 640
 
 def get_label_names_from_file(filepath="./labels.txt"):
     """
-        从文件中读取标签名称。
+    从文件中读取标签名称。
     """
     f = io.open(filepath, "r")
     labels = f.readlines()
@@ -65,12 +65,12 @@ def get_label_names_from_file(filepath="./labels.txt"):
 
 def make_elm_or_print_err(factoryname, name, printedname, detail=""):
     """
-        利用一种流媒体处理框架的对象工厂创建对象。
-        factoryname: 对象工厂名称
-        name: 对象名称 （在管道中唯一标识的名称）
-        Creates an element with Gst Element Factory make.
-        Return the element  if successfully created, otherwise print
-        to stderr and return None.
+    利用一种流媒体处理框架的对象工厂创建对象。
+    factoryname: 对象工厂名称
+    name: 对象名称 （在管道中唯一标识的名称）
+    Creates an element with Gst Element Factory make.
+    Return the element  if successfully created, otherwise print
+    to stderr and return None.
     """
     logger.info("Creating " + printedname)
     elm = Gst.ElementFactory.make(factoryname, name)
@@ -85,7 +85,7 @@ def add_obj_meta_to_frame(bbox, score, label, batch_meta, frame_meta):
     """
     Inserts an object into the metadata
     """
-    untracked_obj_id = 0xffffffffffffffff
+    untracked_obj_id = 0xFFFFFFFFFFFFFFFF
     # this is a good place to insert objects into the metadata.
     # Here's an example of inserting a single object.
     obj_meta = pyds.nvds_acquire_obj_meta_from_pool(batch_meta)
@@ -127,9 +127,7 @@ def add_obj_meta_to_frame(bbox, score, label, batch_meta, frame_meta):
 
     txt_params.x_offset = int(rect_params.left)
     txt_params.y_offset = max(0, int(rect_params.top) - 10)
-    txt_params.display_text = (
-            label + " " + "{:04.3f}".format(score)
-    )
+    txt_params.display_text = label + " " + "{:04.3f}".format(score)
     # Font , font-color and font-size
     txt_params.font_params.font_name = "Serif"
     txt_params.font_params.font_size = 10
@@ -144,7 +142,6 @@ def add_obj_meta_to_frame(bbox, score, label, batch_meta, frame_meta):
     # Inser the object into current frame meta
     # This object has no parent
     pyds.nvds_add_obj_meta_to_frame(frame_meta, obj_meta, None)
-
 
 
 def osd_sink_pad_buffer_probe(pad, info, u_data):
@@ -190,7 +187,7 @@ def osd_sink_pad_buffer_probe(pad, info, u_data):
         logger.debug("number_of_counts: %s", frame_meta.num_obj_meta)
         n_frame = pyds.get_nvds_buf_surface(hash(gst_buffer), frame_meta.batch_id)
         # convert python array into numpy array format in the copy mode.
-        frame_copy = np.array(n_frame, copy=True, order='C')
+        frame_copy = np.array(n_frame, copy=True, order="C")
         # convert the array into cv2 default color format
         pic = cv2.cvtColor(frame_copy, cv2.COLOR_RGBA2BGRA)
         pic = cv2.cvtColor(pic, cv2.COLOR_BGRA2BGR)
@@ -219,13 +216,13 @@ def osd_sink_pad_buffer_probe(pad, info, u_data):
             # 用cropped_image = pic[int(top):int(top + height), int(left):int(left + width)] 裁剪
             if class_id == 2 or class_id == 6:
                 # 2: face, 6: side_face
-                cropped_image = pic[int(top):int(top + height), int(left):int(left + width)]
+                cropped_image = pic[int(top) : int(top + height), int(left) : int(left + width)]
                 tmp_name = f"{label[class_id]}_{confidence}.jpg"
                 cv2.imwrite(tmp_name, cropped_image)
                 # res = cloud_infer(tmp_name) # 云端推理这里可以用confidence联合推理
                 # if res == "OK":
                 #     pass
-#---------------------!!!!!!!!!!!!!!!!!补充端云协同!!!!!!!!!!!!!!!!!!!!!!---------------------------------
+            # ---------------------!!!!!!!!!!!!!!!!!补充端云协同!!!!!!!!!!!!!!!!!!!!!!---------------------------------
             # cropped_image = pic[int(top):int(top + height), int(left):int(left + width)]
             # cv2.imwrite(f"{class_id}_{time.time()}_{confidence}.jpg", cropped_image)
             try:
@@ -264,6 +261,7 @@ def cb_newpad(decodebin, decoder_src_pad, data):
         else:
             logger.error("ERROR: Decodebin did not pick nvidia decoder plugin.\n")
 
+
 def decodebin_child_added(child_proxy, Object, name, user_data):
     logger.info(f"Decodebin child added: {name} \n")
     if name.find("decodebin") != -1:
@@ -279,7 +277,7 @@ def create_source_bin(idx, uri):
     # Create a source GstBin to abstract this bin's content from the rest of the
     # pipeline
     bin_name = "source-bin-%02d" % idx
-    #logger.info(f"source_name: {bin_name}")
+    # logger.info(f"source_name: {bin_name}")
     nbin = Gst.Bin.new(bin_name)
     if not nbin:
         logger.warning("WARNING: Unable to create source bin \n")
@@ -309,6 +307,7 @@ def create_source_bin(idx, uri):
         return None
     return nbin
 
+
 def main(args):
     is_save_output = False
     codec = "H264"
@@ -329,7 +328,7 @@ def main(args):
     videorate.set_property("max-rate", 1)  # 设置目标帧率为 1
     nvvidconv_src = make_elm_or_print_err("nvvideoconvert", "nvvidconv-src", "nvvidconv-src")
     caps_nvvidconv_src = make_elm_or_print_err("capsfilter", "caps-nvvidconv-src", "caps-nvvidconv-src")
-    caps_nvvidconv_src.set_property('caps', Gst.Caps.from_string('video/x-raw(memory:NVMM), width=1280, height=720'))
+    caps_nvvidconv_src.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM), width=1280, height=720"))
 
     streammux = make_elm_or_print_err("nvstreammux", "Stream-muxer", "NvStreamMux")
 
@@ -351,15 +350,14 @@ def main(args):
 
     # Make the encoder
     encoder = make_elm_or_print_err("nvv4l2h264enc", "encoder", "encoder")
-    encoder.set_property('maxperf-enable',1)
-    encoder.set_property('bitrate', bitrate)
+    encoder.set_property("maxperf-enable", 1)
+    encoder.set_property("bitrate", bitrate)
 
     if is_aarch64():
-        encoder.set_property('insert-sps-pps', 1)
+        encoder.set_property("insert-sps-pps", 1)
 
     # Make the payload-encode video into RTP packets
     rtppay = make_elm_or_print_err("rtph264pay", "rtppay", "rtppay")
-
 
     # Make the UDP sink
     updsink_port_num = 5400
@@ -367,18 +365,17 @@ def main(args):
     if not udpsink:
         sys.stderr.write(" Unable to create udpsink")
 
-    udpsink.set_property('host', '224.224.255.255')
-    udpsink.set_property('port', updsink_port_num)
-    udpsink.set_property('async', False)
-    udpsink.set_property('sync', 1)
+    udpsink.set_property("host", "224.224.255.255")
+    udpsink.set_property("port", updsink_port_num)
+    udpsink.set_property("async", False)
+    udpsink.set_property("sync", 1)
 
+    source.set_property("bufapi-version", True)
 
-    source.set_property('bufapi-version', True)
-
-    streammux.set_property('width', 1920)
-    streammux.set_property('height', 1080)
-    streammux.set_property('batch-size', 1)
-    streammux.set_property('batched-push-timeout', 4000000)
+    streammux.set_property("width", 1920)
+    streammux.set_property("height", 1080)
+    streammux.set_property("batch-size", 1)
+    streammux.set_property("batched-push-timeout", 4000000)
 
     logger.info("DeepStream Triton yolov5 tensorRT inference")
     pgie.set_property("config-file-path", "config_infer_primary_yoloV5.txt")
@@ -437,8 +434,9 @@ def main(args):
 
     factory = GstRtspServer.RTSPMediaFactory.new()
     factory.set_launch(
-        "( udpsrc name=pay0 port=%d buffer-size=524288 caps=\"application/x-rtp, media=video, clock-rate=90000, encoding-name=(string)%s, payload=96 \" )" % (
-        updsink_port_num, "H264"))
+        '( udpsrc name=pay0 port=%d buffer-size=524288 caps="application/x-rtp, media=video, clock-rate=90000, encoding-name=(string)%s, payload=96 " )'
+        % (updsink_port_num, "H264")
+    )
     factory.set_shared(True)
     server.get_mount_points().add_factory("/test", factory)
 
@@ -456,12 +454,6 @@ def main(args):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     sys.exit(main(sys.argv))

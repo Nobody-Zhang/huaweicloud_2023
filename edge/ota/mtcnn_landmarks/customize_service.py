@@ -1,30 +1,25 @@
-import time
-import cv2
-import torch
-from model_service.pytorch_model_service import PTServingBaseService
-import sys
-from pathlib import Path
-import warnings
+import logging
 import os
 import tempfile
-from pathlib import Path
-import torch
-import torch.backends.cudnn as cudnn
+import time
+import warnings
+
+import cv2
 import numpy as np
-import logging
+import torch
+from model_service.pytorch_model_service import PTServingBaseService
 
 logger = logging.getLogger(__name__)
 
-import time
+
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-from utils.utils import generate_bbox, py_nms, convert_to_square
-from utils.utils import pad, calibrate_box, processed_image
-from utils.cal import cal_euler_angles
 from models.ONet import ONet
 from models.PNet import PNet
 from models.RNet import RNet
+from utils.cal import cal_euler_angles
+from utils.utils import calibrate_box, convert_to_square, generate_bbox, pad, processed_image, py_nms
 
 pnet = None
 rnet = None
@@ -33,41 +28,43 @@ softmax_p = None
 softmax_r = None
 softmax_o = None
 
-def load_model(model_dir,device):
+
+def load_model(model_dir, device):
     pNet = PNet()
-    pNet.load_state_dict(torch.load(os.path.join(model_dir, 'PNet.pt')))
+    pNet.load_state_dict(torch.load(os.path.join(model_dir, "PNet.pt")))
     pNet.to(device)
     pNet.eval()
     rNet = RNet()
-    rNet.load_state_dict(torch.load(os.path.join(model_dir, 'RNet.pt')))
+    rNet.load_state_dict(torch.load(os.path.join(model_dir, "RNet.pt")))
     rNet.to(device)
     rNet.eval()
     oNet = ONet()
-    oNet.load_state_dict(torch.load(os.path.join(model_dir, 'ONet.pt')))
+    oNet.load_state_dict(torch.load(os.path.join(model_dir, "ONet.pt")))
     oNet.to(device)
     oNet.eval()
-    
+
     return pNet, rNet, oNet
 
-def load_models(models_dir,device):
-    '''
+
+def load_models(models_dir, device):
+    """
     param:
         models_dir: 模型文件夹路径
         device
-    '''
-    global pnet,rnet,onet,softmax_p,softmax_r,softmax_o
+    """
+    global pnet, rnet, onet, softmax_p, softmax_r, softmax_o
     pnet, rnet, onet = load_model(models_dir, device)
-    
+
     softmax_p = torch.nn.Softmax(dim=0)
     softmax_r = torch.nn.Softmax(dim=-1)
     softmax_o = torch.nn.Softmax(dim=-1)
 
 
 # 使用PNet模型预测
-def predict_pnet(infer_data,device):
-    '''
+def predict_pnet(infer_data, device):
+    """
     detect_pnet函数的子函数
-    '''
+    """
     # 添加待预测的图片
     infer_data = torch.tensor(infer_data, dtype=torch.float32, device=device)
     infer_data = torch.unsqueeze(infer_data, dim=0)
@@ -80,10 +77,10 @@ def predict_pnet(infer_data,device):
 
 
 # 使用RNet模型预测
-def predict_rnet(infer_data,device):
-    '''
+def predict_rnet(infer_data, device):
+    """
     detect_rnet函数的子函数
-    '''
+    """
     # 添加待预测的图片
     infer_data = torch.tensor(infer_data, dtype=torch.float32, device=device)
     # 执行预测
@@ -93,10 +90,10 @@ def predict_rnet(infer_data,device):
 
 
 # 使用ONet模型预测
-def predict_onet(infer_data,device):
-    '''
+def predict_onet(infer_data, device):
+    """
     detect_onet函数的子函数
-    '''
+    """
     # 添加待预测的图片
     infer_data = torch.tensor(infer_data, dtype=torch.float32, device=device)
     # 执行预测
@@ -106,8 +103,8 @@ def predict_onet(infer_data,device):
 
 
 # 获取PNet网络输出结果
-def detect_pnet(im, min_face_size, scale_factor, thresh,device):
-    '''
+def detect_pnet(im, min_face_size, scale_factor, thresh, device):
+    """
     param:
         im: 图片
         min_face_size: 最小人脸尺寸
@@ -116,7 +113,7 @@ def detect_pnet(im, min_face_size, scale_factor, thresh,device):
         device: 设备
     return:
         boxes_c: 人脸检测框坐标
-    '''
+    """
     net_size = 12
     # 人脸和输入图像的比率
     current_scale = float(net_size) / min_face_size
@@ -126,7 +123,7 @@ def detect_pnet(im, min_face_size, scale_factor, thresh,device):
     # 图像金字塔
     while min(current_height, current_width) > net_size:
         # 类别和box
-        cls_cls_map, reg = predict_pnet(im_resized,device=device)
+        cls_cls_map, reg = predict_pnet(im_resized, device=device)
         boxes = generate_bbox(cls_cls_map[1, :, :], reg, current_scale, thresh)
         current_scale *= scale_factor  # 继续缩小图像做金字塔
         im_resized = processed_image(im, current_scale)
@@ -135,31 +132,35 @@ def detect_pnet(im, min_face_size, scale_factor, thresh,device):
         if boxes.size == 0:
             continue
         # 非极大值抑制留下重复低的box
-        keep = py_nms(boxes[:, :5], 0.5, mode='Union')
+        keep = py_nms(boxes[:, :5], 0.5, mode="Union")
         boxes = boxes[keep]
         all_boxes.append(boxes)
     if len(all_boxes) == 0:
         return None
     all_boxes = np.vstack(all_boxes)
     # 将金字塔之后的box也进行非极大值抑制
-    keep = py_nms(all_boxes[:, 0:5], 0.7, mode='Union')
+    keep = py_nms(all_boxes[:, 0:5], 0.7, mode="Union")
     all_boxes = all_boxes[keep]
     # box的长宽
     bbw = all_boxes[:, 2] - all_boxes[:, 0] + 1
     bbh = all_boxes[:, 3] - all_boxes[:, 1] + 1
     # 对应原图的box坐标和分数
-    boxes_c = np.vstack([all_boxes[:, 0] + all_boxes[:, 5] * bbw,
-                         all_boxes[:, 1] + all_boxes[:, 6] * bbh,
-                         all_boxes[:, 2] + all_boxes[:, 7] * bbw,
-                         all_boxes[:, 3] + all_boxes[:, 8] * bbh,
-                         all_boxes[:, 4]])
+    boxes_c = np.vstack(
+        [
+            all_boxes[:, 0] + all_boxes[:, 5] * bbw,
+            all_boxes[:, 1] + all_boxes[:, 6] * bbh,
+            all_boxes[:, 2] + all_boxes[:, 7] * bbw,
+            all_boxes[:, 3] + all_boxes[:, 8] * bbh,
+            all_boxes[:, 4],
+        ]
+    )
     boxes_c = boxes_c.T
 
     return boxes_c
 
 
 # 获取RNet网络输出结果
-def detect_rnet(im, dets, thresh,device):
+def detect_rnet(im, dets, thresh, device):
     """
     通过rent选择box
         params:
@@ -185,14 +186,14 @@ def detect_rnet(im, dets, thresh,device):
             continue
         tmp = np.zeros((tmph[i], tmpw[i], 3), dtype=np.uint8)
         try:
-            tmp[dy[i]:edy[i] + 1, dx[i]:edx[i] + 1, :] = im[y[i]:ey[i] + 1, x[i]:ex[i] + 1, :]
+            tmp[dy[i] : edy[i] + 1, dx[i] : edx[i] + 1, :] = im[y[i] : ey[i] + 1, x[i] : ex[i] + 1, :]
             img = cv2.resize(tmp, (24, 24), interpolation=cv2.INTER_LINEAR)
             img = img.transpose((2, 0, 1))
             img = (img - 127.5) / 128
             cropped_ims[i, :, :, :] = img
         except:
             continue
-    cls_scores, reg = predict_rnet(cropped_ims,device=device)
+    cls_scores, reg = predict_rnet(cropped_ims, device=device)
     cls_scores = cls_scores[:, 1]
     keep_inds = np.where(cls_scores > thresh)[0]
     if len(keep_inds) > 0:
@@ -202,7 +203,7 @@ def detect_rnet(im, dets, thresh,device):
     else:
         return None
 
-    keep = py_nms(boxes, 0.4, mode='Union')
+    keep = py_nms(boxes, 0.4, mode="Union")
     boxes = boxes[keep]
     # 对pnet截取的图像的坐标进行校准，生成rnet的人脸框对于原图的绝对坐标
     boxes_c = calibrate_box(boxes, reg[keep])
@@ -210,7 +211,7 @@ def detect_rnet(im, dets, thresh,device):
 
 
 # 获取ONet模型预测结果
-def detect_onet(im, dets, thresh,device):
+def detect_onet(im, dets, thresh, device):
     """
     将onet的选框继续筛选基本和rnet差不多但多返回了landmark
     """
@@ -222,12 +223,12 @@ def detect_onet(im, dets, thresh,device):
     cropped_ims = np.zeros((num_boxes, 3, 48, 48), dtype=np.float32)
     for i in range(num_boxes):
         tmp = np.zeros((tmph[i], tmpw[i], 3), dtype=np.uint8)
-        tmp[dy[i]:edy[i] + 1, dx[i]:edx[i] + 1, :] = im[y[i]:ey[i] + 1, x[i]:ex[i] + 1, :]
+        tmp[dy[i] : edy[i] + 1, dx[i] : edx[i] + 1, :] = im[y[i] : ey[i] + 1, x[i] : ex[i] + 1, :]
         img = cv2.resize(tmp, (48, 48), interpolation=cv2.INTER_LINEAR)
         img = img.transpose((2, 0, 1))
         img = (img - 127.5) / 128
         cropped_ims[i, :, :, :] = img
-    cls_scores, reg, landmark = predict_onet(cropped_ims,device=device)
+    cls_scores, reg, landmark = predict_onet(cropped_ims, device=device)
 
     cls_scores = cls_scores[:, 1]
     keep_inds = np.where(cls_scores > thresh)[0]
@@ -246,64 +247,66 @@ def detect_onet(im, dets, thresh,device):
     landmark[:, 1::2] = (np.tile(h, (5, 1)) * landmark[:, 1::2].T + np.tile(boxes[:, 1], (5, 1)) - 1).T
     boxes_c = calibrate_box(boxes, reg)
 
-    keep = py_nms(boxes_c, 0.6, mode='Minimum')
+    keep = py_nms(boxes_c, 0.6, mode="Minimum")
     boxes_c = boxes_c[keep]
     landmark = landmark[keep]
     return boxes_c, landmark
 
 
-
-def infer_image(image_path ,device):
-    '''
+def infer_image(image_path, device):
+    """
     对单张图片进行人脸检测，输出欧拉角
     param
         image_path: 图片路径
         device: 设备
     return:
         roll,yaw,pitch: 欧拉角
-    '''
+    """
     im = cv2.imread(image_path)
     start = time.time()
     # 调用PNet模型预测
-    boxes_c = detect_pnet(im=im,min_face_size=20,scale_factor=0.79,thresh=0.9,device=device)
+    boxes_c = detect_pnet(im=im, min_face_size=20, scale_factor=0.79, thresh=0.9, device=device)
     # 筛选在图像右半边的人脸，即boxes_c[:,0]>im.shape[1]/2
     boxes_c = boxes_c[boxes_c[:, 0] > im.shape[1] / 2]
     if boxes_c is None:
-        return None,None,None
+        return None, None, None
     # 调用RNet模型预测
-    boxes_c = detect_rnet(im, boxes_c, 0.6,device)
+    boxes_c = detect_rnet(im, boxes_c, 0.6, device)
     # 筛选在图像右半边的人脸，即boxes_c[:,0]>im.shape[1]/2
     boxes_c = boxes_c[boxes_c[:, 0] > im.shape[1] / 2]
     if boxes_c is None:
-        return None,None,None
+        return None, None, None
 
     # 调用第三个模型预测
-    boxes_c, landmark = detect_onet(im, boxes_c, 0.5,device)
+    boxes_c, landmark = detect_onet(im, boxes_c, 0.5, device)
     # 筛选在图像右半边的人脸，即boxes_c[:,0]>im.shape[1]/2
     boxes_c = boxes_c[boxes_c[:, 0] > im.shape[1] / 2]
     if boxes_c is None:
-        return None,None,None
-    #计算欧拉角
+        return None, None, None
+    # 计算欧拉角
     points = landmark[0]
     # 将关键点坐标0-4为x,5-9为y
-    points_x_y = np.array([points[0], points[2], points[4], points[6], points[8],
-                        points[1], points[3], points[5], points[7], points[9]])
+    points_x_y = np.array(
+        [points[0], points[2], points[4], points[6], points[8], points[1], points[3], points[5], points[7], points[9]]
+    )
     roll, yaw, pitch = cal_euler_angles(points_x_y)
-    
+
     result = {"result": {"Roll": 0.0, "Yaw": 0.0, "Pitch": 0.0, "duration": 6000}}
 
-    result['result']['duration'] = int((time.time() - start) * 1000)
-    result['result']['Roll'] = roll
-    result['result']['Yaw'] = yaw
-    result['result']['Pitch'] = pitch
+    result["result"]["duration"] = int((time.time() - start) * 1000)
+    result["result"]["Roll"] = roll
+    result["result"]["Yaw"] = yaw
+    result["result"]["Pitch"] = pitch
     return result
+
 
 def get_column(matrix, column_number):
     column = [row[column_number] for row in matrix]
     return column
 
-def infer_video(video_path,device,fps=None):
-    '''
+
+def infer_video(video_path, device, fps=None):
+    """
     对.mp4视频进行人脸检测，输出.mp4视频到output_path
     param:
         video_path:视频路径
@@ -313,7 +316,7 @@ def infer_video(video_path,device,fps=None):
     return:
         euler_angles_per_frame: 每一帧的欧拉角,若该帧没有检测到人脸，则返回[-1,-1,-1]
 
-    '''
+    """
     start = time.time()
     cap = cv2.VideoCapture(video_path)  # 读取视频
     if fps is None:
@@ -322,7 +325,7 @@ def infer_video(video_path,device,fps=None):
         cap.set(cv2.CAP_PROP_FPS, fps)
 
     size = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))  # 获取视频尺寸
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # 设置视频编码器
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # 设置视频编码器
 
     c_roll = None
     c_yaw = None
@@ -333,33 +336,45 @@ def infer_video(video_path,device,fps=None):
         ret, frame = cap.read()  # 读取视频帧
         if ret:
             # 调用第一个模型预测
-            boxes_c = detect_pnet(frame, 20, 0.79, 0.9,device=device)
+            boxes_c = detect_pnet(frame, 20, 0.79, 0.9, device=device)
             if boxes_c is None:
-                euler_angles_per_frame.append([-1.0,-1.0,-1.0])
+                euler_angles_per_frame.append([-1.0, -1.0, -1.0])
                 continue
             # 调用第二个模型预测
-            boxes_c = detect_rnet(frame, boxes_c, 0.5,device=device)
+            boxes_c = detect_rnet(frame, boxes_c, 0.5, device=device)
             if boxes_c is None:
-                euler_angles_per_frame.append([-1.0,-1.0,-1.0])
+                euler_angles_per_frame.append([-1.0, -1.0, -1.0])
                 continue
             # 调用第三个模型预测
             # 筛选在图像右半边的人脸，即boxes_c[:,0]>frame.shape[1]/2
             boxes_c = boxes_c[boxes_c[:, 0] > frame.shape[1] / 2]
             if boxes_c is None:
-                euler_angles_per_frame.append([-1.0,-1.0,-1.0])
+                euler_angles_per_frame.append([-1.0, -1.0, -1.0])
                 continue
-            boxes_c, landmark = detect_onet(frame, boxes_c, 0.5,device=device)
+            boxes_c, landmark = detect_onet(frame, boxes_c, 0.5, device=device)
             if boxes_c is None:
-                euler_angles_per_frame.append([-1.0,-1.0,-1.0])
+                euler_angles_per_frame.append([-1.0, -1.0, -1.0])
                 continue
 
             # 选择人脸置信度最大的人脸
             points = landmark[0]
             # 将关键点坐标0-4为x,5-9为y
-            points_x_y = np.array([points[0], points[2], points[4], points[6], points[8],
-                                   points[1], points[3], points[5], points[7], points[9]])
+            points_x_y = np.array(
+                [
+                    points[0],
+                    points[2],
+                    points[4],
+                    points[6],
+                    points[8],
+                    points[1],
+                    points[3],
+                    points[5],
+                    points[7],
+                    points[9],
+                ]
+            )
             roll, yaw, pitch = cal_euler_angles(points_x_y)
-            if (c_roll is None):
+            if c_roll is None:
                 c_roll = roll
                 c_yaw = yaw
                 c_pitch = pitch
@@ -370,38 +385,39 @@ def infer_video(video_path,device,fps=None):
             euler_angles_per_frame.append(euler_angles)
         else:
             break
-    
+
     result = {"result": {"Roll": [], "Yaw": [], "Pitch": [], "duration": 6000}}
 
-    result['result']['duration'] = int((time.time() - start) * 1000)
-    result['result']['Roll'] = get_column(euler_angles_per_frame, 0)
-    result['result']['Yaw'] = get_column(euler_angles_per_frame, 1)
-    result['result']['Pitch'] = get_column(euler_angles_per_frame, 2)
-    
+    result["result"]["duration"] = int((time.time() - start) * 1000)
+    result["result"]["Roll"] = get_column(euler_angles_per_frame, 0)
+    result["result"]["Yaw"] = get_column(euler_angles_per_frame, 1)
+    result["result"]["Pitch"] = get_column(euler_angles_per_frame, 2)
+
     return result
 
 
-def infer_image_with_Onet(image_path,boxes_c=None,device=None):
-    '''
+def infer_image_with_Onet(image_path, boxes_c=None, device=None):
+    """
     param:
         image_path: 图片路径
         boxes_c: 人脸检测框[x1,y1,x2,y2,score]
     return:
         roll,yaw,pitch: 欧拉角
 
-    '''
+    """
     im = cv2.imread(image_path)
-    if (boxes_c is None):
+    if boxes_c is None:
         return None, None, None
     # 调用第三个模型预测
-    boxes_c, landmark = detect_onet(im, boxes_c, 0.5,device=device)
+    boxes_c, landmark = detect_onet(im, boxes_c, 0.5, device=device)
     if boxes_c is None:
         return None, None, None
     # 计算欧拉角
     points = landmark[0]
     # 将关键点坐标0-4为x,5-9为y
-    points_x_y = np.array([points[0], points[2], points[4], points[6], points[8],
-                            points[1], points[3], points[5], points[7], points[9]])
+    points_x_y = np.array(
+        [points[0], points[2], points[4], points[6], points[8], points[1], points[3], points[5], points[7], points[9]]
+    )
     roll, yaw, pitch = cal_euler_angles(points_x_y)
     return roll, yaw, pitch
 
@@ -409,10 +425,10 @@ def infer_image_with_Onet(image_path,boxes_c=None,device=None):
 class MTCNN_model:
     def __init__(self):
         self.device = torch.device("cuda")
-        load_models('/home/ma-user/infer/model/1/infer_models',self.device)
-    
+        load_models("/home/ma-user/infer/model/1/infer_models", self.device)
+
     def inference(self, source):
-        res = infer_video(source,self.device)
+        res = infer_video(source, self.device)
 
         return res
 
@@ -426,9 +442,9 @@ class PTVisionService(PTServingBaseService):
         self.model_name = model_name
         self.model_path = model_path
         self.model = MTCNN_model()
-        
+
     def _inference(self, data):
-        result = self.model.inference(source = self.capture)
+        result = self.model.inference(source=self.capture)
 
         return result
 
@@ -439,10 +455,12 @@ class PTVisionService(PTServingBaseService):
             for file_name, file_content in v.items():
                 try:
                     try:
-                        tmp = tempfile.NamedTemporaryFile(suffix='.mp4', delete=False)  # Fixed: use tempfile to avoid race condition
+                        tmp = tempfile.NamedTemporaryFile(
+                            suffix=".mp4", delete=False
+                        )  # Fixed: use tempfile to avoid race condition
                         self.capture = tmp.name
                         tmp.close()
-                        with open(self.capture, 'wb') as f:
+                        with open(self.capture, "wb") as f:
                             file_content_bytes = file_content.read()
                             f.write(file_content_bytes)
 
@@ -451,10 +469,9 @@ class PTVisionService(PTServingBaseService):
 
                 except Exception:
                     return {"message": "There was an error processing the file"}
-        return 'ok'
+        return "ok"
 
     def _postprocess(self, data):
         if self.capture and os.path.exists(self.capture):  # Fixed: clean up temp file
             os.remove(self.capture)
         return data
-

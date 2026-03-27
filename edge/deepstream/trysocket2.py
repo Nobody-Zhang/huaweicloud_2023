@@ -1,10 +1,12 @@
+import asyncio
+import logging
 import socket
 import threading
-import numpy as np
+
 import cv2
-import asyncio
+import numpy as np
 import websockets
-import logging
+
 logger = logging.getLogger(__name__)
 import struct
 from asyncio import run_coroutine_threadsafe
@@ -15,6 +17,7 @@ flag = 0  # 是否传给前端
 front_end_socket = None  # 链接
 event_loop = None  # loop
 
+
 # Thread for receiving images from the client and forwarding them to the frontend if flag is 1
 def receiver(conn, loop):
     global front_end_socket
@@ -23,9 +26,9 @@ def receiver(conn, loop):
         size_data = conn.recv(4)
         if not size_data:
             break
-        size = struct.unpack('!I', size_data)[0]
+        size = struct.unpack("!I", size_data)[0]
 
-        img_data = b''
+        img_data = b""
         while len(img_data) < size:
             part = conn.recv(size - len(img_data))
             if not part:
@@ -42,12 +45,14 @@ def receiver(conn, loop):
             future = run_coroutine_threadsafe(send_to_frontend(img), loop)
             future.result()
 
+
 # 发送给前端
 async def send_to_frontend(img):
     resized_img = cv2.resize(img, (480, 320))
-    _, buffer = cv2.imencode('.jpg', resized_img)
+    _, buffer = cv2.imencode(".jpg", resized_img)
     await front_end_socket.send(buffer.tobytes())
     logger.info("Image sent to front end.")
+
 
 # 接受前端控制
 async def video_stream(websocket, path):
@@ -56,19 +61,17 @@ async def video_stream(websocket, path):
     front_end_socket = websocket
     while True:
         command = await websocket.recv()
-        if command == 'start':
+        if command == "start":
             flag = 1
-        elif command == 'stop':
+        elif command == "stop":
             flag = 0
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # 与deepstream建立连接
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     s = socket.socket()
-    host = 'localhost'
+    host = "localhost"
     port = 8765
     s.bind((host, port))
     s.listen(5)

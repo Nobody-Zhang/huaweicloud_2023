@@ -1,8 +1,10 @@
+import asyncio
+import logging
 import socket
 import threading
-import asyncio
+
 import websockets
-import logging
+
 logger = logging.getLogger(__name__)
 import struct
 
@@ -14,6 +16,7 @@ receiver_thread = None
 event_loop = None
 stop_receiver_flag = threading.Event()  # Added a flag to signal receiver to stop
 
+
 def receiver(loop):
     global front_end_int_socket, conn, stop_receiver_flag
     try:
@@ -21,8 +24,8 @@ def receiver(loop):
             int_data = conn.recv(4)
             if not int_data:
                 break
-            int_value = struct.unpack('!I', int_data)[0]
-            logger.info('Received: %s', int_value)
+            int_value = struct.unpack("!I", int_data)[0]
+            logger.info("Received: %s", int_value)
 
             if front_end_int_socket:
                 future = asyncio.run_coroutine_threadsafe(send_int_to_frontend(int_value), loop)
@@ -30,9 +33,11 @@ def receiver(loop):
     except Exception as e:
         logger.error(f"An exception occurred in receiver: {e}")
 
+
 async def send_int_to_frontend(int_value):
     await front_end_int_socket.send(str(int_value))
     logger.info(f"Integer {int_value} sent to front end.")
+
 
 async def int_stream(websocket, path):
     global front_end_int_socket, receiver_thread, event_loop, stop_receiver_flag
@@ -55,20 +60,19 @@ async def int_stream(websocket, path):
         logger.warning("WebSocket connection closed.")
         front_end_int_socket = None
 
+
 async def start_websocket_server():
     await websockets.serve(int_stream, "0.0.0.0", 7980)
     logger.info("WebSocket Server Started.")
     while True:
         await asyncio.sleep(1)
 
-if __name__ == '__main__':
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     s = socket.socket()
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) 
-    host = 'localhost'
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    host = "localhost"
     port = 8764
     s.bind((host, port))
     s.listen(5)

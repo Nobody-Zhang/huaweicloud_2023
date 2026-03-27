@@ -1,8 +1,10 @@
 import gi
-gi.require_version('Gst', '1.0')
-from gi.repository import Gst, GObject
 
+gi.require_version("Gst", "1.0")
 import logging
+
+from gi.repository import GObject, Gst
+
 logger = logging.getLogger(__name__)
 Gst.init(None)
 loop = GObject.MainLoop()
@@ -16,7 +18,16 @@ rtph264pay = Gst.ElementFactory.make("rtph264pay")
 udpsink = Gst.ElementFactory.make("udpsink")
 autovideosink = Gst.ElementFactory.make("autovideosink")
 
-if not pipeline or not filesrc or not decodebin or not videoconvert or not x264enc or not rtph264pay or not udpsink or not autovideosink:
+if (
+    not pipeline
+    or not filesrc
+    or not decodebin
+    or not videoconvert
+    or not x264enc
+    or not rtph264pay
+    or not udpsink
+    or not autovideosink
+):
     logger.error("Not all elements could be created")
     exit(1)
 

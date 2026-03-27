@@ -1,14 +1,16 @@
 # coding=UTF-8
+import asyncio
+import logging
 import socket
 import threading
-import numpy as np
+
 import cv2
-import asyncio
+import numpy as np
 import websockets
-import logging
+
 logger = logging.getLogger(__name__)
 import struct
-import time  
+import time
 from asyncio import run_coroutine_threadsafe
 
 logging.basicConfig(level=logging.INFO)
@@ -18,30 +20,32 @@ front_end_socket = None  # 链接
 record_socket = None  # Placeholder for the socket object
 event_loop = None  # loop
 
+
 # Function to establish connection with localhost:4333
 def establish_record_connection():
     global record_socket
     while True:
         try:
             record_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            record_socket.connect(('localhost', 4333))
+            record_socket.connect(("localhost", 4333))
             logger.info("Connected to localhost:4333")
             break
         except ConnectionRefusedError:
             logger.warning("Connection refused. Retrying in 1 second.")
             time.sleep(1)
 
+
 # Thread for receiving images from the client and forwarding them to the frontend if flag is 1
-def receiver(conn,loop):
+def receiver(conn, loop):
     global front_end_socket
     global flag
     while True:
         size_data = conn.recv(4)
         if not size_data:
             break
-        size = struct.unpack('!I', size_data)[0]
+        size = struct.unpack("!I", size_data)[0]
 
-        img_data = b''
+        img_data = b""
         while len(img_data) < size:
             part = conn.recv(size - len(img_data))
             if not part:
@@ -54,20 +58,21 @@ def receiver(conn,loop):
             logger.error("Failed to decode image")
             continue
 
-        logger.debug('receive')
+        logger.debug("receive")
         if flag == 1 and front_end_socket is not None:
             future = run_coroutine_threadsafe(send_to_frontend(img), loop)
             future.result()
         elif front_end_socket is None:
             logger.info("尚未连接")
-            
+
 
 # Function to send the image to the frontend
 async def send_to_frontend(img):
     resized_img = cv2.resize(img, (480, 320))
-    _, buffer = cv2.imencode('.jpg', resized_img)
+    _, buffer = cv2.imencode(".jpg", resized_img)
     await front_end_socket.send(buffer.tobytes())
     logger.info("Image sent to front end.")
+
 
 # Async function to handle WebSocket communication for setting flag
 async def video_stream(websocket, path):
@@ -76,39 +81,37 @@ async def video_stream(websocket, path):
     front_end_socket = websocket
     while True:
         command = await websocket.recv()
-        if command == 'start':
+        if command == "start":
             flag = 1
-            logger.debug('\n\n\n\n')
-            logger.debug('\n\n\n\n')
-        elif command == 'stop':
+            logger.debug("\n\n\n\n")
+            logger.debug("\n\n\n\n")
+        elif command == "stop":
             flag = 0
-            logger.debug('\n\n\n\n')
-            logger.debug('stop')
-            logger.debug('\n\n\n\n')
-        elif command == 'record':  # New command added
-            logger.debug('\n\n\n\n')
+            logger.debug("\n\n\n\n")
+            logger.debug("stop")
+            logger.debug("\n\n\n\n")
+        elif command == "record":  # New command added
+            logger.debug("\n\n\n\n")
             logger.info(2)
-            logger.debug('\n\n\n\n\n')
+            logger.debug("\n\n\n\n\n")
             if record_socket is not None:
-                record_socket.sendall(b'record')  # Send 'record' to the localhost:4333
+                record_socket.sendall(b"record")  # Send 'record' to the localhost:4333
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # Setup socket for receiving images
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     s = socket.socket()
-    host = 'localhost'
+    host = "localhost"
     port = 8765
     s.bind((host, port))
     s.listen(5)
     conn, addr = s.accept()
 
     event_loop = asyncio.get_event_loop()
-    
+
     # 开始接受
-    receiver_thread = threading.Thread(target=receiver, args=(conn,event_loop))
+    receiver_thread = threading.Thread(target=receiver, args=(conn, event_loop))
     receiver_thread.start()
 
     # 建立record连接

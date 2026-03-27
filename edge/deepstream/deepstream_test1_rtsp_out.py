@@ -17,22 +17,26 @@
 # limitations under the License.
 ################################################################################
 
-import numpy as np
-import time
-import cv2
 import argparse
-import sys
 import logging
+import sys
+import time
+
+import cv2
+import numpy as np
+
 logger = logging.getLogger(__name__)
-sys.path.append('../')
+sys.path.append("../")
+
+
 def make_elm_or_print_err(factoryname, name, printedname, detail=""):
     """
-        利用一种流媒体处理框架的对象工厂创建对象。
-        factoryname: 对象工厂名称
-        name: 对象名称 （在管道中唯一标识的名称）
-        Creates an element with Gst Element Factory make.
-        Return the element  if successfully created, otherwise print
-        to stderr and return None.
+    利用一种流媒体处理框架的对象工厂创建对象。
+    factoryname: 对象工厂名称
+    name: 对象名称 （在管道中唯一标识的名称）
+    Creates an element with Gst Element Factory make.
+    Return the element  if successfully created, otherwise print
+    to stderr and return None.
     """
     logger.info("Creating " + printedname)
     elm = Gst.ElementFactory.make(factoryname, name)
@@ -41,12 +45,17 @@ def make_elm_or_print_err(factoryname, name, printedname, detail=""):
         if detail:
             sys.stderr.write(detail)
     return elm
+
+
 import gi
-gi.require_version('Gst', '1.0')
-gi.require_version('GstRtspServer', '1.0')
+
+gi.require_version("Gst", "1.0")
+gi.require_version("GstRtspServer", "1.0")
 import platform
 import sys
+
 from gi.repository import GObject, Gst, GstRtspServer
+
 
 def bus_call(bus, message, loop):
     t = message.type
@@ -62,8 +71,10 @@ def bus_call(bus, message, loop):
         loop.quit()
     return True
 
+
 def is_aarch64():
-    return platform.uname()[4] == 'aarch64'
+    return platform.uname()[4] == "aarch64"
+
 
 import pyds
 
@@ -72,16 +83,17 @@ PGIE_CLASS_ID_BICYCLE = 1
 PGIE_CLASS_ID_PERSON = 2
 PGIE_CLASS_ID_ROADSIGN = 3
 
-def osd_sink_pad_buffer_probe(pad,info,u_data):
-    frame_number=0
-    #Intiallizing object counter with 0.
+
+def osd_sink_pad_buffer_probe(pad, info, u_data):
+    frame_number = 0
+    # Intiallizing object counter with 0.
     obj_counter = {
-        PGIE_CLASS_ID_VEHICLE:0,
-        PGIE_CLASS_ID_PERSON:0,
-        PGIE_CLASS_ID_BICYCLE:0,
-        PGIE_CLASS_ID_ROADSIGN:0
+        PGIE_CLASS_ID_VEHICLE: 0,
+        PGIE_CLASS_ID_PERSON: 0,
+        PGIE_CLASS_ID_BICYCLE: 0,
+        PGIE_CLASS_ID_ROADSIGN: 0,
     }
-    num_rects=0
+    num_rects = 0
 
     gst_buffer = info.get_buffer()
     if not gst_buffer:
@@ -104,13 +116,13 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         except StopIteration:
             break
 
-        frame_number=frame_meta.frame_num
+        frame_number = frame_meta.frame_num
         num_rects = frame_meta.num_obj_meta
-        l_obj=frame_meta.obj_meta_list
+        l_obj = frame_meta.obj_meta_list
 
         n_frame = pyds.get_nvds_buf_surface(hash(gst_buffer), frame_meta.batch_id)
         # convert python array into numpy array format in the copy mode.
-        frame_copy = np.array(n_frame, copy=True, order='C')
+        frame_copy = np.array(n_frame, copy=True, order="C")
         # convert the array into cv2 default color format
         pic = cv2.cvtColor(frame_copy, cv2.COLOR_RGBA2BGRA)
         pic = cv2.cvtColor(pic, cv2.COLOR_BGRA2BGR)
@@ -118,19 +130,19 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         while l_obj is not None:
             try:
                 # Casting l_obj.data to pyds.NvDsObjectMeta
-                obj_meta=pyds.NvDsObjectMeta.cast(l_obj.data)
+                obj_meta = pyds.NvDsObjectMeta.cast(l_obj.data)
             except StopIteration:
                 break
             obj_counter[obj_meta.class_id] += 1
-            try: 
-                l_obj=l_obj.next
+            try:
+                l_obj = l_obj.next
             except StopIteration:
                 break
 
         # Acquiring a display meta object. The memory ownership remains in
         # the C code so downstream plugins can still access it. Otherwise
         # the garbage collector will claim it when this probe function exits.
-        display_meta=pyds.nvds_acquire_display_meta_from_pool(batch_meta)
+        display_meta = pyds.nvds_acquire_display_meta_from_pool(batch_meta)
         display_meta.num_labels = 1
         py_nvosd_text_params = display_meta.text_params[0]
         # Setting display text to be shown on screen
@@ -138,7 +150,11 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         # memory will not be claimed by the garbage collector.
         # Reading the display_text field here will return the C address of the
         # allocated string. Use pyds.get_string() to get the string content.
-        py_nvosd_text_params.display_text = "Frame Number={} Number of Objects={} Vehicle_count={} Person_count={}".format(frame_number, num_rects, obj_counter[PGIE_CLASS_ID_VEHICLE], obj_counter[PGIE_CLASS_ID_PERSON])
+        py_nvosd_text_params.display_text = (
+            "Frame Number={} Number of Objects={} Vehicle_count={} Person_count={}".format(
+                frame_number, num_rects, obj_counter[PGIE_CLASS_ID_VEHICLE], obj_counter[PGIE_CLASS_ID_PERSON]
+            )
+        )
 
         # Now set the offsets where the string should appear
         py_nvosd_text_params.x_offset = 10
@@ -158,11 +174,11 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         logger.info(pyds.get_string(py_nvosd_text_params.display_text))
         pyds.nvds_add_display_meta_to_frame(frame_meta, display_meta)
         try:
-            l_frame=l_frame.next
+            l_frame = l_frame.next
         except StopIteration:
             break
-			
-    return Gst.PadProbeReturn.OK	
+
+    return Gst.PadProbeReturn.OK
 
 
 def main(args):
@@ -176,7 +192,7 @@ def main(args):
     pipeline = Gst.Pipeline()
     if not pipeline:
         sys.stderr.write(" Unable to create Pipeline \n")
-    
+
     # Source element for reading from the file
     logger.info("Creating Source ")
 
@@ -186,24 +202,24 @@ def main(args):
     videorate.set_property("max-rate", 1)  # 设置目标帧率为 1
     nvvidconv_src = make_elm_or_print_err("nvvideoconvert", "nvvidconv-src", "nvvidconv-src")
     caps_nvvidconv_src = make_elm_or_print_err("capsfilter", "caps-nvvidconv-src", "caps-nvvidconv-src")
-    caps_nvvidconv_src.set_property('caps', Gst.Caps.from_string('video/x-raw(memory:NVMM), width=1280, height=720'))
+    caps_nvvidconv_src.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM), width=1280, height=720"))
 
     # Create nvstreammux instance to form batches from one or more sources.
     streammux = Gst.ElementFactory.make("nvstreammux", "Stream-muxer")
     if not streammux:
         sys.stderr.write(" Unable to create NvStreamMux \n")
-    
+
     # Use nvinfer to run inferencing on decoder's output,
     # behaviour of inferencing is set through config file
     pgie = Gst.ElementFactory.make("nvinfer", "primary-inference")
     if not pgie:
         sys.stderr.write(" Unable to create pgie \n")
-    
+
     # Use convertor to convert from NV12 to RGBA as required by nvosd
     nvvidconv = Gst.ElementFactory.make("nvvideoconvert", "convertor")
     if not nvvidconv:
         sys.stderr.write(" Unable to create nvvidconv \n")
-    
+
     # Create OSD to draw on the converted RGBA buffer
     nvosd = Gst.ElementFactory.make("nvdsosd", "onscreendisplay")
     if not nvosd:
@@ -211,11 +227,11 @@ def main(args):
     nvvidconv_postosd = Gst.ElementFactory.make("nvvideoconvert", "convertor_postosd")
     if not nvvidconv_postosd:
         sys.stderr.write(" Unable to create nvvidconv_postosd \n")
-    
+
     # Create a caps filter
     caps = Gst.ElementFactory.make("capsfilter", "filter")
     caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM), format=I420"))
-    
+
     # Make the encoder
     if codec == "H264":
         encoder = Gst.ElementFactory.make("nvv4l2h264enc", "encoder")
@@ -225,12 +241,12 @@ def main(args):
         logger.info("Creating H265 Encoder")
     if not encoder:
         sys.stderr.write(" Unable to create encoder")
-    encoder.set_property('bitrate', bitrate)
+    encoder.set_property("bitrate", bitrate)
     if is_aarch64():
-        encoder.set_property('preset-level', 1)
-        encoder.set_property('insert-sps-pps', 1)
-        encoder.set_property('bufapi-version', 1)
-    
+        encoder.set_property("preset-level", 1)
+        encoder.set_property("insert-sps-pps", 1)
+        encoder.set_property("bufapi-version", 1)
+
     # Make the payload-encode video into RTP packets
     if codec == "H264":
         rtppay = Gst.ElementFactory.make("rtph264pay", "rtppay")
@@ -240,28 +256,28 @@ def main(args):
         logger.info("Creating H265 rtppay")
     if not rtppay:
         sys.stderr.write(" Unable to create rtppay")
-    
+
     # Make the UDP sink
     updsink_port_num = 5400
     sink = Gst.ElementFactory.make("udpsink", "udpsink")
     if not sink:
         sys.stderr.write(" Unable to create udpsink")
-    
-    sink.set_property('host', '224.224.255.255')
-    sink.set_property('port', updsink_port_num)
-    sink.set_property('async', False)
-    sink.set_property('sync', 1)
-    
-    logger.info("Playing file %s " %stream_path)
+
+    sink.set_property("host", "224.224.255.255")
+    sink.set_property("port", updsink_port_num)
+    sink.set_property("async", False)
+    sink.set_property("sync", 1)
+
+    logger.info("Playing file %s " % stream_path)
     # source.set_property('location', stream_path)
-    source.set_property('bufapi-version', True)
-    streammux.set_property('width', 1920)
-    streammux.set_property('height', 1080)
-    streammux.set_property('batch-size', 1)
-    streammux.set_property('batched-push-timeout', 4000000)
-    
-    pgie.set_property('config-file-path', "config_infer_primary_yoloV5.txt")
-    
+    source.set_property("bufapi-version", True)
+    streammux.set_property("width", 1920)
+    streammux.set_property("height", 1080)
+    streammux.set_property("batch-size", 1)
+    streammux.set_property("batched-push-timeout", 4000000)
+
+    pgie.set_property("config-file-path", "config_infer_primary_yoloV5.txt")
+
     logger.info("Adding elements to Pipeline ")
     pipeline.add(source)
     pipeline.add(videorate)
@@ -279,9 +295,9 @@ def main(args):
 
     # Link the elements together:
     # file-source -> h264-parser -> nvh264-decoder ->
-    # nvinfer -> nvvidconv -> nvosd -> nvvidconv_postosd -> 
+    # nvinfer -> nvvidconv -> nvosd -> nvvidconv_postosd ->
     # caps -> encoder -> rtppay -> udpsink
-    
+
     logger.info("Linking elements in the Pipeline ")
     source.link(videorate)
     videorate.link(nvvidconv_src)
@@ -289,11 +305,11 @@ def main(args):
     sinkpad = streammux.get_request_pad("sink_0")
     if not sinkpad:
         sys.stderr.write(" Unable to get the sink pad of streammux \n")
-    
+
     srcpad = caps_nvvidconv_src.get_static_pad("src")
     if not srcpad:
         sys.stderr.write(" Unable to get source pad of decoder \n")
-    
+
     srcpad.link(sinkpad)
     streammux.link(pgie)
     pgie.link(nvvidconv)
@@ -303,36 +319,39 @@ def main(args):
     caps.link(encoder)
     encoder.link(rtppay)
     rtppay.link(sink)
-    
+
     # create an event loop and feed gstreamer bus mesages to it
     loop = GObject.MainLoop()
     bus = pipeline.get_bus()
     bus.add_signal_watch()
-    bus.connect ("message", bus_call, loop)
-    
+    bus.connect("message", bus_call, loop)
+
     # Start streaming
     rtsp_port_num = 8554
-    
+
     server = GstRtspServer.RTSPServer.new()
     server.props.service = "%d" % rtsp_port_num
     server.attach(None)
-    
+
     factory = GstRtspServer.RTSPMediaFactory.new()
-    factory.set_launch( "( udpsrc name=pay0 port=%d buffer-size=524288 caps=\"application/x-rtp, media=video, clock-rate=90000, encoding-name=(string)%s, payload=96 \" )" % (updsink_port_num, codec))
+    factory.set_launch(
+        '( udpsrc name=pay0 port=%d buffer-size=524288 caps="application/x-rtp, media=video, clock-rate=90000, encoding-name=(string)%s, payload=96 " )'
+        % (updsink_port_num, codec)
+    )
     factory.set_shared(True)
     server.get_mount_points().add_factory("/ds-test", factory)
-    
+
     logger.info("*** DeepStream: Launched RTSP Streaming at rtsp://localhost:%d/ds-test ***\n" % rtsp_port_num)
-    
+
     # Lets add probe to get informed of the meta data generated, we add probe to
     # the sink pad of the osd element, since by that time, the buffer would have
     # had got all the metadata.
     osdsinkpad = nvosd.get_static_pad("sink")
     if not osdsinkpad:
         sys.stderr.write(" Unable to get sink pad of nvosd \n")
-    
+
     osdsinkpad.add_probe(Gst.PadProbeType.BUFFER, osd_sink_pad_buffer_probe, 0)
-    
+
     # start play back and listen to events
     logger.info("Starting pipeline ")
     pipeline.set_state(Gst.State.PLAYING)
@@ -343,14 +362,14 @@ def main(args):
     # cleanup
     pipeline.set_state(Gst.State.NULL)
 
+
 def parse_args():
-    parser = argparse.ArgumentParser(description='RTSP Output Sample Application Help ')
-    parser.add_argument("-i", "--input",
-                  help="Path to input H264 elementry stream", required=True)
-    parser.add_argument("-c", "--codec", default="H264",
-                  help="RTSP Streaming Codec H264/H265 , default=H264", choices=['H264','H265'])
-    parser.add_argument("-b", "--bitrate", default=4000000,
-                  help="Set the encoding bitrate ", type=int)
+    parser = argparse.ArgumentParser(description="RTSP Output Sample Application Help ")
+    parser.add_argument("-i", "--input", help="Path to input H264 elementry stream", required=True)
+    parser.add_argument(
+        "-c", "--codec", default="H264", help="RTSP Streaming Codec H264/H265 , default=H264", choices=["H264", "H265"]
+    )
+    parser.add_argument("-b", "--bitrate", default=4000000, help="Set the encoding bitrate ", type=int)
     # Check input arguments
     # if len(sys.argv)==1:
     #     parser.print_help(sys.stderr)
@@ -364,15 +383,9 @@ def parse_args():
     stream_path = args.input
     return 0
 
-if __name__ == '__main__':
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     parse_args()
     sys.exit(main(sys.argv))
-

@@ -19,36 +19,38 @@
 # edited by ZGB
 ################################################################################
 
-""" Example of deepstream using SSD neural network and parsing SSD's outputs. """
-import time
-import ctypes
-import numpy as np
-import os
-import pathlib
-import sys
+"""Example of deepstream using SSD neural network and parsing SSD's outputs."""
+
 import io
 import multiprocessing
+import os
+import sys
+import time
+
+import numpy as np
 
 sys.path.append("../")
 import gi
 
 gi.require_version("Gst", "1.0")
-from gi.repository import GObject, Gst
+import logging
 import platform
 import sys
 
+from gi.repository import GObject, Gst
 
-import logging
 logger = logging.getLogger(__name__)
+
+
 def is_aarch64():
-    return platform.uname()[4] == 'aarch64'
+    return platform.uname()[4] == "aarch64"
 
 
-import gi
 import sys
 
-gi.require_version('Gst', '1.0')
-from gi.repository import GObject, Gst
+import gi
+
+gi.require_version("Gst", "1.0")
 
 
 def bus_call(bus, message, loop):
@@ -66,13 +68,13 @@ def bus_call(bus, message, loop):
     return True
 
 
-sys.path.append('/opt/nvidia/deepstream/deepstream/lib')
+sys.path.append("/opt/nvidia/deepstream/deepstream/lib")
 
 import pyds
 
 CLASS_NB = 7
 ACCURACY_ALL_CLASS = 0.5
-UNTRACKED_OBJECT_ID = 0xffffffffffffffff
+UNTRACKED_OBJECT_ID = 0xFFFFFFFFFFFFFFFF
 IMAGE_HEIGHT = 1080
 IMAGE_WIDTH = 1920
 OUTPUT_VIDEO_NAME1 = "./out1.mp4"
@@ -140,7 +142,7 @@ def nms(boxes, box_confidences, nms_threshold=0.5):
         width1 = np.maximum(0.0, xx2 - xx1 + 1)
         height1 = np.maximum(0.0, yy2 - yy1 + 1)
         intersection = width1 * height1
-        union = (areas[i] + areas[ordered[1:]] - intersection)
+        union = areas[i] + areas[ordered[1:]] - intersection
 
         iou = intersection / union
 
@@ -152,12 +154,16 @@ def nms(boxes, box_confidences, nms_threshold=0.5):
 
 def postprocess(buffer, image_width, image_height, conf_threshold=0.4, nms_threshold=0.5):
     detected_objects = []
-    img_scale = [image_width / INPUT_WIDTH, image_height / INPUT_HEIGHT, image_width / INPUT_WIDTH,
-                 image_height / INPUT_HEIGHT]
+    img_scale = [
+        image_width / INPUT_WIDTH,
+        image_height / INPUT_HEIGHT,
+        image_width / INPUT_WIDTH,
+        image_height / INPUT_HEIGHT,
+    ]
     num_bboxes = int(buffer[0, 0, 0, 0])
 
     if num_bboxes:
-        bboxes = buffer[0, 1: (num_bboxes * 6 + 1), 0, 0].reshape(-1, 6)
+        bboxes = buffer[0, 1 : (num_bboxes * 6 + 1), 0, 0].reshape(-1, 6)
         labels = set(bboxes[:, 5].astype(int))
 
         for label in labels:
@@ -178,14 +184,15 @@ def postprocess(buffer, image_width, image_height, conf_threshold=0.4, nms_thres
                 if box[1] == box[3]:
                     continue
                 detected_objects.append(
-                    BoundingBox(label, float(score), box[0], box[2], box[1], box[3], image_height, image_width))
+                    BoundingBox(label, float(score), box[0], box[2], box[1], box[3], image_height, image_width)
+                )
 
     return detected_objects
 
 
 def get_label_names_from_file(filepath="./labels.txt"):
     """
-        从文件中读取标签名称。
+    从文件中读取标签名称。
     """
     f = io.open(filepath, "r")
     labels = f.readlines()
@@ -196,12 +203,12 @@ def get_label_names_from_file(filepath="./labels.txt"):
 
 def make_elm_or_print_err(factoryname, name, printedname, detail=""):
     """
-        利用一种流媒体处理框架的对象工厂创建对象。
-        factoryname: 对象工厂名称
-        name: 对象名称 （在管道中唯一标识的名称）
-        Creates an element with Gst Element Factory make.
-        Return the element  if successfully created, otherwise print
-        to stderr and return None.
+    利用一种流媒体处理框架的对象工厂创建对象。
+    factoryname: 对象工厂名称
+    name: 对象名称 （在管道中唯一标识的名称）
+    Creates an element with Gst Element Factory make.
+    Return the element  if successfully created, otherwise print
+    to stderr and return None.
     """
     logger.info("Creating %s", printedname)
     elm = Gst.ElementFactory.make(factoryname, name)
@@ -216,7 +223,7 @@ def add_obj_meta_to_frame(bbox, score, label, batch_meta, frame_meta):
     """
     Inserts an object into the metadata
     """
-    untracked_obj_id = 0xffffffffffffffff
+    untracked_obj_id = 0xFFFFFFFFFFFFFFFF
     # this is a good place to insert objects into the metadata.
     # Here's an example of inserting a single object.
     obj_meta = pyds.nvds_acquire_obj_meta_from_pool(batch_meta)
@@ -258,9 +265,7 @@ def add_obj_meta_to_frame(bbox, score, label, batch_meta, frame_meta):
 
     txt_params.x_offset = int(rect_params.left)
     txt_params.y_offset = max(0, int(rect_params.top) - 10)
-    txt_params.display_text = (
-            label + " " + "{:04.3f}".format(score)
-    )
+    txt_params.display_text = label + " " + "{:04.3f}".format(score)
     # Font , font-color and font-size
     txt_params.font_params.font_name = "Serif"
     txt_params.font_params.font_size = 10
@@ -336,6 +341,7 @@ def pgie_src_pad_buffer_probe(pad, info, u_data):
         except StopIteration:
             break
     return Gst.PadProbeReturn.OK
+
 
 def switch_sink(pipeline):
 
@@ -425,15 +431,17 @@ def main(args):
     # On Jetson, there is a problem with the encoder failing to initialize
     # due to limitation on TLS usage. To work around this, preload libgomp.
     # Add a reminder here in case the user forgets.
-    preload_reminder = "If the following error is encountered:\n" + \
-                       "/usr/lib/aarch64-linux-gnu/libgomp.so.1: cannot allocate memory in static TLS block\n" + \
-                       "Preload the offending library:\n" + \
-                       "export LD_PRELOAD=/usr/lib/aarch64-linux-gnu/libgomp.so.1\n"
+    preload_reminder = (
+        "If the following error is encountered:\n"
+        + "/usr/lib/aarch64-linux-gnu/libgomp.so.1: cannot allocate memory in static TLS block\n"
+        + "Preload the offending library:\n"
+        + "export LD_PRELOAD=/usr/lib/aarch64-linux-gnu/libgomp.so.1\n"
+    )
     encoder = make_elm_or_print_err("avenc_mpeg4", "encoder", "Encoder", preload_reminder)
 
     encoder.set_property("bitrate", 2000000)
 
-    codeparser = make_elm_or_print_err("mpeg4videoparse", "mpeg4-parser", 'Code Parser')
+    codeparser = make_elm_or_print_err("mpeg4videoparse", "mpeg4-parser", "Code Parser")
 
     container = make_elm_or_print_err("qtmux", "qtmux", "Container")
 
@@ -558,12 +566,6 @@ def main(args):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     sys.exit(main(sys.argv))

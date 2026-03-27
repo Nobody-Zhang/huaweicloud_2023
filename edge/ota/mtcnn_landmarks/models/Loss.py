@@ -1,12 +1,12 @@
-import torch.nn as nn
-import torch
 import numpy as np
+import torch
+import torch.nn as nn
 
 
 class ClassLoss(nn.Module):
     def __init__(self):
         super(ClassLoss, self).__init__()
-        self.entropy_loss = nn.CrossEntropyLoss(ignore_index=-100, reduction='none')
+        self.entropy_loss = nn.CrossEntropyLoss(ignore_index=-100, reduction="none")
         self.keep_ratio = 0.7
 
     def forward(self, class_out, label):
@@ -27,7 +27,7 @@ class ClassLoss(nn.Module):
 class BBoxLoss(nn.Module):
     def __init__(self):
         super(BBoxLoss, self).__init__()
-        self.square_loss = nn.MSELoss(reduction='none')
+        self.square_loss = nn.MSELoss(reduction="none")
         self.keep_ratio = 1.0
 
     def forward(self, bbox_out, bbox_target, label):
@@ -47,7 +47,7 @@ class BBoxLoss(nn.Module):
 class LandmarkLoss(nn.Module):
     def __init__(self):
         super(LandmarkLoss, self).__init__()
-        self.square_loss = nn.MSELoss(reduction='none')
+        self.square_loss = nn.MSELoss(reduction="none")
         self.keep_ratio = 1.0
 
     def forward(self, landmark_out, landmark_target, label):
@@ -76,6 +76,6 @@ def accuracy(class_out, label):
     valid_label = label[picked]
     valid_class_out = class_out[picked]
     # 求neg 0 和pos 1的准确率
-    acc = np.sum(np.argmax(valid_class_out, axis=1) == valid_label, dtype='float')
+    acc = np.sum(np.argmax(valid_class_out, axis=1) == valid_label, dtype="float")
     acc = acc / valid_label.shape[0]
     return acc

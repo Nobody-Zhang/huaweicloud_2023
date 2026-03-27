@@ -17,31 +17,32 @@
 # limitations under the License.
 ################################################################################
 
-import time
-import ctypes
-import numpy as np
-import cv2
-import os
-import pathlib
-import sys
 import io
-from queue import Queue
-import threading
 import logging
+import sys
+import time
+
+import cv2
+import numpy as np
+
 logger = logging.getLogger(__name__)
 
-from cloudinfer import cloud_infer
 
 sys.path.append("../")
-import gi
 import sys
-sys.path.append('../')
+
 import gi
-gi.require_version('Gst', '1.0')
-from gi.repository import GObject, Gst
+
+sys.path.append("../")
+
+gi.require_version("Gst", "1.0")
 import platform
 import sys
+
+from gi.repository import GObject, Gst
+
 video_writer = None
+
 
 def bus_call(bus, message, loop):
     t = message.type
@@ -57,17 +58,16 @@ def bus_call(bus, message, loop):
         loop.quit()
     return True
 
-def is_aarch64():
-    return platform.uname()[4] == 'aarch64'
 
+def is_aarch64():
+    return platform.uname()[4] == "aarch64"
+
+
+import sys
 
 import gi
-import sys
-import numpy as np
-import io
 
-gi.require_version('Gst', '1.0')
-from gi.repository import GObject, Gst
+gi.require_version("Gst", "1.0")
 
 
 import pyds
@@ -80,7 +80,7 @@ PGIE_CLASS_ID_ROADSIGN = 3
 
 def get_label_names_from_file(filepath="./labels.txt"):
     """
-        从文件中读取标签名称。
+    从文件中读取标签名称。
     """
     f = io.open(filepath, "r")
     labels = f.readlines()
@@ -132,7 +132,7 @@ def osd_sink_pad_buffer_probe(pad, info, u_data):
         logger.debug("number_of_counts: %s", frame_meta.num_obj_meta)
         n_frame = pyds.get_nvds_buf_surface(hash(gst_buffer), frame_meta.batch_id)
         # convert python array into numpy array format in the copy mode.
-        frame_copy = np.array(n_frame, copy=True, order='C')
+        frame_copy = np.array(n_frame, copy=True, order="C")
         # convert the array into cv2 default color format
         pic = cv2.cvtColor(frame_copy, cv2.COLOR_RGBA2BGRA)
         pic = cv2.cvtColor(pic, cv2.COLOR_BGRA2BGR)
@@ -161,13 +161,13 @@ def osd_sink_pad_buffer_probe(pad, info, u_data):
             # 用cropped_image = pic[int(top):int(top + height), int(left):int(left + width)] 裁剪
             if class_id == 2 or class_id == 6:
                 # 2: face, 6: side_face
-                cropped_image = pic[int(top):int(top + height), int(left):int(left + width)]
+                cropped_image = pic[int(top) : int(top + height), int(left) : int(left + width)]
                 tmp_name = f"{label[class_id]}_{confidence}.jpg"
                 cv2.imwrite(tmp_name, cropped_image)
                 # res = cloud_infer(tmp_name) # 云端推理这里可以用confidence联合推理
                 # if res == "OK":
                 #     pass
-#---------------------!!!!!!!!!!!!!!!!!补充端云协同!!!!!!!!!!!!!!!!!!!!!!---------------------------------
+            # ---------------------!!!!!!!!!!!!!!!!!补充端云协同!!!!!!!!!!!!!!!!!!!!!!---------------------------------
             # cropped_image = pic[int(top):int(top + height), int(left):int(left + width)]
             # cv2.imwrite(f"{class_id}_{time.time()}_{confidence}.jpg", cropped_image)
             try:
@@ -180,6 +180,7 @@ def osd_sink_pad_buffer_probe(pad, info, u_data):
         except StopIteration:
             break
     return Gst.PadProbeReturn.OK
+
 
 def main(args):
     # Check input arguments
@@ -206,7 +207,6 @@ def main(args):
     if not caps_v4l2src:
         sys.stderr.write(" Unable to create v4l2src capsfilter \n")
 
-
     logger.info("Creating Video Converter ")
 
     # Adding videoconvert -> nvvideoconvert as not all
@@ -217,7 +217,6 @@ def main(args):
     # nvvideoconvert, GStreamer plugins' capability negotiation
     # shall be intelligent enough to reduce compute by
     # videoconvert doing passthrough (TODO we need to confirm this)
-
 
     # videoconvert to make sure a superset of raw formats are supported
     vidconvsrc = Gst.ElementFactory.make("videoconvert", "convertor_src1")
@@ -264,16 +263,16 @@ def main(args):
     if not sink:
         sys.stderr.write(" Unable to create egl sink \n")
 
-    caps_v4l2src.set_property('caps', Gst.Caps.from_string("video/x-raw, framerate=30/1"))
-    caps_vidconvsrc.set_property('caps', Gst.Caps.from_string("video/x-raw(memory:NVMM)"))
-    source.set_property('device', "/dev/video1")
-    streammux.set_property('width', 1920)
-    streammux.set_property('height', 1080)
-    streammux.set_property('batch-size', 1)
-    streammux.set_property('batched-push-timeout', 4000000)
-    pgie.set_property('config-file-path', "config_infer_primary_yoloV5.txt")
+    caps_v4l2src.set_property("caps", Gst.Caps.from_string("video/x-raw, framerate=30/1"))
+    caps_vidconvsrc.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM)"))
+    source.set_property("device", "/dev/video1")
+    streammux.set_property("width", 1920)
+    streammux.set_property("height", 1080)
+    streammux.set_property("batch-size", 1)
+    streammux.set_property("batched-push-timeout", 4000000)
+    pgie.set_property("config-file-path", "config_infer_primary_yoloV5.txt")
     # Set sync = false to avoid late frame drops at the display-sink
-    sink.set_property('sync', False)
+    sink.set_property("sync", False)
 
     logger.info("Adding elements to Pipeline ")
     pipeline.add(source)
@@ -290,7 +289,7 @@ def main(args):
         pipeline.add(transform)
 
     # we link the elements together
-    # v4l2src -> nvvideoconvert -> mux -> 
+    # v4l2src -> nvvideoconvert -> mux ->
     # nvinfer -> nvvideoconvert -> nvosd -> video-renderer
     logger.info("Linking elements in the Pipeline ")
     source.link(caps_v4l2src)
@@ -318,7 +317,7 @@ def main(args):
     loop = GObject.MainLoop()
     bus = pipeline.get_bus()
     bus.add_signal_watch()
-    bus.connect ("message", bus_call, loop)
+    bus.connect("message", bus_call, loop)
 
     # Lets add probe to get informed of the meta data generated, we add probe to
     # the sink pad of the osd element, since by that time, the buffer would have
@@ -339,14 +338,8 @@ def main(args):
     # cleanup
     pipeline.set_state(Gst.State.NULL)
 
-if __name__ == '__main__':
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    sys.exit(main(sys.argv))
 
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    sys.exit(main(sys.argv))
