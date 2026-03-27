@@ -6,7 +6,7 @@
 
 ## Certificate
 
-![Certificate](./Certificate.png)
+![Certificate](./docs/certificate.png)
 
 [Certificate Website](https://www.tiaozhanbei.net/ca/CA959D2C14234439A9FA60E65EF93862/)
 

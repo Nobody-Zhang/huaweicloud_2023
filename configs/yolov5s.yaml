@@ -1,0 +1,19 @@
+# Fatigue driving detection — 7-class dataset config
+# Used by cloud training (ModelArts) and edge fine-tuning (Jetson)
+#
+# Classes: close_eye, close_mouth, face, open_eye, open_mouth, phone, side_face
+
+# Adjust these paths to your training environment
+train: /home/ma-user/modelarts/inputs/data_url_0/images/train
+val: /home/ma-user/modelarts/inputs/data_url_0/images/val
+
+nc: 7
+
+names:
+  0: close_eye
+  1: close_mouth
+  2: face
+  3: open_eye
+  4: open_mouth
+  5: phone
+  6: side_face

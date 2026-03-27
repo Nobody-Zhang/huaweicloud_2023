@@ -1,0 +1,21 @@
+name: Lint
+
+on:
+  push:
+    branches: [main, competition]
+  pull_request:
+    branches: [main, competition]
+
+jobs:
+  ruff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: pip install ruff
+      - name: Lint cloud/
+        run: ruff check cloud/ --select E,F,W --ignore E501
+      - name: Lint edge/ (Python only)
+        run: ruff check edge/ --select E,F,W --ignore E501 --exclude "*/yolov5/*"

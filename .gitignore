@@ -85,6 +85,12 @@ logs/
 # ===== Jupyter =====
 .ipynb_checkpoints/
 
+# ===== C/C++ Build Artifacts =====
+*.o
+*.a
+*.so
+*.dylib
+
 # ===== NVIDIA / Jetson / CUDA =====
 # TensorRT serialized engines (platform-specific, must regenerate)
 *.engine
@@ -92,6 +98,9 @@ logs/
 *.cubin
 *.fatbin
 *.ptx
+
+# ===== Fonts =====
+*.ttf
 
 # ===== Data Files =====
 *.npy

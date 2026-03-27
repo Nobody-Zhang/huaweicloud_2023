@@ -28,72 +28,72 @@ download() {
 echo "=== Model Weights ==="
 
 download "$BASE_URL/shape_predictor_68_face_landmarks.dat" \
-    "Jetson TX2 NX Deployment/Code/Cloud_finetune/yolov5/shape_predictor_68_face_landmarks.dat"
+    "edge/cloud_finetune/yolov5/shape_predictor_68_face_landmarks.dat"
 
 download "$BASE_URL/yolov5s.pt" \
-    "Jetson TX2 NX Deployment/Code/OTA/yolov5s.pt"
+    "edge/ota/yolov5s.pt"
 
 download "$BASE_URL/best_1.pt" \
-    "Jetson TX2 NX Deployment/Code/OTA/best (1).pt"
+    "edge/ota/best (1).pt"
 
 download "$BASE_URL/ONet.pt" \
-    "Jetson TX2 NX Deployment/Code/OTA/mtcnn_landmarks/infer_models/ONet.pt"
+    "edge/ota/mtcnn_landmarks/infer_models/ONet.pt"
 
 download "$BASE_URL/yolov5s_best.onnx" \
-    "Jetson TX2 NX Deployment/Code/main/yolov5s_best.onnx"
+    "edge/deepstream/yolov5s_best.onnx"
 
 download "$BASE_URL/best.onnx" \
-    "Jetson TX2 NX Deployment/Code/OTA/best.onnx"
+    "edge/ota/best.onnx"
 
 download "$BASE_URL/mixed_n.onnx" \
-    "Jetson TX2 NX Deployment/Code/main/mixed_n.onnx"
+    "edge/deepstream/mixed_n.onnx"
 
 download "$BASE_URL/yolov5n_best.onnx" \
-    "Jetson TX2 NX Deployment/Code/main/yolov5n_best.onnx"
+    "edge/deepstream/yolov5n_best.onnx"
 
 download "$BASE_URL/best_openvino.bin" \
-    "ModelArts automatic evaluation/Preliminary_BEST_bkup_cloud/Deployment_yolo/yolo/fine_tune_openvino_model/best.bin"
+    "cloud/preliminary/yolo/fine_tune_openvino_model/best.bin"
 
-cp "ModelArts automatic evaluation/Preliminary_BEST_bkup_cloud/Deployment_yolo/yolo/fine_tune_openvino_model/best.bin" \
-   "ModelArts automatic evaluation/semi-final_BEST_bkup_cloud/Deployment_yolo/yolo/fine_tune_openvino_model/best.bin" 2>/dev/null && \
+cp "cloud/preliminary/yolo/fine_tune_openvino_model/best.bin" \
+   "cloud/semifinal/yolo/fine_tune_openvino_model/best.bin" 2>/dev/null && \
    echo "[COPY] semi-final best.bin (identical to preliminary)" || true
 
 echo ""
 echo "=== TensorRT Engines (Jetson-specific, rebuild if architecture differs) ==="
 
 download "$BASE_URL/v5s_mixes.engine" \
-    "Jetson TX2 NX Deployment/Code/main/v5s_mixes.engine"
+    "edge/deepstream/v5s_mixes.engine"
 
 download "$BASE_URL/model_b1_gpu0_fp32_1.engine" \
-    "Jetson TX2 NX Deployment/Code/main/model_b1_gpu0_fp32_1.engine"
+    "edge/deepstream/model_b1_gpu0_fp32_1.engine"
 
 download "$BASE_URL/model_b1_gpu0_fp32.engine" \
-    "Jetson TX2 NX Deployment/Code/main/model_b1_gpu0_fp32.engine"
+    "edge/deepstream/model_b1_gpu0_fp32.engine"
 
 download "$BASE_URL/zgb_n.engine" \
-    "Jetson TX2 NX Deployment/Code/main/zgb_n.engine"
+    "edge/deepstream/zgb_n.engine"
 
 download "$BASE_URL/model_b1_gpu0_v5n_mixed.engine" \
-    "Jetson TX2 NX Deployment/Code/main/model_b1_gpu0_v5n_mixed.engine"
+    "edge/deepstream/model_b1_gpu0_v5n_mixed.engine"
 
 echo ""
 echo "=== Python Wheels ==="
 
 download "$BASE_URL/scikit_learn-1.0.2-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl" \
-    "ModelArts automatic evaluation/Preliminary_BEST_bkup_cloud/Deployment_yolo/scikit_learn-1.0.2-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
+    "cloud/preliminary/scikit_learn-1.0.2-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
 
 download "$BASE_URL/scikit_image-0.19.3-cp37-cp37m-manylinux_2_12_x86_64.manylinux2010_x86_64.whl" \
-    "ModelArts automatic evaluation/Preliminary_BEST_bkup_cloud/Deployment_yolo/scikit_image-0.19.3-cp37-cp37m-manylinux_2_12_x86_64.manylinux2010_x86_64.whl"
+    "cloud/preliminary/scikit_image-0.19.3-cp37-cp37m-manylinux_2_12_x86_64.manylinux2010_x86_64.whl"
 
 # Copy wheels to other locations (identical files)
 for dest_dir in \
-    "ModelArts automatic evaluation/semi-final_BEST_bkup_cloud/Deployment_yolo" \
-    "Jetson TX2 NX Deployment/Code/OTA/mtcnn_landmarks" \
-    "Jetson TX2 NX Deployment/Code/mtcnn_landmarks"; do
+    "cloud/semifinal" \
+    "edge/ota/mtcnn_landmarks" \
+    "edge/mtcnn"; do
     mkdir -p "$dest_dir"
-    cp "ModelArts automatic evaluation/Preliminary_BEST_bkup_cloud/Deployment_yolo/scikit_learn-1.0.2-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl" \
+    cp "cloud/preliminary/scikit_learn-1.0.2-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl" \
        "$dest_dir/" 2>/dev/null && echo "[COPY] $dest_dir/scikit_learn*.whl" || true
-    cp "ModelArts automatic evaluation/Preliminary_BEST_bkup_cloud/Deployment_yolo/scikit_image-0.19.3-cp37-cp37m-manylinux_2_12_x86_64.manylinux2010_x86_64.whl" \
+    cp "cloud/preliminary/scikit_image-0.19.3-cp37-cp37m-manylinux_2_12_x86_64.manylinux2010_x86_64.whl" \
        "$dest_dir/" 2>/dev/null && echo "[COPY] $dest_dir/scikit_image*.whl" || true
 done
 
@@ -101,76 +101,76 @@ echo ""
 echo "=== Videos ==="
 
 download "$BASE_URL/SmartRecord_00000_20231031-043454_8868.mp4" \
-    "Jetson TX2 NX Deployment/Code/main/SmartRecord_00000_20231031-043454_8868.mp4"
+    "edge/deepstream/SmartRecord_00000_20231031-043454_8868.mp4"
 
 download "$BASE_URL/SmartRecord_00000_20231031-072426_8890.mp4" \
-    "Jetson TX2 NX Deployment/Code/main/SmartRecord_00000_20231031-072426_8890.mp4"
+    "edge/deepstream/SmartRecord_00000_20231031-072426_8890.mp4"
 
 download "$BASE_URL/SmartRecord_00000_20231028-065356_8625.mp4" \
-    "Jetson TX2 NX Deployment/Code/main/SmartRecord_00000_20231028-065356_8625.mp4"
+    "edge/deepstream/SmartRecord_00000_20231028-065356_8625.mp4"
 
 download "$BASE_URL/SmartRecord_00001_20230830-080226_2871.mp4" \
-    "Jetson TX2 NX Deployment/Code/OTA/videos/SmartRecord_00001_20230830-080226_2871.mp4"
+    "edge/ota/videos/SmartRecord_00001_20230830-080226_2871.mp4"
 
-cp "Jetson TX2 NX Deployment/Code/OTA/videos/SmartRecord_00001_20230830-080226_2871.mp4" \
-   "Jetson TX2 NX Deployment/Code/APIGW-python-sdk-2.0.4/videos/" 2>/dev/null && \
+cp "edge/ota/videos/SmartRecord_00001_20230830-080226_2871.mp4" \
+   "edge/apigw/videos/" 2>/dev/null && \
    echo "[COPY] APIGW SmartRecord_00001" || true
 
 download "$BASE_URL/SmartRecord_00000_20230830-080212_2871.mp4" \
-    "Jetson TX2 NX Deployment/Code/OTA/videos/SmartRecord_00000_20230830-080212_2871.mp4"
+    "edge/ota/videos/SmartRecord_00000_20230830-080212_2871.mp4"
 
-cp "Jetson TX2 NX Deployment/Code/OTA/videos/SmartRecord_00000_20230830-080212_2871.mp4" \
-   "Jetson TX2 NX Deployment/Code/APIGW-python-sdk-2.0.4/videos/" 2>/dev/null && \
+cp "edge/ota/videos/SmartRecord_00000_20230830-080212_2871.mp4" \
+   "edge/apigw/videos/" 2>/dev/null && \
    echo "[COPY] APIGW SmartRecord_00000" || true
 
 download "$BASE_URL/day_man_053_31_1.mp4" \
-    "Jetson TX2 NX Deployment/Code/OTA/videos/day_man_053_31_1.mp4"
+    "edge/ota/videos/day_man_053_31_1.mp4"
 
-cp "Jetson TX2 NX Deployment/Code/OTA/videos/day_man_053_31_1.mp4" \
-   "Jetson TX2 NX Deployment/Code/APIGW-python-sdk-2.0.4/videos/" 2>/dev/null && \
+cp "edge/ota/videos/day_man_053_31_1.mp4" \
+   "edge/apigw/videos/" 2>/dev/null && \
    echo "[COPY] APIGW day_man" || true
 
 download "$BASE_URL/mtcnn_test_1.mp4" \
-    "Jetson TX2 NX Deployment/Code/OTA/mtcnn_landmarks/test/1.mp4"
+    "edge/ota/mtcnn_landmarks/test/1.mp4"
 
 echo ""
 echo "=== Audio ==="
 
 download "$BASE_URL/NWGYU.wav" \
-    "Jetson TX2 NX Deployment/Code/main/vuertsp-master/src/assets/audio/NWGYU.wav"
+    "edge/deepstream/vuertsp-master/src/assets/audio/NWGYU.wav"
 
 echo ""
 echo "=== Archives ==="
 
 download "$BASE_URL/vuertsp-master.zip" \
-    "Jetson TX2 NX Deployment/Code/main/vuertsp-master.zip"
+    "edge/deepstream/vuertsp-master.zip"
 
 download "$BASE_URL/vue.zip" \
-    "Jetson TX2 NX Deployment/Code/main/vuertsp-master/vue.zip"
+    "edge/deepstream/vuertsp-master/vue.zip"
 
 echo ""
 echo "=== Documents ==="
 
 download "$BASE_URL/presentation.pptx" \
-    "生产队的大萝卜-答辩定稿PPT.pptx"
+    "docs/presentation.pptx"
 
 download "$BASE_URL/technical_doc.pdf" \
-    "生产队的大萝卜-技术文档.pdf"
+    "docs/technical_report.pdf"
 
 echo ""
 echo "=== Other ==="
 
 download "$BASE_URL/Certificate.png" \
-    "Certificate.png"
+    "docs/certificate.png"
 
 download "$BASE_URL/tmp.npy" \
-    "Jetson TX2 NX Deployment/Code/main/tmp.npy"
+    "edge/deepstream/tmp.npy"
 
 download "$BASE_URL/chunk-vendors.466ac348.js.map" \
-    "Jetson TX2 NX Deployment/Code/dist/js/chunk-vendors.466ac348.js.map"
+    "edge/frontend/js/chunk-vendors.466ac348.js.map"
 
 download "$BASE_URL/chunk-vendors.13368598.js.map" \
-    "Jetson TX2 NX Deployment/Code/dist/js/chunk-vendors.13368598.js.map"
+    "edge/frontend/js/chunk-vendors.13368598.js.map"
 
 echo ""
 echo "=== Done ==="
