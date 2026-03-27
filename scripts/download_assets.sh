@@ -151,10 +151,10 @@ download "$BASE_URL/vue.zip" \
 echo ""
 echo "=== Documents ==="
 
-download "$BASE_URL/生产队的大萝卜-答辩定稿PPT.pptx" \
+download "$BASE_URL/presentation.pptx" \
     "生产队的大萝卜-答辩定稿PPT.pptx"
 
-download "$BASE_URL/生产队的大萝卜-技术文档.pdf" \
+download "$BASE_URL/technical_doc.pdf" \
     "生产队的大萝卜-技术文档.pdf"
 
 echo ""
