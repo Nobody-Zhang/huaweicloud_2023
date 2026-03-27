@@ -100,7 +100,7 @@ def get_mp4_num(log_dir, MP4_threshold):
     """
     读取日志文件中的视频文件个数
     """
-    MP4_count = 0
+    count = 0  # Fixed: was MP4_count, causing NameError since while loop used count
     while count < MP4_threshold:
         with open(log_dir) as f:
             count = len(f.readlines())

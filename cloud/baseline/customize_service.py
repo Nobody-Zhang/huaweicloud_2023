@@ -25,12 +25,12 @@ class fatigue_driving_detection(PTServingBaseService):
         self.model_name = model_name
         self.model_path = model_path
 
-        self.capture = 'test.mp4'
+        self.capture = None  # Fixed: set via tempfile in _preprocess to avoid race condition
 
         self.width = 1920
         self.height = 1080
         self.fps = 30
-        self.first = True
+        # Fixed: removed unused self.first = True
 
         self.standard_pose = [180, 40, 80]
         self.look_around_frame = 0
@@ -80,6 +80,9 @@ class fatigue_driving_detection(PTServingBaseService):
             for file_name, file_content in v.items():
                 try:
                     try:
+                        tmp = NamedTemporaryFile(suffix='.mp4', delete=False)  # Fixed: use tempfile to avoid race condition
+                        self.capture = tmp.name
+                        tmp.close()
                         with open(self.capture, 'wb') as f:
                             file_content_bytes = file_content.read()
                             f.write(file_content_bytes)
@@ -176,6 +179,8 @@ class fatigue_driving_detection(PTServingBaseService):
 
                         if mar > self.MOUTH_AR_THRESH:
                             self.mouth_open_frame += 1
+                        else:
+                            self.mouth_open_frame = 0  # Fixed: reset counter when mouth is closed
 #                         print(mar)
 
 #                         print(len(f.lms), f.euler)
@@ -205,10 +210,10 @@ class fatigue_driving_detection(PTServingBaseService):
                     self.failures = 0
                 else:
                     break
-            except Exception as e:
-                if e.__class__ == KeyboardInterrupt:
-                    print("Quitting")
-                    break
+            except KeyboardInterrupt:  # Fixed: KeyboardInterrupt is not a subclass of Exception; catch separately
+                print("Quitting")
+                break
+            except Exception:
                 traceback.print_exc()
                 self.failures += 1
                 if self.failures > 30:   # 失败超过30次就默认返回
@@ -220,5 +225,6 @@ class fatigue_driving_detection(PTServingBaseService):
         return result
 
     def _postprocess(self, data):
-        # os.remove(self.temp.name)
+        if self.capture and os.path.exists(self.capture):  # Fixed: clean up temp file
+            os.remove(self.capture)
         return data

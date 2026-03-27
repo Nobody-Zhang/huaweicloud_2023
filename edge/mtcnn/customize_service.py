@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 import warnings
 import os
+import tempfile
 from pathlib import Path
 import torch
 import torch.backends.cudnn as cudnn
@@ -414,7 +415,7 @@ class PTVisionService(PTServingBaseService):
         # 调用父类构造方法
         # super(PTVisionService, self).__init__(model_name, model_path)
         # 调用自定义函数加载模型
-        self.capture = 'test.jpg'
+        self.capture = None  # Fixed: set via tempfile in _preprocess to avoid race condition
         self.model_name = model_name
         self.model_path = model_path
         self.model = MTCNN_model()
@@ -434,6 +435,9 @@ class PTVisionService(PTServingBaseService):
             print(f"value:{value}")
             try:
                 try:
+                    tmp = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)  # Fixed: use tempfile to avoid race condition
+                    self.capture = tmp.name
+                    tmp.close()
                     file_content_bytes = base64.b64decode(value.encode("utf8"))
                     img_array = io.BytesIO(file_content_bytes)
                     img_array = cv2.imdecode(np.fromstring(img_array.read(), np.uint8), cv2.IMREAD_COLOR)
@@ -448,6 +452,8 @@ class PTVisionService(PTServingBaseService):
         return 'ok'
 
     def _postprocess(self, data):
+        if self.capture and os.path.exists(self.capture):  # Fixed: clean up temp file
+            os.remove(self.capture)
         return data
 
 # if __name__ == '__main__':

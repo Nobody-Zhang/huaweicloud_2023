@@ -42,7 +42,7 @@ def load_imgs(dataset, half, device):
 
 # write by llr
 # transform xyxy loacationn to xywh loacation, scale in (0, 1)
-def xyxy2xywh(xmin: int, ymin: int, xmax: int, ymax: int, wide: int, height: int) -> tuple:
+def xyxy2xywh_normalized(xmin: int, ymin: int, xmax: int, ymax: int, wide: int, height: int) -> tuple:  # Fixed: renamed to avoid shadowing utils.general.xyxy2xywh
     """
     tranform xyxy location to xywh location
 
@@ -107,7 +107,7 @@ class YOLO_Status:
         bboxes = dets
         for box in bboxes:  # 遍历每个box
             xyxy = tuple(box[:4])  # xyxy坐标
-            xywh = xyxy2xywh(*xyxy, wide, height)  # xywh坐标
+            xywh = xyxy2xywh_normalized(*xyxy, wide, height)  # xywh坐标
             conf = box[4]  # 可信度
             cls = box[5]  # 类别
             if cls == self.cls_["face"]:  # 正脸
@@ -336,6 +336,8 @@ def yolo_run(weights=ROOT / 'fine_tune_openvino_model/best.xml',  # model.pt pat
             if is_3:
                 return b_search(mid1, r1, mid2, r2, n / 2, iou_presice_b_search * 3 * 0.25, k, True)
             return b_search(mid1, r1, mid2, r2, n / 2, iou_presice_b_search * (mid2 - r1) / fps, k)
+
+        return [False]  # Fixed: defensive fallback for theoretically unreachable state
 
     def divide_and_conquer(l, r):
         # 分治算法，l和r表示的是左右的边界, [l, r]，且左右的状态和l - 0.5 * fps, r + 0.5 * fps的状态不一样

@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 import warnings
 import os
+import tempfile
 from pathlib import Path
 import torch
 import torch.backends.cudnn as cudnn
@@ -417,7 +418,7 @@ class PTVisionService(PTServingBaseService):
         # 调用父类构造方法
         # super(PTVisionService, self).__init__(model_name, model_path)
         # 调用自定义函数加载模型
-        self.capture = 'test.mp4'
+        self.capture = None  # Fixed: set via tempfile in _preprocess to avoid race condition
         self.model_name = model_name
         self.model_path = model_path
         self.model = MTCNN_model()
@@ -434,6 +435,9 @@ class PTVisionService(PTServingBaseService):
             for file_name, file_content in v.items():
                 try:
                     try:
+                        tmp = tempfile.NamedTemporaryFile(suffix='.mp4', delete=False)  # Fixed: use tempfile to avoid race condition
+                        self.capture = tmp.name
+                        tmp.close()
                         with open(self.capture, 'wb') as f:
                             file_content_bytes = file_content.read()
                             f.write(file_content_bytes)
@@ -441,12 +445,13 @@ class PTVisionService(PTServingBaseService):
                     except Exception:
                         return {"message": "There was an error loading the file"}
 
-                    # self.capture = self.temp.name  # Pass temp.name to VideoCapture()
                 except Exception:
                     return {"message": "There was an error processing the file"}
         return 'ok'
 
     def _postprocess(self, data):
+        if self.capture and os.path.exists(self.capture):  # Fixed: clean up temp file
+            os.remove(self.capture)
         return data
 
 # if __name__ == '__main__':
