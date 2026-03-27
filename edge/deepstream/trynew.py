@@ -3,6 +3,7 @@ import threading
 import asyncio
 import websockets
 import logging
+logger = logging.getLogger(__name__)
 import struct
 
 logging.basicConfig(level=logging.INFO)
@@ -21,17 +22,17 @@ def receiver(loop):
             if not int_data:
                 break
             int_value = struct.unpack('!I', int_data)[0]
-            print('Received:', int_value)
+            logger.info('Received: %s', int_value)
 
             if front_end_int_socket:
                 future = asyncio.run_coroutine_threadsafe(send_int_to_frontend(int_value), loop)
                 future.result()
     except Exception as e:
-        print(f"An exception occurred in receiver: {e}")
+        logger.error(f"An exception occurred in receiver: {e}")
 
 async def send_int_to_frontend(int_value):
     await front_end_int_socket.send(str(int_value))
-    print(f"Integer {int_value} sent to front end.")
+    logger.info(f"Integer {int_value} sent to front end.")
 
 async def int_stream(websocket, path):
     global front_end_int_socket, receiver_thread, event_loop, stop_receiver_flag
@@ -51,16 +52,20 @@ async def int_stream(websocket, path):
         while True:
             await asyncio.sleep(1)
     except websockets.ConnectionClosed:
-        print("WebSocket connection closed.")
+        logger.warning("WebSocket connection closed.")
         front_end_int_socket = None
 
 async def start_websocket_server():
     await websockets.serve(int_stream, "0.0.0.0", 7980)
-    print("WebSocket Server Started.")
+    logger.info("WebSocket Server Started.")
     while True:
         await asyncio.sleep(1)
 
 if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     s = socket.socket()
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) 
     host = 'localhost'
@@ -69,7 +74,7 @@ if __name__ == '__main__':
     s.listen(5)
 
     conn, addr = s.accept()
-    print("Connected by", addr)
+    logger.info("Connected by %s", addr)
 
     event_loop = asyncio.get_event_loop()
 

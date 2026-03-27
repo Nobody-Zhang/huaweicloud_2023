@@ -2,8 +2,15 @@
 
 import os
 import requests
+import logging
+
+logger = logging.getLogger(__name__)
 
 if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     # Config url, token and file path.
     url = os.environ.get("HUAWEICLOUD_MTCNN_URL", "")
     token = os.environ.get("HUAWEICLOUD_TOKEN", "")
@@ -18,6 +25,6 @@ if __name__ == '__main__':
     }
     resp = requests.post(url, headers=headers, files=files)
 
-    # Print result.
-    print(resp.status_code)
-    print(resp.text)
+    # Log result.
+    logger.debug("status_code: %s", resp.status_code)
+    logger.debug("response: %s", resp.text)

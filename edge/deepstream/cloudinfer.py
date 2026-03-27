@@ -2,6 +2,8 @@ import os
 import requests
 from apig_sdk import signer
 
+import logging
+logger = logging.getLogger(__name__)
 def cloud_infer(file_path = "tmp.mp4"):
     # Config url, ak, sk and file path.
     url = os.environ.get("HUAWEICLOUD_CLOUDINFER_URL", "")
@@ -24,7 +26,7 @@ def cloud_infer(file_path = "tmp.mp4"):
     resp = requests.request(request.method, request.scheme + "://" + request.host + request.uri, headers=request.headers, files=files)
 
     # # Print result
-    print(resp.status_code)
-    print(resp.text)
+    logger.info(resp.status_code)
+    logger.info(resp.text)
 
     return resp

@@ -1,10 +1,13 @@
 """ 
 this is the very file that connect to the server and receive the warning type and finnaly give an answer to the user
 """
+import logging
 import socket
 import threading
 from recognize_generate4 import VoiceInteraction,establish_record_connection
-import time 
+import time
+
+logger = logging.getLogger(__name__)
 # 创建VoiceInteraction对象
 vi = VoiceInteraction()
 warning_type = 0
@@ -27,22 +30,26 @@ host = 'localhost'
 port = 4332
 s.bind((host, port))
 s.listen(5)
-print("Waiting for connection..w.")
+logger.info("Waiting for connection...")
 conn, addr = s.accept()
-print("Connected by", addr)
+logger.info("Connected by %s", addr)
 
 def receive():
     global warning_type
     while True:
         wtype = conn.recv(4)
         warning_type = int.from_bytes(wtype, byteorder='big')
-        print(warning_type)
+        logger.debug('Received warning_type: %s', warning_type)
 
 def communicate():
-    print('start communicate thread')
+    logger.info('start communicate thread')
     vi.communicate()
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     record_socket_thread = threading.Thread(target=establish_record_connection)
     record_socket_thread.start()
     microphone_thread = threading.Thread(target=communicate)

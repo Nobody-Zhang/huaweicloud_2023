@@ -29,7 +29,8 @@ import sys
 import io
 from queue import Queue
 import threading
-from loguru import logger
+import logging
+logger = logging.getLogger(__name__)
 
 from cloudinfer import cloud_infer
 
@@ -206,7 +207,7 @@ def make_elm_or_print_err(factoryname, name, printedname, detail=""):
         Return the element  if successfully created, otherwise print
         to stderr and return None.
     """
-    print("Creating", printedname)
+    logger.info("Creating %s", printedname)
     elm = Gst.ElementFactory.make(factoryname, name)
     if not elm:
         sys.stderr.write("Unable to create " + printedname + " \n")
@@ -294,12 +295,12 @@ def tiler_sink_pad_buffer_probe(pad, info, u_data):
     conf_thresh = 0.5
     nms_thresh = 0.5
     label = get_label_names_from_file()
-    print(label)
+    logger.info(label)
     is_save_output = False
     # get the buffer of info argument
     gst_buffer = info.get_buffer()
     if not gst_buffer:
-        print("Unable to get GstBuffer ")
+        logger.error("Unable to get GstBuffer ")
         return
 
     # Retrieve batch metadata from the gst_buffer
@@ -309,7 +310,7 @@ def tiler_sink_pad_buffer_probe(pad, info, u_data):
 
     l_frame = batch_meta.frame_meta_list
 
-    print(time.time())
+    logger.debug("%s", time.time())
     while l_frame is not None:
         try:
             # Note that l_frame.data needs a cast to pyds.NvDsFrameMeta
@@ -321,7 +322,7 @@ def tiler_sink_pad_buffer_probe(pad, info, u_data):
         except StopIteration:
             break
         iter_obj = frame_meta.obj_meta_list
-        print("number_of_counts:", frame_meta.num_obj_meta)
+        logger.debug("number_of_counts: %s", frame_meta.num_obj_meta)
         n_frame = pyds.get_nvds_buf_surface(hash(gst_buffer), frame_meta.batch_id)
         # convert python array into numpy array format in the copy mode.
         frame_copy = np.array(n_frame, copy=True, order='C')
@@ -359,11 +360,6 @@ def tiler_sink_pad_buffer_probe(pad, info, u_data):
                 # if res == "OK":
                 #     pass
 #---------------------!!!!!!!!!!!!!!!!!补充端云协同!!!!!!!!!!!!!!!!!!!!!!---------------------------------
-            # print("class_id: ", class_id)
-            # print("top: ", top)
-            # print("left: ", left)
-            # print("width: ", width)
-            # print("height: ", height)
             # cropped_image = pic[int(top):int(top + height), int(left):int(left + width)]
             # cv2.imwrite(f"{class_id}_{time.time()}_{confidence}.jpg", cropped_image)
             try:
@@ -382,7 +378,7 @@ def queueToMP4():
     queue = frame_queue
     while queue.empty():
         continue
-    print("queue now not empty")
+    logger.debug("queue now not empty")
     frame = frame_queue.get()
     frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
     output_file = "tmp.mp4"
@@ -399,14 +395,14 @@ def queueToMP4():
 
     # 写入第一帧
     video_writer.write(frame)
-    print("now queue!")
+    logger.debug("now queue!")
     # 将队列中的每一帧写入输出视频
     q_siz = queue.qsize()
     for i in range(q_siz):
         frame = queue.get()
         frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
         video_writer.write(frame)
-    print("queue ended")
+    logger.debug("queue ended")
 
     # 释放资源
     video_writer.release()
@@ -422,9 +418,9 @@ def cloud_inference():
         # continue
         file_name = queueToMP4()
         cnt_for_cloud += 1
-        print("cnt_for_cloud:", cnt_for_cloud)
+        logger.debug("cnt_for_cloud: %s", cnt_for_cloud)
         cloud_inference_result = cloud_infer(file_name)
-        print("cloud_inference_result:", cloud_inference_result)
+        logger.debug("cloud_inference_result: %s", cloud_inference_result)
 
 def cb_newpad(decodebin, decoder_src_pad, data):
     logger.info("In cb_newpad\n")
@@ -446,7 +442,7 @@ def cb_newpad(decodebin, decoder_src_pad, data):
             # Get the source bin ghost pad
             bin_ghost_pad = source_bin.get_static_pad("src")
             if not bin_ghost_pad.set_target(decoder_src_pad):
-                logger.opt(colors=True).warning("WARNING: Failed to link decoder src pad to source bin ghost pad\n")
+                logger.warning("WARNING: Failed to link decoder src pad to source bin ghost pad\n")
         else:
             logger.error("ERROR: Decodebin did not pick nvidia decoder plugin.\n")
 
@@ -468,14 +464,14 @@ def create_source_bin(idx, uri):
     #logger.info(f"source_name: {bin_name}")
     nbin = Gst.Bin.new(bin_name)
     if not nbin:
-        logger.opt(colors=True).warning("WARNING: Unable to create source bin \n")
+        logger.warning("WARNING: Unable to create source bin \n")
 
     # Source element for reading from the uri.
     # We will use decodebin and let it figure out the container format of the
     # stream and the codec and plug the appropriate demux and decode plugins.
     uri_decode_bin = Gst.ElementFactory.make("uridecodebin", "uri-decode-bin")
     if not uri_decode_bin:
-        logger.opt(colors=True).warning("WARNING: Unable to create uri decode bin \n")
+        logger.warning("WARNING: Unable to create uri decode bin \n")
     # We set the input uri to the source element
     uri_decode_bin.set_property("uri", uri)
     # Connect to the "pad-added" signal of the decodebin which generates a
@@ -491,7 +487,7 @@ def create_source_bin(idx, uri):
     Gst.Bin.add(nbin, uri_decode_bin)
     bin_pad = nbin.add_pad(Gst.GhostPad.new_no_target("src", Gst.PadDirection.SRC))
     if not bin_pad:
-        logger.opt(colors=True).warning("WARNING: Failed to add ghost pad in source bin \n")
+        logger.warning("WARNING: Failed to add ghost pad in source bin \n")
         return None
     return nbin
 
@@ -530,7 +526,7 @@ def main(args):
 
     # Create gstreamer elements
     # Create Pipeline element that will form a connection of other elements
-    print("Creating Pipeline \n ")
+    logger.info("Creating Pipeline ")
     pipeline = Gst.Pipeline()
 
     if not pipeline:
@@ -550,17 +546,17 @@ def main(args):
     queue1 = make_elm_or_print_err("queue", "queue1", "Queue1")
     queue2 = make_elm_or_print_err("queue", "queue2", "Queue2")
 
-    print("Creating nvvidconv1 \n ")
+    logger.info("Creating nvvidconv1 ")
     nvvidconv1 = Gst.ElementFactory.make("nvvideoconvert", "convertor1")
     if not nvvidconv1:
         sys.stderr.write(" Unable to create nvvidconv1 \n")
-    print("Creating filter1 \n ")
+    logger.info("Creating filter1 ")
     caps1 = Gst.Caps.from_string("video/x-raw(memory:NVMM), format=RGBA")
     filter1 = Gst.ElementFactory.make("capsfilter", "filter1")
     if not filter1:
         sys.stderr.write(" Unable to get the caps filter1 \n")
     filter1.set_property("caps", caps1)
-    print("Creating tiler \n ")
+    logger.info("Creating tiler ")
     tiler = Gst.ElementFactory.make("nvmultistreamtiler", "nvtiler")
     if not tiler:
         sys.stderr.write(" Unable to create tiler \n")
@@ -622,7 +618,7 @@ def main(args):
 
         source_bin = create_source_bin(idx, uri_name)
         if not source_bin:
-            logger.opt(colors=True).warning("Unable to create source bin \n")
+            logger.warning("Unable to create source bin \n")
         padname = "sink_%s" % idx
 
         pipeline.add(source_bin)
@@ -715,7 +711,7 @@ def main(args):
 
     # start play back and listen to events
     # 开启pipeline
-    print("Starting pipeline \n")
+    logger.info("Starting pipeline ")
     pipeline.set_state(Gst.State.PLAYING)
     # video_thread = threading.Thread(target=cloud_inference)
 
@@ -735,11 +731,19 @@ def main(args):
     # cleanup
     pipeline.set_state(Gst.State.NULL)
     EOS_MESSAGE = True
-    print("Waiting for video thread to finish...")
+    logger.info("Waiting for video thread to finish...")
     # video_thread.join()
-    print("Video thread finished.")
+    logger.info("Video thread finished.")
     # video_writer.release()
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     sys.exit(main(sys.argv))

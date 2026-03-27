@@ -37,6 +37,8 @@ import platform
 import sys
 
 
+import logging
+logger = logging.getLogger(__name__)
 def is_aarch64():
     return platform.uname()[4] == 'aarch64'
 
@@ -73,7 +75,7 @@ def bus_call(bus, message, loop):
         old_state, new_state, pending_state = message.parse_state_changed()
         if message.src.get_name() == "fps":
             if new_state == Gst.State.PLAYING:
-                print("Processing FPS:", get_fps_from_element(message.src))
+                logger.info("Processing FPS: %s", get_fps_from_element(message.src))
     return True
 
 
@@ -213,7 +215,7 @@ def make_elm_or_print_err(factoryname, name, printedname, detail=""):
         Return the element  if successfully created, otherwise print
         to stderr and return None.
     """
-    print("Creating", printedname)
+    logger.info("Creating %s", printedname)
     elm = Gst.ElementFactory.make(factoryname, name)
     if not elm:
         sys.stderr.write("Unable to create " + printedname + " \n")
@@ -316,7 +318,7 @@ def pgie_src_pad_buffer_probe(pad, info, u_data):
     # get the buffer of info argument
     gst_buffer = info.get_buffer()
     if not gst_buffer:
-        print("Unable to get GstBuffer ")
+        logger.error("Unable to get GstBuffer ")
         return
 
     # Retrieve batch metadata from the gst_buffer
@@ -332,7 +334,7 @@ def pgie_src_pad_buffer_probe(pad, info, u_data):
     # logger.info(f"l_fram.max_frames_in_batch: {batch_meta.max_frames_in_batch}")
     # logger.info(f"l_frame: {l_frame}")
     # label_names = self.get_label_names_from_file()
-    print(time.time())
+    logger.debug("%s", time.time())
     while l_frame is not None:
         try:
             # Note that l_frame.data needs a cast to pyds.NvDsFrameMeta
@@ -344,7 +346,7 @@ def pgie_src_pad_buffer_probe(pad, info, u_data):
         except StopIteration:
             break
         iter_obj = frame_meta.obj_meta_list
-        print("number_of_counts:", frame_meta.num_obj_meta)
+        logger.debug("number_of_counts: %s", frame_meta.num_obj_meta)
         while iter_obj is not None:
             # 从GList对象中获取当前节点的数据
             obj_meta = pyds.NvDsObjectMeta.cast(iter_obj.data)
@@ -357,15 +359,6 @@ def pgie_src_pad_buffer_probe(pad, info, u_data):
             width = obj_meta.rect_params.width
             height = obj_meta.rect_params.height
             confidence = obj_meta.confidence
-            # print("class_id:", class_id)
-            # print("left:", left)
-            # print("top", top)
-            # print("width", width)
-            # print("height:", height)
-            # print("confidence:", confidence)
-            # print(object_id, left, top, width, height, confidence)
-            # print(obj_meta)
-            # print(class_id)
             try:
                 iter_obj = iter_obj.next
             except StopIteration:
@@ -383,7 +376,7 @@ def pgie_src_pad_buffer_probe(pad, info, u_data):
 # # 创建并设置Pad Probe函数，用于动态切换流
 
 def pad_probe_buf(pad, info, pipeline):
-    print("checkpoint 1")
+    logger.debug("checkpoint 1")
     
     is_network_connected = check_network_status()
 
@@ -398,7 +391,7 @@ def pad_probe_buf(pad, info, pipeline):
         # pad.link(fakesink.get_static_pad("sink"))
         pipeline.set_state(Gst.State.NULL)
         GLib.idle_add(unlink_and_rebuild_pipeline,pipeline)
-    print("checkpoint 2")
+    logger.debug("checkpoint 2")
     return Gst.PadProbeReturn.OK
 
 def unlink_and_rebuild_pipeline(pipeline):
@@ -410,13 +403,12 @@ def unlink_and_rebuild_pipeline(pipeline):
     buffer.link(nvvidconv)
     nvvidconv.link(sink)
     pipeline.set_state(Gst.State.PLAYING)
-    print('网络不畅，重建管道！')
+    logger.info('网络不畅，重建管道！')
 
 # ckt = 0
 # def pad_probe_nvvidconv(pad, info, pipeline):
 #     global ckt
 #     ckt += 1
-#     print("pad_probe_nvvidconv: ", ckt)
 #     return Gst.PadProbeReturn.OK
 
 
@@ -434,7 +426,7 @@ def main(args):
 
     # Create gstreamer elements
     # Create Pipeline element that will form a connection of other elements
-    print("Creating Pipeline \n ")
+    logger.info("Creating Pipeline ")
     pipeline = Gst.Pipeline()
 
     if not pipeline:
@@ -500,7 +492,7 @@ def main(args):
     sink.set_property("sync", 0)
     sink.set_property("async", 0)
 
-    print("Playing file %s " % args[1])
+    logger.info("Playing file %s " % args[1])
     source.set_property("location", args[1])
     streammux.set_property("width", IMAGE_WIDTH)
     streammux.set_property("height", IMAGE_HEIGHT)
@@ -518,7 +510,7 @@ def main(args):
     pgiesrcpad.add_probe(Gst.PadProbeType.BUFFER, pgie_src_pad_buffer_probe, 0)
 
 
-    print("Adding elements to Pipeline \n")
+    logger.info("Adding elements to Pipeline ")
     # 从文件中读取h264流
     pipeline.add(source)
     # 从h264流中解析出h264数据（解码器）
@@ -556,7 +548,7 @@ def main(args):
     # we link the elements together
     # file-source -> h264-parser -> nvh264-decoder ->
     # nvinfer -> nvvidconv -> nvosd -> video-renderer
-    print("Linking elements in the Pipeline \n")
+    logger.info("Linking elements in the Pipeline ")
     source.link(h264parser)
     h264parser.link(decoder)
 
@@ -596,19 +588,26 @@ def main(args):
     bus.connect("message", bus_call, loop)  # 连接信号处理函数
 
     # 开启pipeline
-    print("Starting pipeline \n")
+    logger.info("Starting pipeline ")
     pipeline.set_state(Gst.State.PLAYING)
     try:
         loop.run()
-        # print("Loop end")
     except:
         pass
     # cleanup
-    print("Gst-State-NULL")
+    logger.info("Gst-State-NULL")
     pipeline.set_state(Gst.State.NULL)
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     sys.exit(main(sys.argv))
-    print("End")
+    logger.info("End")
 

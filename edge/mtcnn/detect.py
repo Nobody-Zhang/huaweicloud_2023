@@ -1,11 +1,14 @@
 import argparse
 import cv2
 import torch
+import logging
 
 from utils.utils import generate_bbox, py_nms, convert_to_square
 from utils.utils import pad, calibrate_box, processed_image
 from utils.visualization import  *
 from utils.cal import cal_euler_angles
+
+logger = logging.getLogger(__name__)
 
 '''
 参数解析
@@ -327,43 +330,13 @@ def detect_video(video_path,output_path):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     # 预测图片获取人脸的box和关键点
     for filename in os.listdir(test_image_rootpath):
         if filename.endswith(".jpg") or filename.endswith(".png"):
-            # '''
-            # 只利用Onet模型进行最后的关键点预测
-            # '''
-            # # 构建图像路径
-            # image_path = os.path.join(test_image_rootpath, filename)
-            # # 构建标签路径-和图像同名的.txt文件
-            # label_path = os.path.join(test_label_rootpath, filename.replace(".jpg", ".txt").replace(".png", ".txt"))
-            # # 如果标签文件不存在，则跳过
-            # if not os.path.exists(label_path):
-            #     continue
-            # # 读取图像
-            # image = cv2.imread(image_path)
-            # # 读取标签 0 501.9997440000001 7.00008 678.0 226.99991999999997
-            # with open(label_path, "r") as f:
-            #     label = f.readline()
-            #     label = label.split(" ")
-            #     label = [float(x) for x in label]
-            #     # print(label)
-            #     x1 = int(label[1])
-            #     y1 = int(label[2])
-            #     x2 = int(label[3])
-            #     y2 = int(label[4])
-            # boxes_c = [x1, y1, x2, y2, 1]
-            #
-            # boxes_c = np.array(boxes_c)
-            # boxes_c = boxes_c.reshape(1, 5)
-            # print("boxes",boxes_c)
-            # boxes_c, landmarks = infer_image_with_Onet(image_path, boxes_c)
-            # # 把关键画出来
-            # if boxes_c is not None:
-            #     draw_face(image_path=image_path, boxes_c=boxes_c, landmarks=landmarks)
-            #     print("image_name:{}".format(filename))
-            # else:
-            #     print("image_name:{} not have face".format(filename))
             '''
                 对图片进行推理
             '''
@@ -372,11 +345,11 @@ if __name__ == '__main__':
             # 把关键画出来
             if boxes_c is not None:
                 draw_face(image_path=image_path, boxes_c=boxes_c, landmarks=landmarks,output_path=output_dir)
-                print("image_name:{}".format(filename))
+                logger.info("image_name: %s", filename)
             else:
-                print("image_name:{} not have face".format(filename))
+                logger.info("image_name: %s not have face", filename)
         elif(filename.endswith(".mp4")):
             video_path = os.path.join(test_image_rootpath, filename)
             output_path = os.path.join(output_dir, filename)
             detect_video(video_path, output_path)
-            print("video_name:{}".format(filename))
+            logger.info("video_name: %s", filename)

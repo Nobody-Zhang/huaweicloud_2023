@@ -4,7 +4,8 @@ import time
 import cv2
 import argparse
 import sys
-from loguru import logger
+import logging
+logger = logging.getLogger(__name__)
 import gi
 gi.require_version('Gst', '1.0')
 gi.require_version('GstRtspServer', '1.0')
@@ -39,14 +40,14 @@ def main(args):
 
     # Create gstreamer elements
     # Create Pipeline element that will form a connection of other elements
-    print("Creating Pipeline \n ")
+    logger.info("Creating Pipeline")
     pipeline = Gst.Pipeline()
 
     if not pipeline:
         sys.stderr.write(" Unable to create Pipeline \n")
 
     # Source element for reading from the file
-    print("Creating Source \n ")
+    logger.info("Creating Source")
     source = Gst.ElementFactory.make("nvarguscamerasrc", "src-elem")
     if not source:
         sys.stderr.write(" Unable to create Source \n")
@@ -61,7 +62,7 @@ def main(args):
 
     # Make the encoder
     encoder = Gst.ElementFactory.make("nvv4l2h264enc", "encoder")
-    print("Creating H264 Encoder")
+    logger.info("Creating H264 Encoder")
     if not encoder:
         sys.stderr.write(" Unable to create encoder")
     encoder.set_property('maxperf-enable',1)
@@ -70,7 +71,7 @@ def main(args):
         encoder.set_property('insert-sps-pps', 1)
     # Make the payload-encode video into RTP packets
     rtppay = Gst.ElementFactory.make("rtph264pay", "rtppay")
-    print("Creating H264 rtppay")
+    logger.info("Creating H264 rtppay")
     if not rtppay:
         sys.stderr.write(" Unable to create rtppay")
     # Make the UDP sink
@@ -86,12 +87,12 @@ def main(args):
 
 
 
-    print("Creating EGLSink \n")
+    logger.info("Creating EGLSink")
     source.set_property('bufapi-version', True)
 
     #sink.set_property('sync', False)
 
-    print("Adding elements to Pipeline \n")
+    logger.info("Adding elements to Pipeline")
 
     pipeline.add(source)
     pipeline.add(nvvidconv_postosd)
@@ -102,7 +103,7 @@ def main(args):
 
 
     # we link the elements together
-    print("Linking elements in the Pipeline \n")
+    logger.info("Linking elements in the Pipeline")
     source.link(nvvidconv_postosd)
     nvvidconv_postosd.link(caps)
     caps.link(encoder)
@@ -127,11 +128,11 @@ def main(args):
     factory.set_launch( "( udpsrc name=pay0 port=%d buffer-size=524288 caps=\"application/x-rtp, media=video, clock-rate=90000, encoding-name=(string)%s, payload=96 \" )" % (updsink_port_num, "H264"))
     factory.set_shared(True)
     server.get_mount_points().add_factory("/test", factory)
-    print("\n *** DeepStream: Launched RTSP Streaming at rtsp://localhost:%d/test ***\n\n" % rtsp_port_num)
+    logger.info("*** DeepStream: Launched RTSP Streaming at rtsp://localhost:%d/test ***" % rtsp_port_num)
 
 
     # start play back and listen to events
-    print("Starting pipeline \n")
+    logger.info("Starting pipeline")
     pipeline.set_state(Gst.State.PLAYING)
     try:
         loop.run()
@@ -140,4 +141,12 @@ def main(args):
     # cleanup
     pipeline.set_state(Gst.State.NULL)
 if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     sys.exit(main(sys.argv))

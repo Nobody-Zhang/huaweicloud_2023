@@ -4,6 +4,8 @@ gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GObject
 
 # Initialize GStreamer
+import logging
+logger = logging.getLogger(__name__)
 Gst.init(None)
 
 # Create an empty pipeline
@@ -39,7 +41,7 @@ queue.link(sink)
 def on_buffer(pad, info, udata):
     gst_buffer = info.get_buffer()
     if not gst_buffer:
-        print("Unable to get GstBuffer ")
+        logger.error("Unable to get GstBuffer ")
         return Gst.PadProbeReturn.PASS
 
     # Get the current time. If it has been more than 1 second since the last save, save the current frame as a video

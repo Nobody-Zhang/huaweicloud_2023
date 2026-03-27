@@ -11,6 +11,9 @@ import time
 from typing import Tuple
 
 from obs import DeleteObjectsRequest, Object
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 sig = signer.Signer()
@@ -82,9 +85,9 @@ def upload_file_to_obs(bucket_name: str, local_file_path: str, obs_file_name: st
     try:
         # upload train data
         obs_client.putFile(bucket_name, obs_file_name, local_file_path)
-        print("upload success!")
+        logger.info("upload success!")
     except Exception as e:
-        print("upload failed: ", e)
+        logger.error("upload failed: %s", e)
 
 
 def check_job_status(job_id: str) -> bool:
@@ -108,7 +111,7 @@ def check_job_status(job_id: str) -> bool:
     response = requests.request(r.method, r.scheme + "://" + r.host + r.uri, headers=r.headers, data=r.body)
     resp_json = response.json()
     status = resp_json["status"]["secondary_phase"]
-    print("training job status: "+status)
+    logger.info("training job status: %s", status)
     if status == "Completed":
         return True
     return False
@@ -134,7 +137,7 @@ def create_training_job() -> Tuple[int, str]:
     r.body = payload
     sig.Sign(r)
     resp = requests.request(r.method, r.scheme + "://" + r.host + r.uri, headers=r.headers, data=r.body)
-    print(resp)
+    logger.debug(resp)
     resp_json = resp.json()
     job_id = resp_json["metadata"]["id"]
     status_code = resp.status_code
@@ -156,7 +159,7 @@ def get_mp4_num(log_dir: str, MP4_threshold: int) -> None:
     while count < MP4_threshold:
         with open(log_dir) as f:
             count = len(f.readlines())
-            print("The num of MP4 need to upload is" + str(count))
+            logger.info("The num of MP4 need to upload is %s", count)
             time.sleep(30)
 
 def ota() -> None:
@@ -173,36 +176,38 @@ def ota() -> None:
     """
     # 读取文件
     get_mp4_num(log_dir, MP4_threshold)
-    print("start online training")
+    logger.info("start online training")
     obs_client.putContent(bucket_name, upload_dir, '')
-    print("start upload weight...")
+    logger.info("start upload weight...")
     upload_file_to_obs(bucket_name,"./yolov5s.pt","yoloV5/yolov5/yolov5s.pt")
-    print("start upload dataset...")
+    logger.info("start upload dataset...")
     upload_file_to_obs(bucket_name,"./videos",upload_dir[:-1])
 
-    print("start creating train job...")
+    logger.info("start creating train job...")
     status,job_id = create_training_job()
     if status != 201:
-        print("create job error!")
+        logger.error("create job error!")
         exit()
-    print("Training job created, job_id: "+job_id)
-    print("Training statue will be checked every 30 senconds...")
+    logger.info("Training job created, job_id: %s", job_id)
+    logger.info("Training status will be checked every 30 seconds...")
     while check_job_status(job_id)==False:
         time.sleep(30)
     #从OBS下载权重到本地
-    print("Training job finished.")
+    logger.info("Training job finished.")
     obs_client.getObject(bucket_name, "yoloV5/output/weights/best.pt", downloadPath='./yolov5s.pt')
     obs_client.getObject(bucket_name, "yoloV5/output/weights/best.onnx", downloadPath='./best.onnx')
-    print("weight file downloaded.")
+    logger.info("weight file downloaded.")
 
     #删除数据集目录
     resp = obs_client.listObjects(bucket_name, prefix=upload_dir)
     keys = []
     for content in resp.body.contents:
         keys.append(Object(key=content.key))
-        # print('\t' + content.key + ' etag[' + content.etag + ']')
-    # print(keys)
     resp = obs_client.deleteObjects(bucket_name, DeleteObjectsRequest(False, keys))
 
 if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     ota()

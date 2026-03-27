@@ -2,20 +2,22 @@ import gi
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GLib
 
+import logging
+logger = logging.getLogger(__name__)
 def on_gst_message(bus, message, loop):
     mtype = message.type
     if mtype == Gst.MessageType.ERROR:
         err, debug = message.parse_error()
-        print("Error: %s" % err, debug)
+        logger.error("Error: %s: %s", err, debug)
         loop.quit()
     elif mtype == Gst.MessageType.EOS:
-        print("End of stream")
+        logger.info("End of stream")
         loop.quit()
     elif mtype == Gst.MessageType.ELEMENT:
         struct = message.get_structure()
         if struct.get_name() == 'splitmuxsink':
             filename = struct.get_string('location')
-            print('New File:', filename)
+            logger.info('New File: %s', filename)
     return True
 
 def main():
@@ -65,4 +67,12 @@ def main():
         pipeline.set_state(Gst.State.NULL)
 
 if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     main()

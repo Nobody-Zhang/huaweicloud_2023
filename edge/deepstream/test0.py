@@ -36,6 +36,8 @@ from gi.repository import GObject, Gst, GLib
 import platform
 import sys
 
+import logging
+logger = logging.getLogger(__name__)
 queue1 = None
 queue2 = None
 fakesink1 = None
@@ -207,7 +209,7 @@ def make_elm_or_print_err(factoryname, name, printedname, detail=""):
         Return the element  if successfully created, otherwise print
         to stderr and return None.
     """
-    print("Creating", printedname)
+    logger.info("Creating %s", printedname)
     elm = Gst.ElementFactory.make(factoryname, name)
     if not elm:
         sys.stderr.write("Unable to create " + printedname + " \n")
@@ -287,11 +289,10 @@ def queue1_src_pad_buffer_probe(pad, info, u_data):
     ct += 1
     if ct % 5 == 0:
         time.sleep(1)
-    print("now in queue1_src_pad_buffer_probe", ct)
+    logger.debug("now in queue1_src_pad_buffer_probe %s", ct)
     return Gst.PadProbeReturn.OK
 
 def queue2_src_pad_buffer_probe(pad, info, u_data):
-    # print("now in queue2_src_pad_buffer_probe")
     return Gst.PadProbeReturn.OK
 
 
@@ -310,7 +311,7 @@ def pgie_src_pad_buffer_probe(pad, info, u_data):
     # get the buffer of info argument
     gst_buffer = info.get_buffer()
     if not gst_buffer:
-        print("Unable to get GstBuffer ")
+        logger.error("Unable to get GstBuffer ")
         return
 
     # Retrieve batch metadata from the gst_buffer
@@ -320,7 +321,7 @@ def pgie_src_pad_buffer_probe(pad, info, u_data):
 
     l_frame = batch_meta.frame_meta_list
 
-    print(time.time())
+    logger.debug("%s", time.time())
     while l_frame is not None:
         try:
             # Note that l_frame.data needs a cast to pyds.NvDsFrameMeta
@@ -332,7 +333,7 @@ def pgie_src_pad_buffer_probe(pad, info, u_data):
         except StopIteration:
             break
         iter_obj = frame_meta.obj_meta_list
-        print("number_of_counts:", frame_meta.num_obj_meta)
+        logger.debug("number_of_counts: %s", frame_meta.num_obj_meta)
         while iter_obj is not None:
             # 从GList对象中获取当前节点的数据
             obj_meta = pyds.NvDsObjectMeta.cast(iter_obj.data)
@@ -345,15 +346,6 @@ def pgie_src_pad_buffer_probe(pad, info, u_data):
             width = obj_meta.rect_params.width
             height = obj_meta.rect_params.height
             confidence = obj_meta.confidence
-            # print("class_id:", class_id)
-            # print("left:", left)
-            # print("top", top)
-            # print("width", width)
-            # print("height:", height)
-            # print("confidence:", confidence)
-            # print(object_id, left, top, width, height, confidence)
-            # print(obj_meta)
-            # print(class_id)
             try:
                 iter_obj = iter_obj.next
             except StopIteration:
@@ -392,7 +384,7 @@ def pad_probe_cb(pad, info, pipeline):
     # 根据条件选择分流方案
     if is_network_connected and fakesink is not None:
         # 切换到带网络连接的流，当前流的方案为：pgie -> fakesink
-        print("切换到带网络连接的流", countt)
+        logger.info("切换到带网络连接的流 %s", countt)
         # pgie.unlink(fakesink)
         pgie.link(nvvidconv)
 
@@ -400,12 +392,12 @@ def pad_probe_cb(pad, info, pipeline):
 
     elif not is_network_connected and nvvidconv is not None:
         # 当前没有网络连接，且pipeline在带网络连接的流上，切换到不带网络连接的流
-        print("切换到不带网络连接的流", countt)
+        logger.info("切换到不带网络连接的流 %s", countt)
         # pgie.unlink(nvvidconv)
         pgie.link(fakesink)
         # pipeline.add(fakesink)
     else:
-        print("当前流不需要切换", countt)
+        logger.info("当前流不需要切换 %s", countt)
 
     # 启动新的流
     pipeline.set_state(Gst.State.PLAYING)
@@ -415,8 +407,8 @@ def pad_probe_cb(pad, info, pipeline):
 def event_probe_cb(pad, info, loop):
     global cur_effect, pipeline, next_effect
     pad.remove_probe(info.id)
-    print('event probe cb')
-    print("before changing")
+    logger.info('event probe cb')
+    logger.info("before changing")
     conv_before = pipeline.get_by_name('buffer')
     conv_after = pipeline.get_by_name('fakesink')
 
@@ -431,7 +423,7 @@ def event_probe_cb(pad, info, loop):
     next_effect = tmp
 
     next_effect.set_state(Gst.State.PLAYING)
-    print('Changed')
+    logger.info('Changed')
 
     return Gst.PadProbeReturn.DROP
 
@@ -514,7 +506,7 @@ def main(args):
 
     # Create gstreamer elements
     # Create Pipeline element that will form a connection of other elements
-    print("Creating Pipeline \n ")
+    logger.info("Creating Pipeline ")
     pipeline = Gst.Pipeline()
 
     if not pipeline:
@@ -547,7 +539,7 @@ def main(args):
     # fakesink 用来接收前面的数据，作为最后的link，不做任何处理，不能删掉
     fakesink = make_elm_or_print_err("fakesink", "fakesink", "fakesink")
 
-    print("Playing file %s " % args[1])
+    logger.info("Playing file %s " % args[1])
     source.set_property("location", args[1])
     streammux.set_property("width", IMAGE_WIDTH)
     streammux.set_property("height", IMAGE_HEIGHT)
@@ -557,7 +549,7 @@ def main(args):
     # .txt文件中配置了模型的路径，以及模型的参数
     pgie.set_property("config-file-path", "config_infer_primary_yoloV5.txt")
 
-    print("Adding elements to Pipeline \n")
+    logger.info("Adding elements to Pipeline ")
     pipeline.add(source)
     pipeline.add(h264parser)
     pipeline.add(decoder)
@@ -568,7 +560,7 @@ def main(args):
     pipeline.add(queue2)
     pipeline.add(fakesink)
 
-    print("Linking elements in the Pipeline \n")
+    logger.info("Linking elements in the Pipeline ")
     source.link(h264parser)
     h264parser.link(decoder)
 
@@ -604,7 +596,7 @@ def main(args):
     GObject.timeout_add(1000, check_network)
     # GLib.timeout_add_seconds(0.1, timeout_cb, loop)
 
-    print("Starting pipeline \n")
+    logger.info("Starting pipeline ")
     pipeline.set_state(Gst.State.PLAYING)
     try:
         loop.run()
@@ -615,4 +607,12 @@ def main(args):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     sys.exit(main(sys.argv))

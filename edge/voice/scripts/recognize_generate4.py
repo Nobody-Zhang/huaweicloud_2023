@@ -23,12 +23,15 @@ from huaweicloud_sis.bean.sis_config import SisConfig
 from huaweicloud_sis.exception.exceptions import ClientException
 from huaweicloud_sis.exception.exceptions import ServerException
 import json
+import logging
 import threading
 import requests
 from pydub import AudioSegment
 from pydub.playback import play
 import speech_recognition as sr
 import socket
+
+logger = logging.getLogger(__name__)
 
 record_socket = None
 def establish_record_connection():
@@ -37,10 +40,10 @@ def establish_record_connection():
         try:
             record_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             record_socket.connect(('localhost', 5333))
-            print("Connected to localhost:4333\n\n\n\n")
+            logger.info("Connected to localhost:5333")
             break
         except ConnectionRefusedError:
-            print("Connection refused. Retrying in 1 second.")
+            logger.warning("Connection refused. Retrying in 1 second.")
             time.sleep(1)
 
 
@@ -52,7 +55,7 @@ class SARSCallBack(RasrCallBack):
 
     def on_open(self):
         """ websocket连接成功会回调此函数 """
-        print('websocket connect success')
+        logger.info('websocket connect success')
 
     def on_start(self, message):
         """
@@ -60,7 +63,7 @@ class SARSCallBack(RasrCallBack):
         :param message: 传入信息
         :return: -
         """
-        print('webscoket start to recognize, %s' % message)
+        logger.info('websocket start to recognize, %s', message)
 
     def on_response(self, message):
         """
@@ -68,7 +71,7 @@ class SARSCallBack(RasrCallBack):
         :param message: json格式
         :return: -
         """
-        print(json.dumps(message, indent=2, ensure_ascii=False))
+        logger.debug(json.dumps(message, indent=2, ensure_ascii=False))
         self.response_data = json.dumps(message, indent=2, ensure_ascii=False)
 
     def on_end(self, message):
@@ -77,11 +80,11 @@ class SARSCallBack(RasrCallBack):
         :param message: 传入信息
         :return: -
         """
-        print('websocket is ended, %s' % message)
+        logger.info('websocket is ended, %s', message)
 
     def on_close(self):
         """ websocket关闭会回调此函数 """
-        print('websocket is closed')
+        logger.info('websocket is closed')
 
     def on_error(self, error):
         """
@@ -89,7 +92,7 @@ class SARSCallBack(RasrCallBack):
         :param error: 错误信息
         :return: -
         """
-        print('websocket meets error, the error is %s' % error)
+        logger.error('websocket meets error, the error is %s', error)
 
     def on_event(self, event):
         """
@@ -97,7 +100,7 @@ class SARSCallBack(RasrCallBack):
         :param event: 事件名称
         :return: -
         """
-        print('receive event %s' % event)
+        logger.debug('receive event %s', event)
 
     def get_response_data(self):
         return self.response_data
@@ -107,7 +110,7 @@ def close_websocket(client):
     try:
         client.close()
     except Exception as e:
-        print('Error closing websocket:', e)
+        logger.error('Error closing websocket: %s', e)
 
 def generate_random_uint64():
     # 生成一个无符号64位整数
@@ -129,12 +132,12 @@ def qianwen(input_question: str):
     # otherwise indicate request is failed, you can get error code
     # and message from code and message.
     if resp.status_code == HTTPStatus.OK:
-        print(resp.output)  # The output text
-        print(resp.usage)  # The usage information
+        logger.info('Qianwen output: %s', resp.output)
+        logger.debug('Qianwen usage: %s', resp.usage)
         return resp.output.get("text")
     else:
-        print(resp.code)  # The error code.
-        print(resp.message)  # The error message.
+        logger.error('Qianwen error code: %s', resp.code)
+        logger.error('Qianwen error message: %s', resp.message)
         return None
 
 class VoiceInteraction:
@@ -170,7 +173,7 @@ class VoiceInteraction:
         try:
             client.close()
         except Exception as e:
-            print('Error closing websocket:', e)
+            logger.error('Error closing websocket: %s', e)
 
     def SASR(self, audio,
              audio_format='pcm16k16bit',
@@ -216,7 +219,7 @@ class VoiceInteraction:
             # if it is not a string ,we just need to send it
             sasr_websocket_client.send_end()
         except Exception as e:
-            print('sasr websocket error', e)
+            logger.error('sasr websocket error: %s', e)
         finally:
             # step5 关闭客户端，使用完毕后一定要关闭，否则服务端20s内没收到数据会报错并主动断开。
             close_thread = threading.Thread(target=self.close_websocket, args=(sasr_websocket_client,))
@@ -256,7 +259,7 @@ class VoiceInteraction:
             result_text = " ".join(text_list)
             return result_text
         else:
-            print('request failed with status code:', response.status_code)
+            logger.error('request failed with status code: %s', response.status_code)
             return None
 
     def TTSC(self, given_text, temp_path='./temp.wav', property='chinese_huaxiaoru_common', audio_format='wav',
@@ -295,7 +298,6 @@ class VoiceInteraction:
         ttsc_request.set_saved_path(temp_path)
         # step3 发送请求，返回结果。如果设置保存，可在指定路径里查看保存的音频。
         result = ttsc_client.get_ttsc_response(ttsc_request)
-        # print(json.dumps(result, indent=2, ensure_ascii=False))
         # 使用AudioSegment不正确无法在板子上跑
         song = AudioSegment.from_wav(temp_path)
         play(song)
@@ -321,7 +323,7 @@ class VoiceInteraction:
                 play(song)
                 response_text = self.chat('在50个字以内告诉我开车的时候不能闭眼睛超过3秒以上的重要性')
             if flag:
-                print(f'response_text:{response_text}')
+                logger.info('response_text:%s', response_text)
                 self.TTSC(response_text)
             else:
                 song = AudioSegment.from_wav('/home/jetson/Documents/VoiceInteraction/audio_bags/开车的时候不可以一直闭眼哦.wav')
@@ -340,7 +342,7 @@ class VoiceInteraction:
                 play(song)
                 response_text = self.chat('在50个字以内告诉我开车的时候不能打哈欠超过3秒以上的重要性')
             if flag:
-                print(f'response_text:{response_text}')
+                logger.info('response_text:%s', response_text)
                 self.TTSC(response_text)
             else:
                 # todo 播放音频： 开车的时候如果你一直打哈欠会很危险哦
@@ -360,7 +362,7 @@ class VoiceInteraction:
                 play(song)
                 response_text = self.chat('在50个字以内告诉我开车的时候不能打电话的重要性')
             if flag:
-                print(f'response_text:{response_text}')
+                logger.info('response_text:%s', response_text)
                 self.TTSC(response_text)
             else:
                 song = AudioSegment.from_wav('/home/jetson/Documents/VoiceInteraction/audio_bags/千万不要边打电话边开车哦.wav')
@@ -379,7 +381,7 @@ class VoiceInteraction:
                 play(song)
                 response_text = self.chat('在50个字以内告诉我开车的时候不能频繁左顾右盼的重要性')
             if flag:
-                print(f'response_text:{response_text}')
+                logger.info('response_text:%s', response_text)
                 self.TTSC(response_text)
             else:
                 song = AudioSegment.from_wav('/home/jetson/Documents/VoiceInteraction/audio_bags/频繁的左顾右盼可不是一个开车的好习惯.wav')
@@ -396,19 +398,16 @@ class VoiceInteraction:
             song = AudioSegment.from_wav('/home/jetson/Documents/VoiceInteraction/audio_bags/再说一次.wav')
             play(song)
             return 1
-        # print(inference_text)
         if '记录' in inference_text:
             # todo smartvideorecord
             if record_socket is not None:
                 try:
-                    # for i in range(50):
-                    #     print(i)
                     record_socket.sendall("record".encode())
                 except socket.error as e:
-                    print("failed")
+                    logger.error("Failed to send record command")
                 # record_socket.shutdown(socket.SHUT_WR)
             else:
-                print('\n\n\n\n\nrecord socket is none\n\n\n\n\n')
+                logger.warning('record socket is none')
             song = AudioSegment.from_wav('/home/jetson/Documents/VoiceInteraction/audio_bags/开始录制.wav')
             play(song)
             return 1
@@ -420,10 +419,10 @@ class VoiceInteraction:
             text = '在25字内回答我的问题：'
             inference_text = inference_text.replace('语音助手', '')
             text += inference_text
-            print(text)
+            logger.debug('Prompt text: %s', text)
             response = self.chat(text)
             flag = False
-            print(len(response),response)
+            logger.debug('Response length=%d, content=%s', len(response), response)
             for i in range(5):
                 if len(response) >= 5:
                     flag = True
@@ -442,12 +441,12 @@ class VoiceInteraction:
     def communicate(self):
         recognizer = sr.Recognizer()
         with sr.Microphone() as source:
-            print('请说话')
+            logger.info('请说话')
             recognizer.adjust_for_ambient_noise(source)
             while True:
                 try:
                     audio = recognizer.listen(source, timeout=5)
-                    print('finish recording, saving')
+                    logger.debug('finish recording, saving')
                     audio_pcm16k16bit = audio.get_raw_data(
                         convert_width=2, convert_rate=16000
                     )
@@ -455,17 +454,19 @@ class VoiceInteraction:
                     if result == 0:
                         return
                 except sr.WaitTimeoutError:
-                    print("录音超时，未检测到声音")
+                    logger.warning("录音超时，未检测到声音")
                 except sr.RequestError as e:
-                    print("请求错误：", e)
+                    logger.error("请求错误：%s", e)
                 except sr.UnknownValueError:
-                    print("无法识别语音")
+                    logger.warning("无法识别语音")
 
 
 
 if __name__ == '__main__':
-    # communicate()
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     vi = VoiceInteraction()
-    # vi.alert(2)
     vi.communicate()
 

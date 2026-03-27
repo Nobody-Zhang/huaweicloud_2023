@@ -6,6 +6,7 @@ import cv2
 import asyncio
 import websockets
 import logging
+logger = logging.getLogger(__name__)
 import struct
 import time  
 from asyncio import run_coroutine_threadsafe
@@ -24,10 +25,10 @@ def establish_record_connection():
         try:
             record_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             record_socket.connect(('localhost', 4333))
-            print("Connected to localhost:4333")
+            logger.info("Connected to localhost:4333")
             break
         except ConnectionRefusedError:
-            print("Connection refused. Retrying in 1 second.")
+            logger.warning("Connection refused. Retrying in 1 second.")
             time.sleep(1)
 
 # Thread for receiving images from the client and forwarding them to the frontend if flag is 1
@@ -50,15 +51,15 @@ def receiver(conn,loop):
         img_array = np.frombuffer(img_data, dtype=np.uint8)
         img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
         if img is None:
-            print("Failed to decode image")
+            logger.error("Failed to decode image")
             continue
 
-        print('receive')
+        logger.debug('receive')
         if flag == 1 and front_end_socket is not None:
             future = run_coroutine_threadsafe(send_to_frontend(img), loop)
             future.result()
         elif front_end_socket is None:
-            print("尚未连接")
+            logger.info("尚未连接")
             
 
 # Function to send the image to the frontend
@@ -66,7 +67,7 @@ async def send_to_frontend(img):
     resized_img = cv2.resize(img, (480, 320))
     _, buffer = cv2.imencode('.jpg', resized_img)
     await front_end_socket.send(buffer.tobytes())
-    print("Image sent to front end.")
+    logger.info("Image sent to front end.")
 
 # Async function to handle WebSocket communication for setting flag
 async def video_stream(websocket, path):
@@ -77,22 +78,26 @@ async def video_stream(websocket, path):
         command = await websocket.recv()
         if command == 'start':
             flag = 1
-            print('\n\n\n\n\n\n')
-            print('\n\n\n\n\n\n')
+            logger.debug('\n\n\n\n')
+            logger.debug('\n\n\n\n')
         elif command == 'stop':
             flag = 0
-            print('\n\n\n\n\n\n')
-            print('stop')
-            print('\n\n\n\n\n\n')
+            logger.debug('\n\n\n\n')
+            logger.debug('stop')
+            logger.debug('\n\n\n\n')
         elif command == 'record':  # New command added
-            print('\n\n\n\n\n\n')
-            print(2)
-            print('\n\n\n\n\n\n\n')
+            logger.debug('\n\n\n\n')
+            logger.info(2)
+            logger.debug('\n\n\n\n\n')
             if record_socket is not None:
                 record_socket.sendall(b'record')  # Send 'record' to the localhost:4333
 
 if __name__ == '__main__':
     # Setup socket for receiving images
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     s = socket.socket()
     host = 'localhost'
     port = 8765

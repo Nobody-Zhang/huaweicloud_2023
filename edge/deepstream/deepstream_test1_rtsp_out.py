@@ -22,7 +22,8 @@ import time
 import cv2
 import argparse
 import sys
-from loguru import logger
+import logging
+logger = logging.getLogger(__name__)
 sys.path.append('../')
 def make_elm_or_print_err(factoryname, name, printedname, detail=""):
     """
@@ -84,7 +85,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
 
     gst_buffer = info.get_buffer()
     if not gst_buffer:
-        print("Unable to get GstBuffer ")
+        logger.error("Unable to get GstBuffer ")
         return
 
     # Retrieve batch metadata from the gst_buffer
@@ -154,7 +155,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         # set(red, green, blue, alpha); set to Black
         py_nvosd_text_params.text_bg_clr.set(0.0, 0.0, 0.0, 1.0)
         # Using pyds.get_string() to get display_text as string
-        print(pyds.get_string(py_nvosd_text_params.display_text))
+        logger.info(pyds.get_string(py_nvosd_text_params.display_text))
         pyds.nvds_add_display_meta_to_frame(frame_meta, display_meta)
         try:
             l_frame=l_frame.next
@@ -171,13 +172,13 @@ def main(args):
 
     # Create gstreamer elements
     # Create Pipeline element that will form a connection of other elements
-    print("Creating Pipeline \n ")
+    logger.info("Creating Pipeline ")
     pipeline = Gst.Pipeline()
     if not pipeline:
         sys.stderr.write(" Unable to create Pipeline \n")
     
     # Source element for reading from the file
-    print("Creating Source \n ")
+    logger.info("Creating Source ")
 
     logger.info("Creating source bin...")
     source = make_elm_or_print_err("nvarguscamerasrc", "src-elem", "src-elem")
@@ -218,10 +219,10 @@ def main(args):
     # Make the encoder
     if codec == "H264":
         encoder = Gst.ElementFactory.make("nvv4l2h264enc", "encoder")
-        print("Creating H264 Encoder")
+        logger.info("Creating H264 Encoder")
     elif codec == "H265":
         encoder = Gst.ElementFactory.make("nvv4l2h265enc", "encoder")
-        print("Creating H265 Encoder")
+        logger.info("Creating H265 Encoder")
     if not encoder:
         sys.stderr.write(" Unable to create encoder")
     encoder.set_property('bitrate', bitrate)
@@ -233,10 +234,10 @@ def main(args):
     # Make the payload-encode video into RTP packets
     if codec == "H264":
         rtppay = Gst.ElementFactory.make("rtph264pay", "rtppay")
-        print("Creating H264 rtppay")
+        logger.info("Creating H264 rtppay")
     elif codec == "H265":
         rtppay = Gst.ElementFactory.make("rtph265pay", "rtppay")
-        print("Creating H265 rtppay")
+        logger.info("Creating H265 rtppay")
     if not rtppay:
         sys.stderr.write(" Unable to create rtppay")
     
@@ -251,7 +252,7 @@ def main(args):
     sink.set_property('async', False)
     sink.set_property('sync', 1)
     
-    print("Playing file %s " %stream_path)
+    logger.info("Playing file %s " %stream_path)
     # source.set_property('location', stream_path)
     source.set_property('bufapi-version', True)
     streammux.set_property('width', 1920)
@@ -261,7 +262,7 @@ def main(args):
     
     pgie.set_property('config-file-path', "config_infer_primary_yoloV5.txt")
     
-    print("Adding elements to Pipeline \n")
+    logger.info("Adding elements to Pipeline ")
     pipeline.add(source)
     pipeline.add(videorate)
     pipeline.add(nvvidconv_src)
@@ -281,7 +282,7 @@ def main(args):
     # nvinfer -> nvvidconv -> nvosd -> nvvidconv_postosd -> 
     # caps -> encoder -> rtppay -> udpsink
     
-    print("Linking elements in the Pipeline \n")
+    logger.info("Linking elements in the Pipeline ")
     source.link(videorate)
     videorate.link(nvvidconv_src)
     nvvidconv_src.link(caps_nvvidconv_src)
@@ -321,7 +322,7 @@ def main(args):
     factory.set_shared(True)
     server.get_mount_points().add_factory("/ds-test", factory)
     
-    print("\n *** DeepStream: Launched RTSP Streaming at rtsp://localhost:%d/ds-test ***\n\n" % rtsp_port_num)
+    logger.info("*** DeepStream: Launched RTSP Streaming at rtsp://localhost:%d/ds-test ***\n" % rtsp_port_num)
     
     # Lets add probe to get informed of the meta data generated, we add probe to
     # the sink pad of the osd element, since by that time, the buffer would have
@@ -333,7 +334,7 @@ def main(args):
     osdsinkpad.add_probe(Gst.PadProbeType.BUFFER, osd_sink_pad_buffer_probe, 0)
     
     # start play back and listen to events
-    print("Starting pipeline \n")
+    logger.info("Starting pipeline ")
     pipeline.set_state(Gst.State.PLAYING)
     try:
         loop.run()
@@ -364,6 +365,14 @@ def parse_args():
     return 0
 
 if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     parse_args()
     sys.exit(main(sys.argv))
 

@@ -3,6 +3,7 @@ import threading
 import asyncio
 import websockets
 import logging
+logger = logging.getLogger(__name__)
 import struct
 from asyncio import run_coroutine_threadsafe
 
@@ -30,19 +31,19 @@ def receiver(conn, loop, socket_id):
                 future = run_coroutine_threadsafe(send_int_to_frontend(int_value, front_end_int_socket_now), loop)
                 future.result()
             else:
-                print("尚未连接到8764端口的前端")
+                logger.info("尚未连接到8764端口的前端")
         elif socket_id == 8763:
             if front_end_int_socket_previous is not None:
                 future = run_coroutine_threadsafe(send_int_to_frontend(int_value, front_end_int_socket_now), loop)
                 future.result()
-                print(int_value)
+                logger.info(int_value)
             else:
-                print("尚未连接到8763端口的前端")
+                logger.info("尚未连接到8763端口的前端")
 
 # 异步函数，用于将整数值发送给前端
 async def send_int_to_frontend(int_value, websocket):
     await websocket.send(str(int_value))
-    print(f"整数 {int_value} 已发送给前端.")
+    logger.info(f"整数 {int_value} 已发送给前端.")
 
 # 用于处理整数值WebSocket通信的异步函数
 async def int_stream(websocket, path, socket_id):
@@ -66,6 +67,10 @@ def init_socket(port, loop):
     receiver_thread.start()
 
 if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     event_loop = asyncio.get_event_loop()
 
     # 在两个不同的线程中分别启动Socket 8764和8763的接收线程

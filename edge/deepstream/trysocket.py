@@ -3,6 +3,7 @@ import cv2
 import websockets
 import time
 import logging
+logger = logging.getLogger(__name__)
 
 logging.basicConfig(level=logging.INFO)
 
@@ -86,6 +87,10 @@ async def video_stream(websocket, path):
             cap.release()
 
 if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     logging.info("Starting WebSocket server")
     start_server = websockets.serve(video_stream, "0.0.0.0", 7979)
     

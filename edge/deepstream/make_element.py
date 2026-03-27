@@ -38,6 +38,8 @@ import platform
 import sys
 
 
+import logging
+logger = logging.getLogger(__name__)
 def is_aarch64():
     return platform.uname()[4] == 'aarch64'
 
@@ -201,7 +203,7 @@ def make_elm_or_print_err(factoryname, name, printedname, detail=""):
         Return the element  if successfully created, otherwise print
         to stderr and return None.
     """
-    print("Creating", printedname)
+    logger.info("Creating %s", printedname)
     elm = Gst.ElementFactory.make(factoryname, name)
     if not elm:
         sys.stderr.write("Unable to create " + printedname + " \n")
@@ -290,7 +292,7 @@ def pgie_src_pad_buffer_probe(pad, info, u_data):
     # get the buffer of info argument
     gst_buffer = info.get_buffer()
     if not gst_buffer:
-        print("Unable to get GstBuffer ")
+        logger.error("Unable to get GstBuffer ")
         return
 
     # Retrieve batch metadata from the gst_buffer
@@ -300,7 +302,7 @@ def pgie_src_pad_buffer_probe(pad, info, u_data):
 
     l_frame = batch_meta.frame_meta_list
 
-    print(time.time())
+    logger.debug("%s", time.time())
     while l_frame is not None:
         try:
             # Note that l_frame.data needs a cast to pyds.NvDsFrameMeta
@@ -312,7 +314,6 @@ def pgie_src_pad_buffer_probe(pad, info, u_data):
         except StopIteration:
             break
         iter_obj = frame_meta.obj_meta_list
-        # print("number_of_counts:", frame_meta.num_obj_meta)
         while iter_obj is not None:
             # 从GList对象中获取当前节点的数据
             obj_meta = pyds.NvDsObjectMeta.cast(iter_obj.data)
@@ -325,15 +326,6 @@ def pgie_src_pad_buffer_probe(pad, info, u_data):
             width = obj_meta.rect_params.width
             height = obj_meta.rect_params.height
             confidence = obj_meta.confidence
-            # print("class_id:", class_id)
-            # print("left:", left)
-            # print("top", top)
-            # print("width", width)
-            # print("height:", height)
-            # print("confidence:", confidence)
-            # print(object_id, left, top, width, height, confidence)
-            # print(obj_meta)
-            # print(class_id)
             try:
                 iter_obj = iter_obj.next
             except StopIteration:
@@ -351,7 +343,7 @@ def switch_sink(pipeline):
     sink1 = pipeline.get_by_name("filesink1")
     sink2 = pipeline.get_by_name("filesink2")
     container = pipeline.get_by_name("qtmux")
-    print("now switch sink")
+    logger.info("now switch sink")
 
     current_sink = sink1
     while True:
@@ -362,17 +354,17 @@ def switch_sink(pipeline):
         if current_sink == sink1:
             sink1.send_event(Gst.Event.new_eos())
             container.unlink(sink1)
-            print("switch to sink1")
+            logger.info("switch to sink1")
             time.sleep(2)
             os.remove("out1.mp4")
             container.link(sink1)
             current_sink = sink1
-            print("switch to sink1")
+            logger.info("switch to sink1")
         else:
             container.unlink(sink2)
             container.link(sink1)
             current_sink = sink1
-            print("switch to sink1")
+            logger.info("switch to sink1")
 
 
 def main(args):
@@ -388,7 +380,7 @@ def main(args):
 
     # Create gstreamer elements
     # Create Pipeline element that will form a connection of other elements
-    print("Creating Pipeline \n ")
+    logger.info("Creating Pipeline ")
     pipeline = Gst.Pipeline()
 
     if not pipeline:
@@ -457,7 +449,7 @@ def main(args):
     sink2.set_property("sync", 0)
     sink2.set_property("async", 0)
 
-    print("Playing file %s " % args[1])
+    logger.info("Playing file %s " % args[1])
     source.set_property("location", args[1])
     streammux.set_property("width", IMAGE_WIDTH)
     streammux.set_property("height", IMAGE_HEIGHT)
@@ -467,7 +459,7 @@ def main(args):
     # .txt文件中配置了模型的路径，以及模型的参数
     pgie.set_property("config-file-path", "config_infer_primary_yoloV5.txt")
 
-    print("Adding elements to Pipeline \n")
+    logger.info("Adding elements to Pipeline ")
     # 从文件中读取h264流
     pipeline.add(source)
     # 从h264流中解析出h264数据（解码器）
@@ -498,7 +490,7 @@ def main(args):
     # we link the elements together
     # file-source -> h264-parser -> nvh264-decoder ->
     # nvinfer -> nvvidconv -> nvosd -> video-renderer
-    print("Linking elements in the Pipeline \n")
+    logger.info("Linking elements in the Pipeline ")
     source.link(h264parser)
     h264parser.link(decoder)
 
@@ -552,7 +544,7 @@ def main(args):
     # start play back and listen to events
     # 开启pipeline
 
-    print("Starting pipeline \n")
+    logger.info("Starting pipeline ")
     process = multiprocessing.Process(target=switch_sink, args=(pipeline,))
 
     process.start()
@@ -566,4 +558,12 @@ def main(args):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     sys.exit(main(sys.argv))

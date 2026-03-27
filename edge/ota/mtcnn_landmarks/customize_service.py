@@ -11,9 +11,13 @@ from pathlib import Path
 import torch
 import torch.backends.cudnn as cudnn
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 import time
-warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 from utils.utils import generate_bbox, py_nms, convert_to_square
 from utils.utils import pad, calibrate_box, processed_image
@@ -454,9 +458,3 @@ class PTVisionService(PTServingBaseService):
             os.remove(self.capture)
         return data
 
-# if __name__ == '__main__':
-#     capture = './test/1.mp4'
-#     model = MTCNN_model()
-#     result = model.inference(source = capture)
-    
-#     print(result)

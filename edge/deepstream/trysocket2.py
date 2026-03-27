@@ -5,6 +5,7 @@ import cv2
 import asyncio
 import websockets
 import logging
+logger = logging.getLogger(__name__)
 import struct
 from asyncio import run_coroutine_threadsafe
 
@@ -34,7 +35,7 @@ def receiver(conn, loop):
         img_array = np.frombuffer(img_data, dtype=np.uint8)
         img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
         if img is None:
-            print("Failed to decode image")
+            logger.error("Failed to decode image")
             continue
 
         if flag == 1 and front_end_socket is not None:
@@ -46,7 +47,7 @@ async def send_to_frontend(img):
     resized_img = cv2.resize(img, (480, 320))
     _, buffer = cv2.imencode('.jpg', resized_img)
     await front_end_socket.send(buffer.tobytes())
-    print("Image sent to front end.")
+    logger.info("Image sent to front end.")
 
 # 接受前端控制
 async def video_stream(websocket, path):
@@ -62,6 +63,10 @@ async def video_stream(websocket, path):
 
 if __name__ == '__main__':
     # 与deepstream建立连接
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     s = socket.socket()
     host = 'localhost'
     port = 8765

@@ -13,6 +13,9 @@ import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
 from typing import Any, Dict, List, Optional, Tuple, Union
+import logging
+
+logger = logging.getLogger(__name__)
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
@@ -188,7 +191,6 @@ class YOLO_Status:
                     # box位置在右0.4, 下0.2, 原手机右下
                     phone = xywh  # 替换手机
                     phone_flag = True  # 表示当前其实有手机
-                    # print("phone and config: ", phone, conf)
             elif cls == self.cls_["open_eye"] or cls == self.cls_["close_eye"]:  # 眼睛，先存着
                 eyes.append((cls, xywh, conf))
             elif cls == self.cls_["open_mouth"] or cls == self.cls_["close_mouth"]:  # 嘴，先存着
@@ -259,11 +261,6 @@ class YOLO_Status:
                 status = max(status, self.status_prior["closeeye"])
             else:  # 司机是睁眼
                 status = max(status, self.status_prior["normal"])
-
-        # if self.condition[status] == 0:
-        #     print("status: ", status)
-        #     print("openeye: ", openeye_score)
-        #     print("closeeye: ", closeeye_score)
 
         return self.condition[status]
 
@@ -344,8 +341,6 @@ def yolo_run(weights: Union[str, Path] = ROOT / 'fine_tune_openvino_model/best.x
         Category codes: 1=eyes closed, 2=yawn, 3=calling, 4=turning.
     """
     source = str(source)
-    # print("algo: ", )
-    # print("weights: ", weights)
     # ------------------------- Init model -------------------------
     device = select_device(device)
     model = DetectMultiBackend(weights, device=device, dnn=dnn, data=data)
@@ -359,9 +354,7 @@ def yolo_run(weights: Union[str, Path] = ROOT / 'fine_tune_openvino_model/best.x
     model.warmup(imgsz=(1 if pt else bs, 3, *imgsz), half=half)  # warmup
     dt, seen = [0.0, 0.0, 0.0], 0
     fps = dataset.cap.get(cv2.CAP_PROP_FPS)
-    # print("fps: ", fps)
     FRAME_GROUP = int(fps / frame_per_second)
-    # print("FRAME_GROUP: ", FRAME_GROUP)
     # fps = FRAME_PER_SECOND
     cntt = -1
     im_lis = load_imgs(dataset, half, device)  # 保存所有的帧便于后续分治
@@ -402,7 +395,6 @@ def yolo_run(weights: Union[str, Path] = ROOT / 'fine_tune_openvino_model/best.x
             if len(det):
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
-                # print(det.numpy())
                 sta = YOLO_determin.determin(im0, det.numpy())
             else:
                 # Nothing detected, assume the status if "turning"
@@ -461,17 +453,13 @@ def yolo_run(weights: Union[str, Path] = ROOT / 'fine_tune_openvino_model/best.x
             rig_frame_ans = min((l2 + r2) / 2, len(im_lis) - 1)
 
             if rig_frame_ans - lef_frame_ans < 3 * fps:
-                # print(f"False(out of range): status: {k}\n l1: {l1}, r1: {r1}, l2: {l2}, r2: {r2}")
                 return [False]  # 可能出现的边界条件的判断
-            # print(f"True: status: {k}\n l1: {l1}, r1: {r1}, l2: {l2}, r2: {r2}")
             return [True, lef_frame_ans / fps, rig_frame_ans / fps]  # 表示可行，并且返回边界的值
 
         mid1 = int((l1 + r1) / 2)
         mid2 = int((l2 + r2) / 2)
         sta1 = f(mid1)
         sta2 = f(mid2)
-        # print(f"\n l1: {l1} r1: {r1} l2: {l2} r2: {r2}")
-        # print(f"mid1: {mid1}, mid2: {mid2}, sta1: {sta1}, sta2: {sta2}, goal:{k}")
 
         # 1 1
         if sta1 == k and sta2 == k:
@@ -481,7 +469,6 @@ def yolo_run(weights: Union[str, Path] = ROOT / 'fine_tune_openvino_model/best.x
         # 0 0
         if sta1 != k and sta2 != k:
             if is_3:
-                # print(f"False(0, 0): status: {k}\n l1: {l1}, r1: {r1}, l2: {l2}, r2: {r2}")
                 return [False]  # 如果是需要判断的3s，则无论如何都是不可行的
             return b_search(mid1, r1, l2, mid2, n / 2, iou_presice_b_search * (l2 - r1) / fps, k)  # 继续搜索边界，提升精度
 
@@ -521,7 +508,6 @@ def yolo_run(weights: Union[str, Path] = ROOT / 'fine_tune_openvino_model/best.x
             r: Right boundary frame index (inclusive).
         """
         # 分治算法，l和r表示的是左右的边界, [l, r]，且左右的状态和l - 0.5 * fps, r + 0.5 * fps的状态不一样
-        # print(f"l: {l}, r: {r}")
         if r - l < 3 * fps:  # 区间小于3s
             return
         mid = int((l + r) / 2)  # 选中间的帧
@@ -547,13 +533,11 @@ def yolo_run(weights: Union[str, Path] = ROOT / 'fine_tune_openvino_model/best.x
     # for i in range(5):  # Just in case, time of the vidio isn't enouth, append 0
     #     tot_status.append(0)
     # tot_status.append(0)  # 为了最后一个状态的判断，需要多加一个0
-    # print(tot_status)
     # Post process, using the sliding window algorithm to judge the final status
     res: List[Dict[str, Any]] = []
     pre_i = 0  # 上个状态的起始帧（抽帧之后的 -----> FRAME_PER_SECOND）
     # 每一帧（抽帧之后的）遍历
     tmp.sort(key=lambda x: x[1])
-    # print(tmp)
     for i in tmp:
         min_t = (i[2] - i[1]) / fps - 0.75
         _ = b_search(i[1], i[1] + fps * 0.375, i[2] - fps * 0.375, i[2], 0.375, min_t * iou_presice_b_search, i[3], is_3=i[0])
@@ -571,5 +555,9 @@ def yolo_run(weights: Union[str, Path] = ROOT / 'fine_tune_openvino_model/best.x
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     list = yolo_run(source=ROOT / 'zipped.mp4')
-    print(list)
+    logger.info(list)

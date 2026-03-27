@@ -4,6 +4,7 @@ import collections
 import asyncio
 import websockets
 import logging
+logger = logging.getLogger(__name__)
 import time
 import struct
 import numpy as np
@@ -59,11 +60,11 @@ def receiver(conn):
         img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
 
         if img is None:
-            print("Failed to decode image")
+            logger.error("Failed to decode image")
         else:
             img_queue.put(img)
 
-        print(f"Received and added to queue. Current queue size: {img_queue.qsize()}")
+        logger.info(f"Received and added to queue. Current queue size: {img_queue.qsize()}")
 
 async def video_stream(websocket, path):
     try:
@@ -105,6 +106,10 @@ async def video_stream(websocket, path):
         logging.error(f"An unexpected error occurred: {e}")
 
 if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     s = socket.socket()
     host = 'localhost'
     port = 8765

@@ -39,6 +39,8 @@ gi.require_version("Gst", "1.0")
 from gi.repository import GObject, Gst
 import platform
 import sys
+import logging
+logger = logging.getLogger(__name__)
 video_writer = None
 
 def is_aarch64():
@@ -205,7 +207,7 @@ def make_elm_or_print_err(factoryname, name, printedname, detail=""):
         Return the element  if successfully created, otherwise print
         to stderr and return None.
     """
-    print("Creating", printedname)
+    logger.info("Creating %s", printedname)
     elm = Gst.ElementFactory.make(factoryname, name)
     if not elm:
         sys.stderr.write("Unable to create " + printedname + " \n")
@@ -297,7 +299,7 @@ def tiler_sink_pad_buffer_probe(pad, info, u_data):
     # get the buffer of info argument
     gst_buffer = info.get_buffer()
     if not gst_buffer:
-        print("Unable to get GstBuffer ")
+        logger.error("Unable to get GstBuffer ")
         return
 
     # Retrieve batch metadata from the gst_buffer
@@ -307,7 +309,7 @@ def tiler_sink_pad_buffer_probe(pad, info, u_data):
 
     l_frame = batch_meta.frame_meta_list
 
-    print(time.time())
+    logger.debug("%s", time.time())
     while l_frame is not None:
         try:
             # Note that l_frame.data needs a cast to pyds.NvDsFrameMeta
@@ -319,7 +321,7 @@ def tiler_sink_pad_buffer_probe(pad, info, u_data):
         except StopIteration:
             break
         iter_obj = frame_meta.obj_meta_list
-        print("number_of_counts:", frame_meta.num_obj_meta)
+        logger.debug("number_of_counts: %s", frame_meta.num_obj_meta)
         n_frame = pyds.get_nvds_buf_surface(hash(gst_buffer), frame_meta.batch_id)
         # convert python array into numpy array format in the copy mode.
         frame_copy = np.array(n_frame, copy=True, order='C')
@@ -363,7 +365,7 @@ def queueToMP4():
     queue = frame_queue
     while queue.empty():
         continue
-    print("queue now not empty")
+    logger.debug("queue now not empty")
     frame = frame_queue.get()
     frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
     output_file = "tmp.mp4"
@@ -380,14 +382,14 @@ def queueToMP4():
 
     # 写入第一帧
     video_writer.write(frame)
-    print("now queue!")
+    logger.debug("now queue!")
     # 将队列中的每一帧写入输出视频
     q_siz = queue.qsize()
     for i in range(q_siz):
         frame = queue.get()
         frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
         video_writer.write(frame)
-    print("queue ended")
+    logger.debug("queue ended")
 
     # 释放资源
     video_writer.release()
@@ -403,9 +405,9 @@ def cloud_inference():
         # continue
         file_name = queueToMP4()
         cnt_for_cloud += 1
-        print("cnt_for_cloud:", cnt_for_cloud)
+        logger.debug("cnt_for_cloud: %s", cnt_for_cloud)
         cloud_inference_result = cloud_infer(file_name)
-        print("cloud_inference_result:", cloud_inference_result)
+        logger.debug("cloud_inference_result: %s", cloud_inference_result)
 
 
 
@@ -424,7 +426,7 @@ def main(args):
 
     # Create gstreamer elements
     # Create Pipeline element that will form a connection of other elements
-    print("Creating Pipeline \n ")
+    logger.info("Creating Pipeline ")
     pipeline = Gst.Pipeline()
 
     if not pipeline:
@@ -449,17 +451,17 @@ def main(args):
 
     # Add nvvidconv1 and filter1 to convert the frames to RGBA
     # which is easier to work with in Python.
-    print("Creating nvvidconv1 \n ")
+    logger.info("Creating nvvidconv1 ")
     nvvidconv1 = Gst.ElementFactory.make("nvvideoconvert", "convertor1")
     if not nvvidconv1:
         sys.stderr.write(" Unable to create nvvidconv1 \n")
-    print("Creating filter1 \n ")
+    logger.info("Creating filter1 ")
     caps1 = Gst.Caps.from_string("video/x-raw(memory:NVMM), format=RGBA")
     filter1 = Gst.ElementFactory.make("capsfilter", "filter1")
     if not filter1:
         sys.stderr.write(" Unable to get the caps filter1 \n")
     filter1.set_property("caps", caps1)
-    print("Creating tiler \n ")
+    logger.info("Creating tiler ")
     tiler = Gst.ElementFactory.make("nvmultistreamtiler", "nvtiler")
     if not tiler:
         sys.stderr.write(" Unable to create tiler \n")
@@ -469,7 +471,7 @@ def main(args):
 
 
 
-    print("Playing file %s " % args[1])
+    logger.info("Playing file %s " % args[1])
     source.set_property("location", args[1])
     streammux.set_property("width", IMAGE_WIDTH)
     streammux.set_property("height", IMAGE_HEIGHT)
@@ -479,7 +481,7 @@ def main(args):
     # .txt文件中配置了模型的路径，以及模型的参数
     pgie.set_property("config-file-path", "config_infer_primary_yoloV5.txt")
 
-    print("Adding elements to Pipeline \n")
+    logger.info("Adding elements to Pipeline ")
     # 从文件中读取h264流
     pipeline.add(source)
     # 从h264流中解析出h264数据（解码器）
@@ -500,7 +502,7 @@ def main(args):
     # we link the elements together
     # file-source -> h264-parser -> nvh264-decoder ->
     # nvinfer -> nvvidconv -> nvosd -> video-renderer
-    print("Linking elements in the Pipeline \n")
+    logger.info("Linking elements in the Pipeline ")
     source.link(h264parser)
     h264parser.link(decoder)
 
@@ -539,7 +541,7 @@ def main(args):
 
     # start play back and listen to events
     # 开启pipeline
-    print("Starting pipeline \n")
+    logger.info("Starting pipeline ")
     pipeline.set_state(Gst.State.PLAYING)
     # video_thread = threading.Thread(target=cloud_inference)
 
@@ -553,11 +555,19 @@ def main(args):
     # cleanup
     pipeline.set_state(Gst.State.NULL)
     EOS_MESSAGE = True
-    print("Waiting for video thread to finish...")
+    logger.info("Waiting for video thread to finish...")
     # video_thread.join()
-    print("Video thread finished.")
+    logger.info("Video thread finished.")
     video_writer.release()
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     sys.exit(main(sys.argv))

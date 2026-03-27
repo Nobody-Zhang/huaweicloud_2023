@@ -13,9 +13,13 @@ import torch.backends.cudnn as cudnn
 import numpy as np
 import base64
 import io
+import logging
+
+logger = logging.getLogger(__name__)
 
 import time
-warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 from utils.utils import generate_bbox, py_nms, convert_to_square
 from utils.utils import pad, calibrate_box, processed_image
@@ -422,9 +426,7 @@ class PTVisionService(PTServingBaseService):
         
     def _inference(self, data):
         result = self.model.inference(source = self.capture)
-        print("====================================")
-        print("res: ", result)
-        print("====================================")
+        logger.info("res: %s", result)
         return result
 
     def _preprocess(self, data):
@@ -432,7 +434,7 @@ class PTVisionService(PTServingBaseService):
         # preprocessed_data = {}
         # for k, v in data.items():
         for key, value in data.items():
-            print(f"value:{value}")
+            logger.info("value: %s", value)
             try:
                 try:
                     tmp = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)  # Fixed: use tempfile to avoid race condition
@@ -456,9 +458,3 @@ class PTVisionService(PTServingBaseService):
             os.remove(self.capture)
         return data
 
-# if __name__ == '__main__':
-#     capture = './test/1.mp4'
-#     model = MTCNN_model()
-#     result = model.inference(source = capture)
-    
-#     print(result)

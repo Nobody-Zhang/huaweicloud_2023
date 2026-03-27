@@ -15,8 +15,16 @@ import numpy as np
 import os
 import tempfile
 import warnings
+import logging
 
-warnings.filterwarnings("ignore")
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 # from yolo.yolo import *
 

@@ -27,7 +27,8 @@ import sys
 import io
 from queue import Queue
 import threading
-from loguru import logger
+import logging
+logger = logging.getLogger(__name__)
 
 from cloudinfer import cloud_infer
 
@@ -101,12 +102,12 @@ def osd_sink_pad_buffer_probe(pad, info, u_data):
     conf_thresh = 0.5
     nms_thresh = 0.5
     label = get_label_names_from_file()
-    print(label)
+    logger.info(label)
     is_save_output = False
     # get the buffer of info argument
     gst_buffer = info.get_buffer()
     if not gst_buffer:
-        print("Unable to get GstBuffer ")
+        logger.error("Unable to get GstBuffer ")
         return
 
     # Retrieve batch metadata from the gst_buffer
@@ -116,7 +117,7 @@ def osd_sink_pad_buffer_probe(pad, info, u_data):
 
     l_frame = batch_meta.frame_meta_list
 
-    print(time.time())
+    logger.debug("%s", time.time())
     while l_frame is not None:
         try:
             # Note that l_frame.data needs a cast to pyds.NvDsFrameMeta
@@ -128,7 +129,7 @@ def osd_sink_pad_buffer_probe(pad, info, u_data):
         except StopIteration:
             break
         iter_obj = frame_meta.obj_meta_list
-        print("number_of_counts:", frame_meta.num_obj_meta)
+        logger.debug("number_of_counts: %s", frame_meta.num_obj_meta)
         n_frame = pyds.get_nvds_buf_surface(hash(gst_buffer), frame_meta.batch_id)
         # convert python array into numpy array format in the copy mode.
         frame_copy = np.array(n_frame, copy=True, order='C')
@@ -167,11 +168,6 @@ def osd_sink_pad_buffer_probe(pad, info, u_data):
                 # if res == "OK":
                 #     pass
 #---------------------!!!!!!!!!!!!!!!!!补充端云协同!!!!!!!!!!!!!!!!!!!!!!---------------------------------
-            # print("class_id: ", class_id)
-            # print("top: ", top)
-            # print("left: ", left)
-            # print("width: ", width)
-            # print("height: ", height)
             # cropped_image = pic[int(top):int(top + height), int(left):int(left + width)]
             # cv2.imwrite(f"{class_id}_{time.time()}_{confidence}.jpg", cropped_image)
             try:
@@ -194,14 +190,14 @@ def main(args):
 
     # Create gstreamer elements
     # Create Pipeline element that will form a connection of other elements
-    print("Creating Pipeline \n ")
+    logger.info("Creating Pipeline ")
     pipeline = Gst.Pipeline()
 
     if not pipeline:
         sys.stderr.write(" Unable to create Pipeline \n")
 
     # Source element for reading from the file
-    print("Creating Source \n ")
+    logger.info("Creating Source ")
     source = Gst.ElementFactory.make("v4l2src", "usb-cam-source")
     if not source:
         sys.stderr.write(" Unable to create Source \n")
@@ -211,7 +207,7 @@ def main(args):
         sys.stderr.write(" Unable to create v4l2src capsfilter \n")
 
 
-    print("Creating Video Converter \n")
+    logger.info("Creating Video Converter ")
 
     # Adding videoconvert -> nvvideoconvert as not all
     # raw formats are supported by nvvideoconvert;
@@ -263,12 +259,11 @@ def main(args):
     if is_aarch64():
         transform = Gst.ElementFactory.make("nvegltransform", "nvegl-transform")
 
-    print("Creating EGLSink \n")
+    logger.info("Creating EGLSink ")
     sink = Gst.ElementFactory.make("nveglglessink", "nvvideo-renderer")
     if not sink:
         sys.stderr.write(" Unable to create egl sink \n")
 
-    # print("Playing cam %s " %args[1])
     caps_v4l2src.set_property('caps', Gst.Caps.from_string("video/x-raw, framerate=30/1"))
     caps_vidconvsrc.set_property('caps', Gst.Caps.from_string("video/x-raw(memory:NVMM)"))
     source.set_property('device', "/dev/video1")
@@ -280,7 +275,7 @@ def main(args):
     # Set sync = false to avoid late frame drops at the display-sink
     sink.set_property('sync', False)
 
-    print("Adding elements to Pipeline \n")
+    logger.info("Adding elements to Pipeline ")
     pipeline.add(source)
     pipeline.add(caps_v4l2src)
     pipeline.add(vidconvsrc)
@@ -297,7 +292,7 @@ def main(args):
     # we link the elements together
     # v4l2src -> nvvideoconvert -> mux -> 
     # nvinfer -> nvvideoconvert -> nvosd -> video-renderer
-    print("Linking elements in the Pipeline \n")
+    logger.info("Linking elements in the Pipeline ")
     source.link(caps_v4l2src)
     caps_v4l2src.link(vidconvsrc)
     vidconvsrc.link(nvvidconvsrc)
@@ -335,7 +330,7 @@ def main(args):
     osdsinkpad.add_probe(Gst.PadProbeType.BUFFER, osd_sink_pad_buffer_probe, 0)
 
     # start play back and listen to events
-    print("Starting pipeline \n")
+    logger.info("Starting pipeline ")
     pipeline.set_state(Gst.State.PLAYING)
     try:
         loop.run()
@@ -345,5 +340,13 @@ def main(args):
     pipeline.set_state(Gst.State.NULL)
 
 if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     sys.exit(main(sys.argv))
 

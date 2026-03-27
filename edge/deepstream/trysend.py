@@ -6,6 +6,7 @@ import cv2
 import asyncio
 import websockets
 import logging
+logger = logging.getLogger(__name__)
 import struct
 import time  
 from asyncio import run_coroutine_threadsafe
@@ -24,10 +25,10 @@ def establish_record_connection():
         try:
             record_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             record_socket.connect(('localhost', 4333))
-            print("Connected to localhost:4333")
+            logger.info("Connected to localhost:4333")
             break
         except ConnectionRefusedError:
-            print("Connection refused. Retrying in 1 second.")
+            logger.warning("Connection refused. Retrying in 1 second.")
             time.sleep(1)
 
 # Thread for receiving images from the client and forwarding them to the frontend if flag is 1
@@ -50,24 +51,23 @@ def receiver(conn,loop):
         img_array = np.frombuffer(img_data, dtype=np.uint8)
         img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
         if img is None:
-            print("Failed to decode image")
+            logger.error("Failed to decode image")
             continue
 
-        print('receive')
+        logger.debug('receive')
         # if flag == 1 and front_end_socket is not None:
         #     future = run_coroutine_threadsafe(send_to_frontend(img), loop)
         #     future.result()
         # elif front_end_socket is None:
-        #     print("尚未连接")
         if flag == 1 and front_end_socket is not None:
             try:
                 future = run_coroutine_threadsafe(send_to_frontend(img), loop)
                 future.result()
             except Exception as e:
-                print(f"Failed to send image to frontend: {e}")
+                logger.error(f"Failed to send image to frontend: {e}")
                 front_end_socket = None
         elif front_end_socket is None:
-            print("尚未连接")
+            logger.info("尚未连接")
             
 
 # Function to send the image to the frontend
@@ -75,20 +75,19 @@ def receiver(conn,loop):
 #     resized_img = cv2.resize(img, (480, 320))
 #     _, buffer = cv2.imencode('.jpg', resized_img)
 #     await front_end_socket.send(buffer.tobytes())
-#     print("Image sent to front end.")
     
 async def send_to_frontend(img):
     global front_end_socket
     if front_end_socket is None:
-        print("Front end not connected, skipping sending image.")
+        logger.info("Front end not connected, skipping sending image.")
         return
     try:
         resized_img = cv2.resize(img, (480, 320))
         _, buffer = cv2.imencode('.jpg', resized_img)
         await front_end_socket.send(buffer.tobytes())
-        print("Image sent to front end.")
+        logger.info("Image sent to front end.")
     except websockets.ConnectionClosed:
-        print("WebSocket connection closed. Waiting for reconnection.")
+        logger.warning("WebSocket connection closed. Waiting for reconnection.")
         front_end_socket = None
 
 # Async function to handle WebSocket communication for setting flag
@@ -107,18 +106,22 @@ async def video_stream(websocket, path):
                 if record_socket is not None:
                     record_socket.sendall(b'record')
     except websockets.ConnectionClosed:
-        print("WebSocket connection closed.")
+        logger.warning("WebSocket connection closed.")
         front_end_socket = None
 
 async def start_websocket_server():
     server = await websockets.serve(video_stream, "0.0.0.0", 7979)
-    print("WebSocket Server Started.")
+    logger.info("WebSocket Server Started.")
     while True:
         await asyncio.sleep(1)
     
     
 if __name__ == '__main__':
     # Setup socket for receiving images
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     s = socket.socket()
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) 
     host = 'localhost'

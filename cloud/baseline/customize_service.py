@@ -13,6 +13,13 @@ from tracker import Tracker
 from EAR import eye_aspect_ratio
 from MAR import mouth_aspect_ratio
 from typing import Any, Dict, List, Optional, Union
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 from models.experimental import attempt_load
 from utils1.general import check_img_size
@@ -177,7 +184,7 @@ class fatigue_driving_detection(PTServingBaseService):
             Category codes: 0=normal, 1=eyes closed, 2=yawning,
             3=phone use, 4=looking around.
         """
-        print(data)
+        logger.debug(data)
         result: Dict[str, Dict[str, Any]] = {"result": {"category": 0, "duration": 6000}}
 
         self.input_reader = InputReader(self.capture, 0, self.width, self.height, self.fps)
@@ -187,7 +194,7 @@ class fatigue_driving_detection(PTServingBaseService):
             if not self.input_reader.is_open() or self.need_reinit == 1:
                 self.input_reader = InputReader(self.capture, 0, self.width, self.height, self.fps, use_dshowcapture=False, dcap=None)
                 if self.input_reader.name != source_name:
-                    print(f"Failed to reinitialize camera and got {self.input_reader.name} instead of {source_name}.")
+                    logger.warning("Failed to reinitialize camera and got %s instead of %s.", self.input_reader.name, source_name)
                     # sys.exit(1)
                 self.need_reinit = 2
                 time.sleep(0.02)
@@ -207,7 +214,6 @@ class fatigue_driving_detection(PTServingBaseService):
 
                     # 检测驾驶员是否接打电话 以及低头的人脸
                     bbox = detect(self.model, frame, self.stride, self.imgsz)
-                    # print(results)
 
                     for box in bbox:
                         if box[0] == 0:
@@ -249,7 +255,6 @@ class fatigue_driving_detection(PTServingBaseService):
                             self.eyes_closed_frame += 1
                         else:
                             self.eyes_closed_frame = 0
-                        # print(ear, eyes_closed_frame)
 
                         # 检测是否张嘴
                         mar = mouth_aspect_ratio(f.lms)
@@ -258,14 +263,10 @@ class fatigue_driving_detection(PTServingBaseService):
                             self.mouth_open_frame += 1
                         else:
                             self.mouth_open_frame = 0  # Fixed: reset counter when mouth is closed
-#                         print(mar)
-
-#                         print(len(f.lms), f.euler)
                     else:
                         if self.face_detect:
                             self.look_around_frame += 1
                             self.face_detect = 0
-                    # print(self.look_around_frame)
                     if self.use_phone_frame >= self.frame_3s:
                         result['result']['category'] = 3
                         break
@@ -288,7 +289,7 @@ class fatigue_driving_detection(PTServingBaseService):
                 else:
                     break
             except KeyboardInterrupt:  # Fixed: KeyboardInterrupt is not a subclass of Exception; catch separately
-                print("Quitting")
+                logger.info("Quitting")
                 break
             except Exception:
                 traceback.print_exc()

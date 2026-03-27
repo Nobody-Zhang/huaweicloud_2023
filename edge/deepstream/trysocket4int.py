@@ -4,7 +4,8 @@ import threading
 import numpy as np 
 import asyncio 
 import websockets 
-import logging 
+import logging
+logger = logging.getLogger(__name__)
 import struct
 from asyncio import run_coroutine_threadsafe  
 
@@ -27,19 +28,19 @@ def receiver(conn, loop):
             break
         int_value = struct.unpack('!I', int_data)[0]  # 使用big-endian解包整数值
         
-        print('receive')
-        print(int_value)
+        logger.debug('receive')
+        logger.info(int_value)
         if front_end_int_socket is not None:
-            print('send')
+            logger.info('send')
             future = run_coroutine_threadsafe(send_int_to_frontend(int_value), loop)  # 在事件循环中运行协程
             future.result()
         else:
-            print("尚未连接")
+            logger.info("尚未连接")
 
 # 异步函数，用于将整数值发送给前端
 async def send_int_to_frontend(int_value):
     await front_end_int_socket.send(str(int_value))  # 发送整数值
-    print(f"Integer {int_value} sent to front end.")
+    logger.info(f"Integer {int_value} sent to front end.")
 
 
 # 用于处理整数值WebSocket通信的异步函数
@@ -50,6 +51,10 @@ async def int_stream(websocket, path):
         await asyncio.sleep(1)  # 保持连接活跃，每隔1秒发送心跳信号
 
 if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     s = socket.socket()  # 创建一个新的socket对象
     host = 'localhost'
     port = 8764
