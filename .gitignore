@@ -1,12 +1,98 @@
-# Environment variables
+# ===== Environment & Credentials =====
 .env
 .env.local
-
-# Credentials
+.env.production
 credentials.csv
 *.pem
 *.key
+*.secret
 
-# Python
+# ===== Python =====
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+.eggs/
+dist/
+build/
+*.whl
+.venv/
+venv/
+env/
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ===== IDE & Editor =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ===== Model Weights =====
+*.pt
+*.pth
+*.onnx
+*.engine
+*.bin
+*.dat
+*.tflite
+*.xml
+# Exception: keep OpenVINO config XMLs if explicitly tracked
+# git add -f <file>.xml
+
+# ===== Data & Media =====
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.wav
+*.mp3
+*.flac
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.gif
+# Exception: keep specific assets if needed
+# git add -f path/to/asset
+
+# ===== Archives =====
+*.zip
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+
+# ===== Documents (binary) =====
+*.pptx
+*.ppt
+*.docx
+*.doc
+*.xlsx
+*.xls
+*.pdf
+
+# ===== Logs =====
+*.log
+logs/
+
+# ===== Jupyter =====
+.ipynb_checkpoints/
+
+# ===== NVIDIA / Jetson / CUDA =====
+# TensorRT serialized engines (platform-specific, must regenerate)
+*.engine
+# CUDA compiled objects
+*.cubin
+*.fatbin
+*.ptx
+
+# ===== YOLOv5 Runtime =====
+runs/
+wandb/
