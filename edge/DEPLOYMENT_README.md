@@ -100,7 +100,7 @@
 
 ### 团队 logo
 
-![生产队的大萝卜-logo](生产队的大萝卜-logo.png)
+![Team Logo](../docs/logo.png)
 
 ### 依托实验室
 
