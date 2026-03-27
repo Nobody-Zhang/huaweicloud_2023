@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from PIL import Image
 import copy
 import sys
@@ -10,6 +12,7 @@ from input_reader import InputReader
 from tracker import Tracker
 from EAR import eye_aspect_ratio
 from MAR import mouth_aspect_ratio
+from typing import Any, Dict, List, Optional, Union
 
 from models.experimental import attempt_load
 from utils1.general import check_img_size
@@ -20,51 +23,86 @@ from model_service.pytorch_model_service import PTServingBaseService
 
 
 class fatigue_driving_detection(PTServingBaseService):
-    def __init__(self, model_name, model_path):
+    """Baseline ModelArts service for fatigue driving detection.
+
+    Processes uploaded dashcam videos to detect dangerous driving behaviors
+    using YOLOv5 for object detection (face, phone) and OpenSeeFace facial
+    landmark tracking for eye/mouth state and head pose estimation.
+
+    Detects four categories of fatigue/distraction:
+        1. Eyes closed for >= 3 seconds
+        2. Yawning (mouth open) for >= 3 seconds
+        3. Phone use for >= 3 seconds
+        4. Looking around (head turned) for >= 3 seconds
+
+    This service follows the ModelArts lifecycle:
+    ``_preprocess`` -> ``_inference`` -> ``_postprocess``.
+
+    Attributes:
+        model_name: Name of the deployed model.
+        model_path: Filesystem path to the model weights.
+        capture: Path to the temporary video file, or None.
+        width: Expected video width in pixels.
+        height: Expected video height in pixels.
+        fps: Expected video frame rate.
+        model: The traced YOLOv5 model for phone/face detection.
+        tracker: OpenSeeFace tracker for facial landmark detection.
+    """
+
+    def __init__(self, model_name: str, model_path: str) -> None:
+        """Initialize the detection service and load model weights.
+
+        Loads the YOLOv5 model for face/phone detection and initializes
+        the OpenSeeFace facial landmark tracker for 68-point landmarks.
+
+        Args:
+            model_name: Name of the model registered in ModelArts.
+            model_path: Path to the YOLOv5 ``.pt`` weight file.
+        """
         # these three parameters are no need to modify
         self.model_name = model_name
         self.model_path = model_path
 
-        self.capture = None  # Fixed: set via tempfile in _preprocess to avoid race condition
+        self.capture: Optional[str] = None  # Fixed: set via tempfile in _preprocess to avoid race condition
 
-        self.width = 1920
-        self.height = 1080
-        self.fps = 30
+        self.width: int = 1920
+        self.height: int = 1080
+        self.fps: int = 30
         # Fixed: removed unused self.first = True
 
-        self.standard_pose = [180, 40, 80]
-        self.look_around_frame = 0
-        self.eyes_closed_frame = 0
-        self.mouth_open_frame = 0
-        self.use_phone_frame = 0
+        self.standard_pose: List[int] = [180, 40, 80]
+        self.look_around_frame: int = 0
+        self.eyes_closed_frame: int = 0
+        self.mouth_open_frame: int = 0
+        self.use_phone_frame: int = 0
         # lStart, lEnd) = (42, 48)
-        self.lStart = 42
-        self.lEnd = 48
+        self.lStart: int = 42
+        self.lEnd: int = 48
         # (rStart, rEnd) = (36, 42)
-        self.rStart = 36
-        self.rEnd = 42
+        self.rStart: int = 36
+        self.rEnd: int = 42
         # (mStart, mEnd) = (49, 66)
-        self.mStart = 49
-        self.mEnd = 66
-        self.EYE_AR_THRESH = 0.2
-        self.MOUTH_AR_THRESH = 0.6
-        self.frame_3s = self.fps * 3
-        self.face_detect = 0
+        self.mStart: int = 49
+        self.mEnd: int = 66
+        self.EYE_AR_THRESH: float = 0.2
+        self.MOUTH_AR_THRESH: float = 0.6
+        self.frame_3s: int = self.fps * 3
+        self.face_detect: int = 0
 
-        self.weights = "best.pt"
-        self.imgsz = 640
+        self.weights: str = "best.pt"
+        self.imgsz: int = 640
 
-        self.device = 'cpu'  # 大赛后台使用CPU判分
+        self.device: str = 'cpu'  # 大赛后台使用CPU判分
 
         model = attempt_load(model_path, map_location=self.device)
-        self.stride = int(model.stride.max())
+        self.stride: int = int(model.stride.max())
         self.imgsz = check_img_size(self.imgsz, s=self.stride)
 
         self.model = TracedModel(model, self.device, self.imgsz)
 
 
-        self.need_reinit = 0
-        self.failures = 0
+        self.need_reinit: int = 0
+        self.failures: int = 0
 
         self.tracker = Tracker(self.width, self.height, threshold=None, max_threads=4, max_faces=4,
                           discard_after=10, scan_every=3, silent=True, model_type=3,
@@ -74,7 +112,21 @@ class fatigue_driving_detection(PTServingBaseService):
 
         # self.temp = NamedTemporaryFile(delete=False)  # 用来存储视频的临时文件
 
-    def _preprocess(self, data):
+    def _preprocess(self, data: Dict[str, Dict[str, Any]]) -> Union[str, Dict[str, str]]:
+        """Save the uploaded video to a unique temporary file.
+
+        Writes the video content from the HTTP request to a
+        ``NamedTemporaryFile`` to avoid race conditions when handling
+        concurrent requests.
+
+        Args:
+            data: Nested dict from the ModelArts framework with structure
+                ``{key: {filename: file_object}}``.
+
+        Returns:
+            The string ``'ok'`` on success, or a dict with an error
+            message on failure.
+        """
         # preprocessed_data = {}
         for k, v in data.items():
             for file_name, file_content in v.items():
@@ -95,13 +147,38 @@ class fatigue_driving_detection(PTServingBaseService):
                     return {"message": "There was an error processing the file"}
         return 'ok'
 
-    def _inference(self, data):
-        """
-        model inference function
-        Here are a inference example of resnet, if you use another model, please modify this function
+    def _inference(self, data: Union[str, Dict[str, str]]) -> Dict[str, Dict[str, Any]]:
+        """Run frame-by-frame fatigue detection on the uploaded video.
+
+        Processes the video sequentially:
+
+        1. Crops each frame to the driver's region (right 2/3 of frame).
+        2. Runs YOLOv5 to detect face and phone bounding boxes.
+        3. Uses OpenSeeFace tracker for 68-point facial landmarks.
+        4. Computes Eye Aspect Ratio (EAR) for drowsiness detection.
+        5. Computes Mouth Aspect Ratio (MAR) for yawning detection.
+        6. Checks head pose Euler angles for distraction detection.
+        7. Counts consecutive frames exceeding thresholds (3 seconds).
+
+        Args:
+            data: The result from ``_preprocess`` — either ``'ok'`` or
+                an error dict.
+
+        Returns:
+            A dict with structure::
+
+                {
+                    "result": {
+                        "category": <int>,   # 0-4 behavior category
+                        "duration": <int>    # processing time in ms
+                    }
+                }
+
+            Category codes: 0=normal, 1=eyes closed, 2=yawning,
+            3=phone use, 4=looking around.
         """
         print(data)
-        result = {"result": {"category": 0, "duration": 6000}}
+        result: Dict[str, Dict[str, Any]] = {"result": {"category": 0, "duration": 6000}}
 
         self.input_reader = InputReader(self.capture, 0, self.width, self.height, self.fps)
         source_name = self.input_reader.name
@@ -224,7 +301,15 @@ class fatigue_driving_detection(PTServingBaseService):
         result['result']['duration'] = duration
         return result
 
-    def _postprocess(self, data):
+    def _postprocess(self, data: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+        """Clean up the temporary video file and return results.
+
+        Args:
+            data: The inference result dict from ``_inference``.
+
+        Returns:
+            The inference result dict, passed through unchanged.
+        """
         if self.capture and os.path.exists(self.capture):  # Fixed: clean up temp file
             os.remove(self.capture)
         return data

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from multiprocessing import Process, Manager, Event
 import time
 from PIL import Image
@@ -15,6 +17,7 @@ import numpy as np
 import os
 import tempfile
 import warnings
+from typing import Any, Dict, Optional, Union
 
 warnings.filterwarnings("ignore")
 
@@ -22,18 +25,77 @@ warnings.filterwarnings("ignore")
 
 
 class PTVisionService(PTServingBaseService):
+    """ModelArts inference service for fatigue driving detection (semifinal).
 
-    def __init__(self, model_name, model_path):
-        self.capture = None  # Fixed: set via tempfile in _preprocess to avoid race condition
+    Receives an uploaded video via HTTP POST, runs the YOLO divide-and-conquer
+    temporal localization pipeline, and returns detected dangerous driving
+    behavior periods with categories and durations.
+
+    This service follows the ModelArts lifecycle:
+    ``_preprocess`` -> ``_inference`` -> ``_postprocess``.
+
+    Attributes:
+        capture: Path to the temporary video file, or None if not yet loaded.
+        model_name: Name of the deployed model.
+        model_path: Filesystem path to the model weights.
+    """
+
+    def __init__(self, model_name: str, model_path: str) -> None:
+        """Initialize the service without loading model weights.
+
+        The actual model is loaded lazily inside the YOLO inference module.
+
+        Args:
+            model_name: Name of the model registered in ModelArts.
+            model_path: Path to the model weight file on disk.
+        """
+        self.capture: Optional[str] = None  # Fixed: set via tempfile in _preprocess to avoid race condition
         self.model_name = model_name
         self.model_path = model_path
 
-    def _inference(self, data):
+    def _inference(self, data: Union[str, Dict[str, str]]) -> Dict[str, Any]:
+        """Run YOLO divide-and-conquer inference on the uploaded video.
+
+        Triggers garbage collection before inference to free memory from
+        prior requests, then delegates to the YOLO temporal localization
+        pipeline.
+
+        Args:
+            data: Preprocessing result (the string ``'ok'`` on success,
+                or an error dict on failure).
+
+        Returns:
+            A dict with structure::
+
+                {
+                    "result": {
+                        "duration": <int>,   # inference time in ms
+                        "drowsy": [          # detected behavior periods
+                            {"periods": [start_ms, end_ms], "category": <int>},
+                            ...
+                        ]
+                    }
+                }
+        """
         gc.collect()
         result = yolo.yolo_divide_and_conquer.yolo_run(source=self.capture)
         return result
 
-    def _preprocess(self, data):
+    def _preprocess(self, data: Dict[str, Dict[str, Any]]) -> Union[str, Dict[str, str]]:
+        """Save the uploaded video to a unique temporary file.
+
+        Writes the video content from the HTTP request to a
+        ``NamedTemporaryFile`` to avoid race conditions under concurrent
+        requests.
+
+        Args:
+            data: Nested dict from the ModelArts framework with structure
+                ``{key: {filename: file_object}}``.
+
+        Returns:
+            The string ``'ok'`` on success, or a dict with an error
+            message on failure.
+        """
         for k, v in data.items():
             for file_name, file_content in v.items():
                 try:
@@ -51,7 +113,15 @@ class PTVisionService(PTServingBaseService):
                     return {"message": "There was an error processing the file"}
         return 'ok'
 
-    def _postprocess(self, data):
+    def _postprocess(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Clean up the temporary video file and return results.
+
+        Args:
+            data: The inference result dict from ``_inference``.
+
+        Returns:
+            The inference result dict, passed through unchanged.
+        """
         if self.capture and os.path.exists(self.capture):  # Fixed: clean up temp file
             os.remove(self.capture)
         return data
